@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0A3227">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230A3227'/><path d='M11 21h42l-4.2 27.5A5.5 5.5 0 0 1 43.4 53H20.6a5.5 5.5 0 0 1-5.4-4.5L11 21Z' fill='%23E9B23C'/><path d='M23 21v-5.5a9 9 0 0 1 18 0V21' fill='none' stroke='%23E9B23C' stroke-width='4.5' stroke-linecap='round'/></svg>">
+<meta name="theme-color" content="#093E4F">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23093E4F'/><path d='M11 21h42l-4.2 27.5A5.5 5.5 0 0 1 43.4 53H20.6a5.5 5.5 0 0 1-5.4-4.5L11 21Z' fill='%23D4A85C'/><path d='M23 21v-5.5a9 9 0 0 1 18 0V21' fill='none' stroke='%23D4A85C' stroke-width='4.5' stroke-linecap='round'/></svg>">
 <link rel="apple-touch-icon" href="icone-180.png">
 <title>Minha Quitandinha — Funil de Condomínios</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,17 +13,17 @@
 
 <style>
   :root{
-    --verde-fundo:#0A3227; --verde-fundo-2:#072A20;
+    --verde-fundo:#093E4F; --verde-fundo-2:#05212A;
     --verde-coluna:rgba(255,255,255,.06); --verde-coluna-borda:rgba(255,255,255,.10);
-    --creme:#FBFAF5; --tinta:#123024; --tinta-suave:#4B6459;
-    --milho:#E9B23C; --ok:#2FA45F; --andamento:#E9B23C; --perdido:#D9534A;
+    --creme:#FBFAF5; --tinta:#0E627D; --tinta-suave:#4B6459;
+    --milho:#D4A85C; --ok:#2FA45F; --andamento:#D4A85C; --perdido:#D9534A;
     --claro-45:rgba(255,255,255,.45); --raio:10px;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
     margin:0;font-family:"Inter",system-ui,-apple-system,Segoe UI,sans-serif;
-    background:radial-gradient(900px 500px at 12% -10%, #14513C 0%, transparent 60%),
+    background:radial-gradient(900px 500px at 12% -10%, #117494 0%, transparent 60%),
                linear-gradient(180deg, var(--verde-fundo) 0%, var(--verde-fundo-2) 100%);
     background-attachment:fixed;color:#fff;-webkit-font-smoothing:antialiased;
     display:flex;flex-direction:column;
@@ -47,18 +47,18 @@
   .campo-busca svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5}
   select.filtro{padding:9px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.14);
     background:rgba(255,255,255,.07);outline:none}
-  select.filtro option{background:#0B3B2D;color:#fff}
+  select.filtro option{background:#062C38;color:#fff}
   .btn{padding:9px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.14);
     background:rgba(255,255,255,.07);font-weight:500}
   .btn:hover{background:rgba(255,255,255,.14)}
   .btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--milho);outline-offset:2px}
   .btn-destaque{background:var(--milho);color:#22180A;border-color:transparent;font-weight:600;
     box-shadow:0 2px 0 rgba(0,0,0,.28)}
-  .btn-destaque:hover{background:#F2BF4B}
+  .btn-destaque:hover{background:#DDB97C}
   .btn-sync{display:inline-flex;align-items:center;gap:8px}
   .btn-sync .pino{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
   .btn-sync.pendente{background:var(--milho);color:#22180A;border-color:transparent;font-weight:600}
-  .btn-sync.pendente .pino{background:#8A5B12}
+  .btn-sync.pendente .pino{background:#A0752A}
   .btn-sync.ocupado{opacity:.65;pointer-events:none}
   .btn-sync .contador{background:rgba(0,0,0,.18);border-radius:20px;padding:1px 7px;font-size:11.5px}
   .usuario{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--claro-45);
@@ -100,12 +100,12 @@
   .cartao .endereco{font-size:12px;color:var(--tinta-suave);margin:0 0 8px;line-height:1.35}
   .etiquetas{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
   .etiqueta{font-size:11px;font-weight:500;padding:2px 7px;border-radius:6px;background:#EAEFE9;color:#3B5B4C}
-  .etiqueta.alerta{background:#FCEBD2;color:#8A5B12}
+  .etiqueta.alerta{background:#F9F3E9;color:#A0752A}
   .etiqueta.perigo{background:#FBE3E1;color:#963029}
   .meta-cartao{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--tinta-suave);
     border-top:1px solid #E6E4DA;padding-top:7px}
   .meta-cartao .quem{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-weight:500}
-  .inicial{width:19px;height:19px;border-radius:50%;background:#123024;color:#fff;
+  .inicial{width:19px;height:19px;border-radius:50%;background:#0E627D;color:#fff;
     display:grid;place-items:center;font-size:10px;font-weight:600}
   .vazio{font-size:12.5px;color:var(--claro-45);padding:10px;line-height:1.5;
     border:1px dashed rgba(255,255,255,.16);border-radius:var(--raio)}
@@ -124,7 +124,7 @@
   .corpo{flex:1;overflow-y:auto;padding:18px 20px 26px}
   fieldset{border:0;padding:0;margin:0 0 22px}
   legend{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:13px;font-weight:700;
-    color:#2B6A4E;margin-bottom:10px;padding:0}
+    color:#093E4F;margin-bottom:10px;padding:0}
   .linha{display:flex;gap:12px}
   .linha > *{flex:1;min-width:0}
   label.campo{display:block;margin-bottom:12px}
@@ -132,14 +132,14 @@
   input.txt,select.txt,textarea.txt{width:100%;padding:9px 10px;border-radius:8px;border:1px solid #D6D9D0;
     background:#fff;color:var(--tinta);outline:none}
   textarea.txt{resize:vertical;min-height:78px;line-height:1.5}
-  input.txt:focus,select.txt:focus,textarea.txt:focus{border-color:#2B6A4E;box-shadow:0 0 0 3px rgba(43,106,78,.14)}
+  input.txt:focus,select.txt:focus,textarea.txt:focus{border-color:#093E4F;box-shadow:0 0 0 3px rgba(43,106,78,.14)}
   .dica{font-size:11.5px;color:var(--tinta-suave);margin:-6px 0 12px}
-  .dica button{border:0;background:none;color:#2B6A4E;font-weight:600;padding:0;text-decoration:underline}
+  .dica button{border:0;background:none;color:#093E4F;font-weight:600;padding:0;text-decoration:underline}
   .semaforo{display:flex;gap:8px;flex-wrap:wrap}
   .semaforo label{flex:1;min-width:110px;display:flex;align-items:center;gap:8px;padding:9px 10px;
     border-radius:8px;border:1px solid #D6D9D0;background:#fff;font-size:13px;cursor:pointer}
-  .semaforo input{accent-color:#2B6A4E;margin:0}
-  .semaforo label.on{border-color:#2B6A4E;background:#F0F6F1;font-weight:500}
+  .semaforo input{accent-color:#093E4F;margin:0}
+  .semaforo label.on{border-color:#093E4F;background:#F0F6F1;font-weight:500}
   .bolinha{width:11px;height:11px;border-radius:50%;flex:none}
   .b-verde{background:var(--ok)}.b-amarelo{background:var(--andamento)}
   .b-vermelho{background:var(--perdido)}.b-nenhum{background:#C9D2CD}
@@ -147,7 +147,7 @@
     color:var(--tinta-suave);line-height:1.7}
   .historico b{color:var(--tinta);font-weight:600}
   .rodape-painel{border-top:1px solid #E6E4DA;padding:12px 20px;display:flex;gap:8px;align-items:center;background:#F4F3EC}
-  .btn-salvar{background:#2B6A4E;color:#fff;border:0;padding:10px 20px;border-radius:8px;font-weight:600}
+  .btn-salvar{background:#093E4F;color:#fff;border:0;padding:10px 20px;border-radius:8px;font-weight:600}
   .btn-salvar:hover{background:#22573F}
   .btn-neutro{background:#EAEFE9;border:0;color:var(--tinta);padding:10px 16px;border-radius:8px}
   .btn-excluir{margin-left:auto;background:transparent;border:0;color:#963029;font-size:13px}
@@ -161,7 +161,7 @@
 
   /* login */
   .entrada{position:fixed;inset:0;z-index:70;display:none;place-items:center;padding:20px;
-    background:linear-gradient(180deg,#0A3227,#062018)}
+    background:linear-gradient(180deg,#093E4F,#062018)}
   .entrada.aberta{display:grid}
   .caixa-entrada{width:min(380px,100%);background:var(--creme);color:var(--tinta);border-radius:14px;
     padding:28px 26px}
@@ -174,7 +174,7 @@
   .olho{position:absolute;right:6px;bottom:5px;width:30px;height:30px;border:0;background:none;
     border-radius:7px;display:grid;place-items:center;color:var(--tinta-suave)}
   .olho:hover{background:#EAEFE9;color:var(--tinta)}
-  .olho:focus-visible{outline:2px solid #2B6A4E;outline-offset:1px}
+  .olho:focus-visible{outline:2px solid #093E4F;outline-offset:1px}
 
   .aviso{position:fixed;left:50%;bottom:22px;transform:translate(-50%,80px);background:#0F2C22;color:#fff;
     padding:10px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.14);font-size:13.5px;
@@ -339,7 +339,7 @@
 <!-- tela de entrada -->
 <div class="entrada" id="entrada">
   <div class="caixa-entrada">
-    <div class="cesta" style="width:40px;height:40px;border-radius:11px;background:#E9B23C;display:grid;place-items:center">
+    <div class="cesta" style="width:40px;height:40px;border-radius:11px;background:#D4A85C;display:grid;place-items:center">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22180A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 8h18l-1.6 11.2a2 2 0 0 1-2 1.8H6.6a2 2 0 0 1-2-1.8L3 8Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/>
       </svg>
