@@ -658,7 +658,7 @@ function desenhar(){
       '<div class="cabeca"><h2>'+escapar(fase.nome)+'</h2>'+
       '<button class="btn-inverter'+(invertida?" ativo":"")+'" data-inverter="'+fase.id+'" '+
       'title="Inverter ordem dos cartões" aria-label="Inverter ordem dos cartões">'+
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11M10 3l4 4-4 4"/><path d="M21 17H10M14 21l-4-4 4-4"/></svg>'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v11M3 10l4 4 4-4"/><path d="M17 21V10M13 14l4 4 4-4"/></svg>'+
       '</button>'+
       '<span class="contagem">'+daFase.length+'</span></div>'+
       '<div class="trilha"><i style="width:'+Math.round(daFase.length/total*100)+'%"></i></div>'+
