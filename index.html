@@ -148,6 +148,17 @@
   textarea.txt{resize:vertical;min-height:78px;line-height:1.5}
   input.txt:focus,select.txt:focus,textarea.txt:focus{border-color:#093E4F;box-shadow:0 0 0 3px rgba(9,62,79,.14)}
   .dica{font-size:11.5px;color:var(--tinta-suave);margin:-6px 0 12px}
+  .campo-nome{position:relative}
+  .dropdown-duplicados{position:absolute;top:100%;left:0;right:0;margin-top:4px;
+    background:#fff;border:1px solid #D6D9D0;border-radius:10px;
+    box-shadow:0 8px 22px rgba(9,62,79,.16);z-index:30;overflow:hidden}
+  .dropdown-duplicados .dd-titulo{font-size:11px;font-weight:700;color:var(--tinta-suave);
+    padding:8px 12px 4px;text-transform:uppercase;letter-spacing:.02em}
+  .dropdown-duplicados ul{list-style:none;margin:0;padding:0 0 6px;max-height:180px;overflow-y:auto}
+  .dropdown-duplicados li{padding:7px 12px;font-size:13px;color:var(--tinta);cursor:default}
+  .dropdown-duplicados li:hover{background:#F2F5F0}
+  .dropdown-duplicados li .dd-nome{font-weight:600}
+  .dropdown-duplicados li .dd-end{display:block;font-size:11.5px;color:var(--tinta-suave)}
   .dica button{border:0;background:none;color:#093E4F;font-weight:600;padding:0;text-decoration:underline}
   .semaforo{display:flex;gap:8px;flex-wrap:wrap}
   .semaforo label{flex:1;min-width:110px;display:flex;align-items:center;gap:8px;padding:9px 10px;
@@ -313,7 +324,11 @@
   <div class="corpo">
     <fieldset>
       <legend>Condomínio</legend>
-      <label class="campo"><span>Nome do condomínio</span><input class="txt" id="f_nome"></label>
+      <label class="campo campo-nome">
+        <span>Nome do condomínio</span>
+        <input class="txt" id="f_nome" autocomplete="off">
+        <div class="dropdown-duplicados" id="avisoNomeDuplicado" hidden></div>
+      </label>
       <label class="campo"><span>Endereço completo</span><input class="txt" id="f_endereco"></label>
       <div class="linha">
         <label class="campo"><span>Nº de apartamentos</span><input class="txt" id="f_aptos" type="number" min="0"></label>
@@ -466,6 +481,38 @@ function diasDesde(iso){ return iso ? Math.floor((Date.now()-new Date(iso).getTi
 function textoDias(n){ if(n===null) return "—"; if(n<=0) return "hoje"; if(n===1) return "ontem"; return "há "+n+" dias"; }
 function escapar(s){ return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function avisar(msg){ const el=$("#aviso"); el.textContent=msg; el.classList.add("on"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("on"),2400); }
+
+function normalizarNome(s){
+  return String(s ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase().trim().replace(/\s+/g," ");
+}
+const PALAVRAS_IGNORADAS = new Set(["de","da","do","das","dos","e","a","o","em","no","na","um","uma","condominio"]);
+function palavrasNome(s){
+  return normalizarNome(s).split(" ").filter(p => p.length>=2 && !PALAVRAS_IGNORADAS.has(p));
+}
+function verificarNomeDuplicado(){
+  const box = $("#avisoNomeDuplicado");
+  const bruto = $("#f_nome").value;
+  const alvo = normalizarNome(bruto);
+  const palavrasAlvo = palavrasNome(bruto);
+  if(!alvo || !palavrasAlvo.length){ box.hidden = true; box.innerHTML=""; return; }
+  const achados = [];
+  leads.forEach(l=>{
+    if(editandoId && l.id === editandoId) return;
+    const nomeL = normalizarNome(l.nome);
+    if(!nomeL) return;
+    const palavrasL = palavrasNome(l.nome);
+    const temPalavraComum = palavrasAlvo.some(p => palavrasL.includes(p));
+    if(nomeL === alvo || temPalavraComum) achados.push(l);
+  });
+  if(!achados.length){ box.hidden = true; box.innerHTML=""; return; }
+  box.innerHTML = "<div class='dd-titulo'>Condomínios já cadastrados com nome parecido</div><ul>"+
+    achados.slice(0,8).map(l=>"<li><span class='dd-nome'>"+escapar(l.nome||"Condomínio sem nome")+"</span>"+
+      (l.endereco ? "<span class='dd-end'>"+escapar(l.endereco)+"</span>" : "")+"</li>").join("")+
+    "</ul>";
+  box.hidden = false;
+}
 
 /* ================= camada de dados ================= */
 function paraBanco(l){
@@ -994,6 +1041,7 @@ function abrirPainel(id, faseInicial){
     const l = leads.find(x=>x.id===id); if(!l) return;
     $("#tituloPainel").textContent = l.nome || "Condomínio sem nome";
     $("#f_nome").value=l.nome||""; $("#f_endereco").value=l.endereco||"";
+    $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML="";
     $("#f_aptos").value=l.aptos??""; $("#f_fase").value=l.fase||"cadastro";
     $("#f_zona").value=l.zona||""; $("#f_importante").value=l.importante||"";
     contatosForm = migrarContatosAntigos(l);
@@ -1015,6 +1063,7 @@ function abrirPainel(id, faseInicial){
     ["f_nome","f_endereco","f_aptos","f_zona","f_importante",
      "f_concorrente","f_fimContrato","f_perfil"]
       .forEach(x => $("#"+x).value = "");
+    $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML="";
     contatosForm = [];
     renderContatos();
     observacoesForm = [];
@@ -1334,6 +1383,8 @@ $("#btnAddContato").addEventListener("click", adicionarContato);
 $("#obsTexto").addEventListener("keydown", e=>{
   if(e.key==="Enter" && (e.ctrlKey||e.metaKey)){ e.preventDefault(); adicionarObservacao(); }
 });
+
+$("#f_nome").addEventListener("input", verificarNomeDuplicado);
 
 iniciar();
 </script>
