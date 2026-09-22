@@ -197,6 +197,19 @@
   .obs-nova .btn-add-obs{align-self:flex-end;background:#093E4F;color:#fff;border:0;
     padding:8px 14px;border-radius:8px;font-weight:600;font-size:12.5px}
   .obs-nova .btn-add-obs:hover{background:#0E627D}
+
+  /* contatos (síndico/administradora unificados em uma lista de contatos) */
+  .contatos-lista{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+  .contato-vazio{font-size:12.5px;color:var(--tinta-suave);padding:8px 2px}
+  .contato-item{background:#F0F1EA;border-radius:10px;padding:11px 11px 2px}
+  .contato-cabeca{display:flex;gap:8px;align-items:flex-end}
+  .contato-cabeca .campo{flex:1;min-width:0}
+  .contato-remover{flex:none;border:0;background:none;color:var(--tinta-suave);font-size:13px;
+    line-height:1;padding:9px 7px;border-radius:6px;margin-bottom:12px}
+  .contato-remover:hover{background:#E2E5DB;color:#963029}
+  .btn-add-contato{align-self:flex-end;background:#093E4F;color:#fff;border:0;
+    padding:8px 14px;border-radius:8px;font-weight:600;font-size:12.5px}
+  .btn-add-contato:hover{background:#0E627D}
   .rodape-painel{border-top:1px solid #E6E4DA;padding:12px 20px;display:flex;gap:8px;align-items:center;background:#F4F3EC}
   .btn-salvar{background:#093E4F;color:#fff;border:0;padding:10px 20px;border-radius:8px;font-weight:600}
   .btn-salvar:hover{background:#0E627D}
@@ -313,22 +326,9 @@
     </fieldset>
 
     <fieldset>
-      <legend>Síndico</legend>
-      <label class="campo"><span>Nome</span><input class="txt" id="f_sindico"></label>
-      <div class="linha">
-        <label class="campo"><span>Telefone / WhatsApp</span><input class="txt" id="f_sindicoTel"></label>
-        <label class="campo"><span>E-mail</span><input class="txt" id="f_sindicoEmail" type="email"></label>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Administradora</legend>
-      <label class="campo"><span>Empresa</span><input class="txt" id="f_admin"></label>
-      <div class="linha">
-        <label class="campo"><span>Pessoa de contato</span><input class="txt" id="f_adminContato"></label>
-        <label class="campo"><span>Telefone</span><input class="txt" id="f_adminTel"></label>
-      </div>
-      <label class="campo"><span>E-mail</span><input class="txt" id="f_adminEmail" type="email"></label>
+      <legend>Contatos</legend>
+      <div class="contatos-lista" id="contatosLista"></div>
+      <button type="button" class="btn-add-contato" id="btnAddContato">+ Adicionar contato</button>
     </fieldset>
 
     <fieldset>
@@ -452,6 +452,7 @@ let leads = [], equipe = [];
 let editandoId = null, arrastandoId = null;
 let observacoesForm = [];
 let obsEditandoIndex = null;
+let contatosForm = [];
 
 const $ = s => document.querySelector(s);
 const agora = () => new Date().toISOString();
@@ -473,9 +474,7 @@ function paraBanco(l){
     aptos:l.aptos===""||l.aptos==null?null:parseInt(l.aptos,10),
     fase:l.fase||"cadastro", status:l.status||"nenhum", ordem:l.ordem??0,
     zona:l.zona||null, importante:l.importante||null,
-    sindico:l.sindico||null, sindico_tel:l.sindicoTel||null, sindico_email:l.sindicoEmail||null,
-    admin_nome:l.admin||null, admin_contato:l.adminContato||null, admin_tel:l.adminTel||null,
-    admin_email:l.adminEmail||null, concorrente:l.concorrente||null,
+    contatos:l.contatos||[], concorrente:l.concorrente||null,
     fim_contrato:l.fimContrato||null, perfil:l.perfil||null, notas:l.notas||null,
     responsavel:l.responsavel||null, criado_por:l.criadoPor||null,
     criado_em:l.criadoEm, atualizado_em:l.atualizadoEm, historico:l.historico||[],
@@ -487,6 +486,8 @@ function doBanco(r){
     id:r.id, nome:r.nome||"", endereco:r.endereco||"", aptos:r.aptos??"",
     fase:r.fase||"cadastro", status:r.status||"nenhum", ordem:r.ordem??0,
     zona:r.zona||"", importante:r.importante||"",
+    contatos:r.contatos||[],
+    // colunas antigas: mantidas só para migrar automaticamente condomínios cadastrados antes da unificação
     sindico:r.sindico||"", sindicoTel:r.sindico_tel||"", sindicoEmail:r.sindico_email||"",
     admin:r.admin_nome||"", adminContato:r.admin_contato||"", adminTel:r.admin_tel||"",
     adminEmail:r.admin_email||"", concorrente:r.concorrente||"", fimContrato:r.fim_contrato||"",
@@ -628,7 +629,8 @@ function filtrar(){
     if(st && (l.status||"nenhum") !== st) return false;
     if(resp && (l.responsavel||"") !== resp) return false;
     if(!termo) return true;
-    return [l.nome,l.endereco,l.zona,l.importante,l.sindico,l.admin,l.concorrente,l.perfil,l.notas,l.responsavel]
+    const textoContatos = (l.contatos||[]).map(c=>[c.nome,c.telefone,c.email].join(" ")).join(" ");
+    return [l.nome,l.endereco,l.zona,l.importante,textoContatos,l.concorrente,l.perfil,l.notas,l.responsavel]
       .join(" ").toLowerCase().includes(termo);
   });
 }
@@ -693,7 +695,7 @@ function montarCartao(l){
   const etiquetas = [];
   if(l.zona) etiquetas.push('<span class="etiqueta zona">'+escapar(l.zona)+'</span>');
   if(l.aptos !== "" && l.aptos != null) etiquetas.push('<span class="etiqueta">'+escapar(l.aptos)+' aptos</span>');
-  if(l.admin) etiquetas.push('<span class="etiqueta">'+escapar(l.admin)+'</span>');
+  if(l.contatos && l.contatos.length) etiquetas.push('<span class="etiqueta">'+escapar(l.contatos[0].nome||("Contato"))+(l.contatos.length>1?' +'+(l.contatos.length-1):'')+'</span>');
   if(l.concorrente){
     const d = l.fimContrato ? Math.ceil((new Date(l.fimContrato)-Date.now())/86400000) : null;
     let cls="alerta", txt=escapar(l.concorrente);
@@ -761,6 +763,59 @@ function alvoPosicao(lista, y){
     if(dif<0 && Math.abs(dif)<menor){ menor=Math.abs(dif); melhor=c; }
   });
   return melhor;
+}
+
+/* ================= contatos (síndico/administradora unificados) ================= */
+function migrarContatosAntigos(l){
+  if(Array.isArray(l.contatos) && l.contatos.length){
+    return l.contatos.map(c=>({nome:c.nome||"", telefone:c.telefone||"", email:c.email||""}));
+  }
+  // condomínios cadastrados antes da unificação: junta síndico e administradora num contato cada
+  const legado = [];
+  if(l.sindico || l.sindicoTel || l.sindicoEmail){
+    legado.push({nome:l.sindico||"", telefone:l.sindicoTel||"", email:l.sindicoEmail||""});
+  }
+  const nomeAdmin = [l.admin, l.adminContato].filter(Boolean).join(" – ");
+  if(nomeAdmin || l.adminTel || l.adminEmail){
+    legado.push({nome:nomeAdmin, telefone:l.adminTel||"", email:l.adminEmail||""});
+  }
+  return legado;
+}
+function renderContatos(){
+  const el = $("#contatosLista");
+  if(!contatosForm.length){
+    el.innerHTML = '<p class="contato-vazio">Nenhum contato adicionado. Clique em "Adicionar contato" abaixo.</p>';
+    return;
+  }
+  el.innerHTML = contatosForm.map((c,i) =>
+    '<div class="contato-item" data-i="'+i+'">'+
+      '<div class="contato-cabeca">'+
+        '<label class="campo"><span>Nome</span><input class="txt contato-nome" data-i="'+i+'" value="'+escapar(c.nome||"")+'"></label>'+
+        '<button type="button" class="contato-remover" data-remover-contato="'+i+'" title="Remover contato" aria-label="Remover contato">✕</button>'+
+      '</div>'+
+      '<div class="linha">'+
+        '<label class="campo"><span>Telefone / WhatsApp</span><input class="txt contato-tel" data-i="'+i+'" value="'+escapar(c.telefone||"")+'"></label>'+
+        '<label class="campo"><span>E-mail</span><input class="txt contato-email" type="email" data-i="'+i+'" value="'+escapar(c.email||"")+'"></label>'+
+      '</div>'+
+    '</div>'
+  ).join("");
+}
+function adicionarContato(){
+  contatosForm.push({nome:"", telefone:"", email:""});
+  renderContatos();
+  const campos = document.querySelectorAll("#contatosLista .contato-nome");
+  const ultimo = campos[campos.length-1];
+  if(ultimo) ultimo.focus();
+}
+function removerContatoForm(i){
+  if(!confirm("Remover este contato? Essa ação não pode ser desfeita.")) return;
+  contatosForm.splice(i,1);
+  renderContatos();
+}
+function lerContatosForm(){
+  return contatosForm
+    .map(c=>({nome:(c.nome||"").trim(), telefone:(c.telefone||"").trim(), email:(c.email||"").trim()}))
+    .filter(c=>c.nome||c.telefone||c.email);
 }
 
 /* ================= observações (data e autor automáticos) ================= */
@@ -941,10 +996,9 @@ function abrirPainel(id, faseInicial){
     $("#f_nome").value=l.nome||""; $("#f_endereco").value=l.endereco||"";
     $("#f_aptos").value=l.aptos??""; $("#f_fase").value=l.fase||"cadastro";
     $("#f_zona").value=l.zona||""; $("#f_importante").value=l.importante||"";
-    $("#f_sindico").value=l.sindico||""; $("#f_sindicoTel").value=l.sindicoTel||"";
-    $("#f_sindicoEmail").value=l.sindicoEmail||""; $("#f_admin").value=l.admin||"";
-    $("#f_adminContato").value=l.adminContato||""; $("#f_adminTel").value=l.adminTel||"";
-    $("#f_adminEmail").value=l.adminEmail||""; $("#f_concorrente").value=l.concorrente||"";
+    contatosForm = migrarContatosAntigos(l);
+    renderContatos();
+    $("#f_concorrente").value=l.concorrente||"";
     $("#f_fimContrato").value=l.fimContrato||""; $("#f_perfil").value=l.perfil||"";
     observacoesForm = migrarNotasAntigas(l);
     obsEditandoIndex = null;
@@ -958,9 +1012,11 @@ function abrirPainel(id, faseInicial){
     $("#btnExcluir").style.display="";
   } else {
     $("#tituloPainel").textContent = "Novo condomínio";
-    ["f_nome","f_endereco","f_aptos","f_zona","f_importante","f_sindico","f_sindicoTel","f_sindicoEmail","f_admin",
-     "f_adminContato","f_adminTel","f_adminEmail","f_concorrente","f_fimContrato","f_perfil"]
+    ["f_nome","f_endereco","f_aptos","f_zona","f_importante",
+     "f_concorrente","f_fimContrato","f_perfil"]
       .forEach(x => $("#"+x).value = "");
+    contatosForm = [];
+    renderContatos();
     observacoesForm = [];
     obsEditandoIndex = null;
     $("#obsTexto").value = "";
@@ -992,10 +1048,7 @@ function lerFormulario(){
     nome:$("#f_nome").value.trim(), endereco:$("#f_endereco").value.trim(),
     aptos:$("#f_aptos").value.trim(), fase:$("#f_fase").value,
     zona:$("#f_zona").value.trim(), importante:$("#f_importante").value.trim(),
-    sindico:$("#f_sindico").value.trim(), sindicoTel:$("#f_sindicoTel").value.trim(),
-    sindicoEmail:$("#f_sindicoEmail").value.trim(), admin:$("#f_admin").value.trim(),
-    adminContato:$("#f_adminContato").value.trim(), adminTel:$("#f_adminTel").value.trim(),
-    adminEmail:$("#f_adminEmail").value.trim(), concorrente:$("#f_concorrente").value.trim(),
+    contatos:lerContatosForm(), concorrente:$("#f_concorrente").value.trim(),
     fimContrato:$("#f_fimContrato").value, perfil:$("#f_perfil").value.trim(),
     observacoes:observacoesForm, notas:formatarObservacoesTexto(observacoesForm),
     responsavel:$("#f_responsavel").value,
@@ -1006,9 +1059,7 @@ function lerFormulario(){
 const RÓTULOS_CAMPO = {
   nome:"Nome do condomínio", endereco:"Endereço", aptos:"Nº de apartamentos",
   zona:"Zona", importante:"Informação importante",
-  sindico:"Nome do síndico", sindicoTel:"Telefone do síndico", sindicoEmail:"E-mail do síndico",
-  admin:"Administradora", adminContato:"Contato da administradora", adminTel:"Telefone da administradora",
-  adminEmail:"E-mail da administradora", concorrente:"Concorrente", fimContrato:"Fim do contrato",
+  concorrente:"Concorrente", fimContrato:"Fim do contrato",
   perfil:"Perfil dos moradores", notas:"Observações", responsavel:"Responsável"
 };
 function descreverAlteracoes(antes, depois){
@@ -1019,6 +1070,9 @@ function descreverAlteracoes(antes, depois){
   const statusAntes = antes.status||"nenhum", statusDepois = depois.status||"nenhum";
   if(statusAntes !== statusDepois){
     partes.push("Situação: "+ROTULO_STATUS[statusAntes]+" → "+ROTULO_STATUS[statusDepois]);
+  }
+  if(JSON.stringify(antes.contatos||[]) !== JSON.stringify(depois.contatos||[])){
+    partes.push("Contatos alterados");
   }
   Object.keys(RÓTULOS_CAMPO).forEach(campo => {
     const v1 = (antes[campo] ?? "").toString().trim();
@@ -1077,13 +1131,12 @@ function atualizarFiltroResp(){
 }
 function exportarCSV(){
   if(!leads.length){ avisar("Não há condomínios para exportar"); return; }
-  const cab = ["Condomínio","Endereço","Zona","Apartamentos","Fase","Situação","Informação importante","Síndico","Telefone síndico",
-    "E-mail síndico","Administradora","Contato administradora","Telefone administradora","E-mail administradora",
+  const cab = ["Condomínio","Endereço","Zona","Apartamentos","Fase","Situação","Informação importante","Contatos",
     "Concorrente","Fim do contrato","Perfil dos moradores","Observações","Responsável","Cadastrado por",
     "Data de cadastro","Última atualização","Nº de atualizações"];
   const linhas = leads.map(l => [
     l.nome,l.endereco,l.zona,l.aptos,(FASES.find(f=>f.id===l.fase)||{}).nome,ROTULO_STATUS[l.status||"nenhum"],l.importante,
-    l.sindico,l.sindicoTel,l.sindicoEmail,l.admin,l.adminContato,l.adminTel,l.adminEmail,
+    (l.contatos||[]).map(c=>[c.nome,c.telefone,c.email].filter(Boolean).join(" / ")).join(" | "),
     l.concorrente,l.fimContrato?dataBR(l.fimContrato):"",l.perfil,l.notas,l.responsavel,l.criadoPor,
     dataBR(l.criadoEm),dataBR(l.atualizadoEm),(l.historico||[]).length
   ]);
@@ -1258,6 +1311,17 @@ document.addEventListener("click", e=>{
   if(cancelObs) cancelarEdicaoObservacao();
   const saveObs = e.target.closest("[data-salvar-obs]");
   if(saveObs) salvarEdicaoObservacao(parseInt(saveObs.dataset.salvarObs,10));
+  const remContato = e.target.closest("[data-remover-contato]");
+  if(remContato) removerContatoForm(parseInt(remContato.dataset.removerContato,10));
+});
+document.addEventListener("input", e=>{
+  const i = e.target.dataset.i;
+  if(i===undefined) return;
+  const idx = parseInt(i,10);
+  if(!contatosForm[idx]) return;
+  if(e.target.classList.contains("contato-nome")) contatosForm[idx].nome = e.target.value;
+  else if(e.target.classList.contains("contato-tel")) contatosForm[idx].telefone = e.target.value;
+  else if(e.target.classList.contains("contato-email")) contatosForm[idx].email = e.target.value;
 });
 document.addEventListener("keydown", e=>{
   if(e.target && e.target.id === "obsEditarTexto" && e.key==="Enter" && (e.ctrlKey||e.metaKey)){
@@ -1266,6 +1330,7 @@ document.addEventListener("keydown", e=>{
   }
 });
 $("#btnAddObs").addEventListener("click", adicionarObservacao);
+$("#btnAddContato").addEventListener("click", adicionarContato);
 $("#obsTexto").addEventListener("keydown", e=>{
   if(e.key==="Enter" && (e.ctrlKey||e.metaKey)){ e.preventDefault(); adicionarObservacao(); }
 });
