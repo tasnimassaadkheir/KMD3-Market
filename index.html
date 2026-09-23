@@ -112,9 +112,9 @@
   .etiqueta.zona{background:#E4EDF3;color:#0E4E64}
   .etiqueta.alerta{background:#F9F3E9;color:#A0752A}
   .etiqueta.perigo{background:#FBE3E1;color:#963029}
-  .meta-cartao{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--tinta-suave);
+  .meta-cartao{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:11px;color:var(--tinta-suave);
     border-top:1px solid #E6E4DA;padding-top:7px}
-  .meta-cartao .quem{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-weight:500}
+  .meta-cartao .quem{display:inline-flex;align-items:center;gap:5px;font-weight:500}
   .inicial{width:19px;height:19px;border-radius:50%;background:#0E627D;color:#fff;
     display:grid;place-items:center;font-size:10px;font-weight:600}
   .vazio{font-size:12.5px;color:var(--claro-45);padding:10px;line-height:1.5;
@@ -357,11 +357,11 @@
     <fieldset>
       <legend>Perfil e observações</legend>
       <label class="campo"><textarea class="txt" id="f_perfil" aria-label="Perfil dos moradores"></textarea></label>
-      <label class="campo" style="margin-bottom:6px"><span>Observações</span></label>
+      <label class="campo" style="margin-bottom:6px"><span>Timeline</span></label>
       <div class="obs-lista" id="obsLista"></div>
       <div class="obs-nova">
         <textarea class="txt" id="obsTexto" style="min-height:70px"></textarea>
-        <button type="button" class="btn-add-obs" id="btnAddObs">+ Adicionar observação</button>
+        <button type="button" class="btn-add-obs" id="btnAddObs">+ Adicionar</button>
       </div>
     </fieldset>
 
@@ -478,6 +478,18 @@ function dataHoraBR(iso){ if(!iso) return "—"; const d=new Date(iso); if(isNaN
   return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"})+" às "+
     d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); }
 function diasDesde(iso){ return iso ? Math.floor((Date.now()-new Date(iso).getTime())/86400000) : null; }
+function ultimaObservacao(l){
+  const lista = (l.observacoes && l.observacoes.length) ? l.observacoes : migrarNotasAntigas(l);
+  if(!lista.length) return null;
+  let melhor = null;
+  lista.forEach(o=>{
+    const quando = o.editadoQuando || o.quando;
+    const por = o.editadoQuando ? (o.editadoPor||o.por) : o.por;
+    if(!quando) return;
+    if(!melhor || new Date(quando) > new Date(melhor.quando)) melhor = {quando, por};
+  });
+  return melhor;
+}
 function textoDias(n){ if(n===null) return "—"; if(n<=0) return "hoje"; if(n===1) return "ontem"; return "há "+n+" dias"; }
 function escapar(s){ return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function avisar(msg){ const el=$("#aviso"); el.textContent=msg; el.classList.add("on"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("on"),2400); }
@@ -753,14 +765,19 @@ function montarCartao(l){
     }
     etiquetas.push('<span class="etiqueta '+cls+'">'+txt+'</span>');
   }
-  const inicial = (l.responsavel||"?").trim().charAt(0).toUpperCase() || "?";
+  const ultimaObs = ultimaObservacao(l);
+  const quemObs = ultimaObs ? (ultimaObs.por||"") : "";
+  const inicial = (quemObs||"?").trim().charAt(0).toUpperCase() || "?";
+  const metaCartao = ultimaObs
+    ? '<div class="meta-cartao"><span>Atualizado '+dataHoraBR(ultimaObs.quando)+"</span>"+
+      (quemObs?'<span class="quem"><i class="inicial">'+escapar(inicial)+"</i>por "+escapar(quemObs)+"</span>":"")+
+      "</div>"
+    : "";
   el.innerHTML =
     "<h3>"+escapar(l.nome||"Condomínio sem nome")+"</h3>"+
     (l.importante?'<p class="aviso-importante">⚠️ '+escapar(l.importante)+"</p>":"")+
     (etiquetas.length?'<div class="etiquetas">'+etiquetas.join("")+"</div>":"")+
-    '<div class="meta-cartao"><span>Atualizado '+textoDias(diasDesde(l.atualizadoEm||l.criadoEm))+"</span>"+
-    (l.responsavel?'<span class="quem"><i class="inicial">'+escapar(inicial)+"</i>"+escapar(l.responsavel.split(" ")[0])+"</span>":"")+
-    "</div>";
+    metaCartao;
   el.addEventListener("click", () => abrirPainel(l.id));
   el.addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); abrirPainel(l.id); } });
   return el;
