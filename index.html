@@ -152,8 +152,12 @@
   .dropdown-duplicados{position:absolute;top:100%;left:0;right:0;margin-top:4px;
     background:#fff;border:1px solid #D6D9D0;border-radius:10px;
     box-shadow:0 8px 22px rgba(9,62,79,.16);z-index:30;overflow:hidden}
+  .dropdown-duplicados .dd-cabeca{display:flex;align-items:center;gap:8px;padding:6px 6px 0 12px}
   .dropdown-duplicados .dd-titulo{font-size:11px;font-weight:700;color:var(--tinta-suave);
-    padding:8px 12px 4px;text-transform:uppercase;letter-spacing:.02em}
+    padding:2px 0 4px;text-transform:uppercase;letter-spacing:.02em;flex:1}
+  .dropdown-duplicados .dd-fechar{flex:none;border:0;background:none;color:var(--tinta-suave);
+    font-size:14px;line-height:1;padding:4px 6px;border-radius:6px;cursor:pointer}
+  .dropdown-duplicados .dd-fechar:hover{background:#F2F5F0;color:var(--tinta)}
   .dropdown-duplicados ul{list-style:none;margin:0;padding:0 0 6px;max-height:180px;overflow-y:auto}
   .dropdown-duplicados li{padding:7px 12px;font-size:13px;color:var(--tinta);cursor:default}
   .dropdown-duplicados li:hover{background:#F2F5F0}
@@ -503,27 +507,43 @@ const PALAVRAS_IGNORADAS = new Set(["de","da","do","das","dos","e","a","o","em",
 function palavrasNome(s){
   return normalizarNome(s).split(" ").filter(p => p.length>=2 && !PALAVRAS_IGNORADAS.has(p));
 }
+function palavrasCombinam(pAlvo, pExistente){
+  // Considera correspondência mesmo com o nome ainda incompleto:
+  // "gran" já combina com "granada" (e vice-versa).
+  return pAlvo.length>=3 && pExistente.startsWith(pAlvo) ||
+         pExistente.length>=3 && pAlvo.startsWith(pExistente);
+}
 function verificarNomeDuplicado(){
   const box = $("#avisoNomeDuplicado");
   const bruto = $("#f_nome").value;
   const alvo = normalizarNome(bruto);
   const palavrasAlvo = palavrasNome(bruto);
-  if(!alvo || !palavrasAlvo.length){ box.hidden = true; box.innerHTML=""; return; }
+  // Se o usuário fechou o aviso manualmente, não reabrir enquanto ele
+  // continuar digitando o mesmo nome (ou uma continuação dele).
+  if(box.dataset.fechadoPara && alvo.startsWith(box.dataset.fechadoPara)){
+    return;
+  }
+  if(!alvo || !palavrasAlvo.length){ box.hidden = true; box.innerHTML=""; delete box.dataset.fechadoPara; return; }
   const achados = [];
   leads.forEach(l=>{
     if(editandoId && l.id === editandoId) return;
     const nomeL = normalizarNome(l.nome);
     if(!nomeL) return;
     const palavrasL = palavrasNome(l.nome);
-    const temPalavraComum = palavrasAlvo.some(p => palavrasL.includes(p));
-    if(nomeL === alvo || temPalavraComum) achados.push(l);
+    const temPalavraComum = palavrasAlvo.some(p => palavrasL.some(pl => palavrasCombinam(p, pl)));
+    if(nomeL === alvo || nomeL.startsWith(alvo) || temPalavraComum) achados.push(l);
   });
-  if(!achados.length){ box.hidden = true; box.innerHTML=""; return; }
-  box.innerHTML = "<div class='dd-titulo'>Condomínios já cadastrados com nome parecido</div><ul>"+
+  if(!achados.length){ box.hidden = true; box.innerHTML=""; delete box.dataset.fechadoPara; return; }
+  box.innerHTML = "<div class='dd-cabeca'><div class='dd-titulo'>Condomínios já cadastrados com nome parecido</div>"+
+    "<button type='button' class='dd-fechar' id='fecharAvisoNomeDuplicado' aria-label='Fechar aviso'>✕</button></div><ul>"+
     achados.slice(0,8).map(l=>"<li><span class='dd-nome'>"+escapar(l.nome||"Condomínio sem nome")+"</span>"+
       (l.endereco ? "<span class='dd-end'>"+escapar(l.endereco)+"</span>" : "")+"</li>").join("")+
     "</ul>";
   box.hidden = false;
+  $("#fecharAvisoNomeDuplicado").addEventListener("click", ()=>{
+    box.hidden = true;
+    box.dataset.fechadoPara = alvo;
+  });
 }
 
 /* ================= camada de dados ================= */
@@ -1058,7 +1078,7 @@ function abrirPainel(id, faseInicial){
     const l = leads.find(x=>x.id===id); if(!l) return;
     $("#tituloPainel").textContent = l.nome || "Condomínio sem nome";
     $("#f_nome").value=l.nome||""; $("#f_endereco").value=l.endereco||"";
-    $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML="";
+    $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML=""; delete $("#avisoNomeDuplicado").dataset.fechadoPara;
     $("#f_aptos").value=l.aptos??""; $("#f_fase").value=l.fase||"cadastro";
     $("#f_zona").value=l.zona||""; $("#f_importante").value=l.importante||"";
     contatosForm = migrarContatosAntigos(l);
@@ -1080,7 +1100,7 @@ function abrirPainel(id, faseInicial){
     ["f_nome","f_endereco","f_aptos","f_zona","f_importante",
      "f_concorrente","f_fimContrato","f_perfil"]
       .forEach(x => $("#"+x).value = "");
-    $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML="";
+    $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML=""; delete $("#avisoNomeDuplicado").dataset.fechadoPara;
     contatosForm = [];
     renderContatos();
     observacoesForm = [];
