@@ -1108,7 +1108,7 @@ function abrirPainel(id, faseInicial){
     $("#obsTexto").value = "";
     renderObservacoes();
     $("#f_fase").value = faseInicial || "cadastro";
-    preencherResponsavel(meuNome || "");
+    preencherResponsavel("");
     document.querySelector('#semaforo input[value="nenhum"]').checked = true;
     marcarSemaforo();
     $("#blocoHistorico").style.display="none"; $("#btnExcluir").style.display="none";
