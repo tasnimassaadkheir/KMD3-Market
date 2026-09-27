@@ -554,6 +554,10 @@ function paraBanco(l){
     fase:l.fase||"cadastro", status:l.status||"nenhum", ordem:l.ordem??0,
     zona:l.zona||null, importante:l.importante||null,
     contatos:l.contatos||[], concorrente:l.concorrente||null,
+    // limpa as colunas antigas (síndico/administradora) para que um contato
+    // apagado não volte a aparecer reconstruído a partir delas
+    sindico:null, sindico_tel:null, sindico_email:null,
+    admin_nome:null, admin_contato:null, admin_tel:null, admin_email:null,
     fim_contrato:l.fimContrato||null, perfil:l.perfil||null, notas:l.notas||null,
     responsavel:l.responsavel||null, criado_por:l.criadoPor||null,
     criado_em:l.criadoEm, atualizado_em:l.atualizadoEm, historico:l.historico||[],
