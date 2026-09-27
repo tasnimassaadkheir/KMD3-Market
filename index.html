@@ -50,6 +50,15 @@
   select.filtro{padding:6px 8px;border-radius:7px;border:1px solid rgba(255,255,255,.14);
     background:rgba(255,255,255,.07);outline:none;font-size:12.5px;max-width:130px}
   select.filtro option{background:#062C38;color:#fff}
+  .filtro-data{display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:7px;
+    border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);flex:none}
+  .filtro-data input[type="date"]{padding:4px 4px;border:0;background:transparent;color:#fff;
+    outline:none;font-size:12.5px;max-width:112px;color-scheme:dark}
+  .filtro-data input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer;opacity:.8}
+  .filtro-data input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1}
+  .filtro-data-sep{opacity:.5;font-size:12px}
+  .btn-limpar-data{border:0;background:none;color:#fff;opacity:.6;cursor:pointer;font-size:11px;padding:0 2px}
+  .btn-limpar-data:hover{opacity:1}
   .btn{padding:6px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.14);
     background:rgba(255,255,255,.07);font-weight:500;font-size:12.5px;white-space:nowrap}
   .btn:hover{background:rgba(255,255,255,.14)}
@@ -302,6 +311,12 @@
     <select class="filtro" id="filtroResp" aria-label="Filtrar por responsável">
       <option value="">Todos os responsáveis</option>
     </select>
+    <div class="filtro-data" aria-label="Filtrar por data de cadastro">
+      <input type="date" id="filtroDataDe" title="Cadastrado a partir de">
+      <span class="filtro-data-sep">–</span>
+      <input type="date" id="filtroDataAte" title="Cadastrado até">
+      <button type="button" class="btn-limpar-data" id="btnLimparData" title="Limpar filtro de data" hidden>✕</button>
+    </div>
     <button class="btn btn-sync" id="btnSync" title="Enviar as alterações para as outras pessoas">
       <i class="pino"></i><span id="txtSync">Sincronizar</span>
     </button>
@@ -705,12 +720,25 @@ async function gravarEquipe(){
 }
 
 /* ================= quadro ================= */
+function dataNoIntervalo(criadoEm, de, ate){
+  if(!de && !ate) return true;
+  if(!criadoEm) return false;
+  const d = new Date(criadoEm);
+  if(isNaN(d)) return false;
+  const diaCriado = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  if(de && diaCriado < de) return false;
+  if(ate && diaCriado > ate) return false;
+  return true;
+}
 function filtrar(){
   const termo = $("#busca").value.trim().toLowerCase();
   const st = $("#filtroStatus").value, resp = $("#filtroResp").value;
+  const dataDe = $("#filtroDataDe").value, dataAte = $("#filtroDataAte").value;
+  $("#btnLimparData").hidden = !dataDe && !dataAte;
   return leads.filter(l => {
     if(st && (l.status||"nenhum") !== st) return false;
     if(resp && (l.responsavel||"") !== resp) return false;
+    if(!dataNoIntervalo(l.criadoEm, dataDe, dataAte)) return false;
     if(!termo) return true;
     const textoContatos = (l.contatos||[]).map(c=>[c.nome,c.telefone,c.email].join(" ")).join(" ");
     return [l.nome,l.endereco,l.zona,l.importante,textoContatos,l.concorrente,l.perfil,l.notas,l.responsavel]
@@ -1373,6 +1401,12 @@ $("#eq_nome").addEventListener("keydown", e=>{ if(e.key==="Enter") adicionarEqui
 $("#busca").addEventListener("input", desenhar);
 $("#filtroStatus").addEventListener("change", desenhar);
 $("#filtroResp").addEventListener("change", desenhar);
+$("#filtroDataDe").addEventListener("change", desenhar);
+$("#filtroDataAte").addEventListener("change", desenhar);
+$("#btnLimparData").addEventListener("click", ()=>{
+  $("#filtroDataDe").value = ""; $("#filtroDataAte").value = "";
+  desenhar();
+});
 $("#semaforo").addEventListener("change", marcarSemaforo);
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
