@@ -283,6 +283,30 @@
     header.topo{padding:12px}.campo-busca input{width:120px}
     main.quadro{padding:12px;gap:10px}.coluna{flex-basis:264px}
   }
+
+/* ===== administração (só aparece para admin) ===== */
+#btnAdmin[hidden],.adm-tela[hidden]{display:none}
+.adm-tela{position:fixed;inset:0;z-index:60;background:var(--creme);color:var(--tinta);overflow:auto}
+.adm-topo{background:#093E4F;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2}
+.adm-topo h2{margin:0;font-size:17px}
+.adm-grade{display:grid;grid-template-columns:290px 1fr;gap:16px;padding:16px;max-width:1200px;margin:auto}
+@media(max-width:820px){.adm-grade{grid-template-columns:1fr}}
+.adm-card{background:#fff;border:1px solid #D6D9D0;border-radius:10px;padding:14px}
+.adm-card h3{margin:0 0 10px;font-size:15px}
+.adm-org{border:1px solid #D6D9D0;border-radius:8px;padding:9px 11px;margin-bottom:8px;cursor:pointer}
+.adm-org.sel{border-color:#093E4F;background:#eaf3f5}
+.adm-org small,.adm-dica{color:var(--tinta-suave);font-size:12px;display:block}
+.adm-tag{font-size:11px;background:var(--ok);color:#fff;border-radius:9px;padding:1px 7px;margin-left:6px}
+.adm-linha{display:flex;gap:8px;margin-top:8px}
+.adm-tab{overflow-x:auto}
+.adm-tab table{border-collapse:collapse;width:100%;min-width:660px}
+.adm-tab th,.adm-tab td{padding:7px 6px;border-bottom:1px solid #E4E7E0;text-align:left;vertical-align:middle}
+.adm-tab th{font-size:12px;color:var(--tinta-suave)}
+.adm-tab .c{text-align:center}
+.adm-tab input[type=checkbox]{width:auto}
+.adm-tab select{padding:5px;border:1px solid #D6D9D0;border-radius:6px}
+.adm-b{background:#fff;color:#093E4F;border:1px solid #093E4F;border-radius:6px;padding:5px 9px;font-size:12.5px;cursor:pointer}
+.adm-x{color:var(--perdido);border-color:var(--perdido)}
 </style>
 </head>
 <body>
@@ -326,6 +350,7 @@
     <button class="btn btn-sync" id="btnSync" title="Enviar as alterações para as outras pessoas">
       <i class="pino"></i><span id="txtSync">Sincronizar</span>
     </button>
+    <button class="btn" id="btnAdmin" hidden>Administração</button>
     <button class="btn" id="btnEquipe">Equipe</button>
     <button class="btn" id="btnExportar">Exportar CSV</button>
     <button class="btn btn-destaque" id="btnNovo">+ Novo condomínio</button>
@@ -454,6 +479,35 @@
       </button>
     </label>
     <button class="btn-salvar" id="btnEntrar" style="width:100%;margin-top:6px">Entrar</button>
+  </div>
+</div>
+
+<!-- painel de administração: organizações, membros e acessos -->
+<div class="adm-tela" id="admTela" hidden>
+  <div class="adm-topo"><h2>Administração</h2><button class="btn" id="admFechar">✕ Fechar</button></div>
+  <div class="adm-grade">
+    <section class="adm-card">
+      <h3>Organizações</h3>
+      <div id="admOrgs"></div>
+      <div id="admNova" hidden><div class="adm-linha"><input class="txt" id="admNomeOrg" placeholder="Nome da nova organização"><button class="btn-salvar" id="admCriarOrg">Criar</button></div></div>
+    </section>
+    <section class="adm-card">
+      <h3 id="admTitulo">Selecione uma organização</h3>
+      <div id="admBloco" hidden>
+        <div class="adm-tab"><table>
+          <thead><tr><th>E-mail</th><th>Papel</th><th class="c">Ativo</th><th class="c">Vê todos</th><th class="c">Cria</th><th class="c">Edita</th><th class="c">Exclui</th><th></th></tr></thead>
+          <tbody id="admCorpo"></tbody>
+        </table></div>
+        <p class="adm-dica" style="margin-top:8px">Trocar o papel preenche as permissões sugeridas; depois ainda dá para ajustar cada caixinha. Clique em Salvar na linha. “Vê todos” desmarcado = a pessoa só vê os leads em que é responsável ou criadora.</p>
+        <h3 style="margin-top:18px">Adicionar membro</h3>
+        <div class="adm-linha">
+          <input class="txt" id="admEmail" type="email" placeholder="e-mail da pessoa">
+          <select class="txt" id="admPapelNovo" style="width:auto"></select>
+          <button class="btn-salvar" id="admAdd">Adicionar</button>
+        </div>
+        <p class="adm-dica">O login precisa existir antes: Supabase → Authentication → Users → Add user (marque “Auto Confirm User”).</p>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -1344,6 +1398,7 @@ async function iniciarQuadro(){
     meuNome = eu ? eu.nome : sessao.user.email.split("@")[0];
     $("#nomeUsuario").textContent = meuNome;
     $("#btnSair").style.display = "";
+    verificarAdmin();
     $("#sinal").className = "sinal";
     sb.channel("quadro")
       .on("postgres_changes",{event:"*",schema:"public",table:"condominios"}, async ()=>{
@@ -1488,6 +1543,105 @@ $("#obsTexto").addEventListener("keydown", e=>{
 });
 
 $("#f_nome").addEventListener("input", verificarNomeDuplicado);
+
+/* ================= administração (organizações, membros, acessos) ================= */
+const ADM_PAPEIS = {admin:[1,1,1,1], editor:[1,1,1,0], vendedor:[0,1,1,0], leitor:[1,0,0,0]}; // vê todos, cria, edita, exclui
+let admOrgs = [], admSel = null, admSuper = false;
+
+async function admRpc(nome, args){
+  const {data, error} = await sb.rpc(nome, args || {});
+  if(error){ avisar(error.message); throw error; }
+  return data;
+}
+// chamado logo após o login: quem é admin (ou super-admin) ganha o botão
+async function verificarAdmin(){
+  try{
+    const [sup, adm] = await Promise.all([sb.rpc("sou_super"), sb.rpc("sou_admin")]);
+    if(adm.error || !adm.data) return;
+    admSuper = !!sup.data;
+    $("#btnAdmin").hidden = false;
+    $("#nomeUsuario").textContent = meuNome + (admSuper ? " · super-admin" : " · admin");
+  }catch(e){}
+}
+async function admAbrir(){
+  $("#admTela").hidden = false;
+  $("#admNova").hidden = !admSuper;
+  $("#admPapelNovo").innerHTML = Object.keys(ADM_PAPEIS).map(p => `<option${p==="editor"?" selected":""}>${p}</option>`).join("");
+  await admCarregarOrgs();
+}
+async function admCarregarOrgs(manter){
+  admOrgs = await admRpc("admin_organizacoes");
+  if(!manter || !admOrgs.find(o => o.id === admSel)) admSel = (admOrgs.find(o => o.ativa) || admOrgs[0] || {}).id || null;
+  admDesenharOrgs();
+  await admCarregarMembros();
+}
+function admDesenharOrgs(){
+  $("#admOrgs").innerHTML = admOrgs.map(o => `
+    <div class="adm-org ${o.id===admSel?"sel":""}" data-org="${o.id}">
+      <b>${escapar(o.nome)}</b>${o.ativa?'<span class="adm-tag">você está aqui</span>':""}
+      <small>${o.membros} membro(s) · ${o.condominios} lead(s)</small>
+      ${admSuper && !o.ativa ? `<div class="adm-linha"><button class="adm-b" data-entrar="${escapar(o.nome)}">Entrar nesta organização</button></div>` : ""}
+    </div>`).join("") || '<p class="adm-dica">Nenhuma organização.</p>';
+  const at = admOrgs.find(o => o.ativa);
+  if(admSuper && at) $("#nomeUsuario").textContent = meuNome + " · super-admin · " + at.nome;
+}
+async function admCarregarMembros(){
+  const org = admOrgs.find(o => o.id === admSel);
+  $("#admBloco").hidden = !org;
+  $("#admTitulo").textContent = org ? "Membros de " + org.nome : "Selecione uma organização";
+  if(!org) return;
+  const ms = await admRpc("admin_membros", {p_org: org.id});
+  const ck = (c, v) => `<td class="c"><input type="checkbox" class="${c}"${v?" checked":""}></td>`;
+  $("#admCorpo").innerHTML = ms.map(m => `
+    <tr data-u="${m.user_id}">
+      <td>${escapar(m.email)}<span class="adm-dica">${escapar(m.usuario)}</span></td>
+      <td><select class="papel">${Object.keys(ADM_PAPEIS).map(p => `<option${p===m.papel?" selected":""}>${p}</option>`).join("")}</select></td>
+      ${ck("ativo",m.ativo)}${ck("ver",m.ver_todos)}${ck("criar",m.pode_criar)}${ck("editar",m.pode_editar)}${ck("excluir",m.pode_excluir)}
+      <td style="white-space:nowrap"><button class="adm-b admSalvar">Salvar</button> <button class="adm-b adm-x admRemover">Remover</button></td>
+    </tr>`).join("") || '<tr><td colspan="8" class="adm-dica">Ninguém ainda.</td></tr>';
+}
+$("#btnAdmin").addEventListener("click", admAbrir);
+$("#admFechar").addEventListener("click", () => { $("#admTela").hidden = true; });
+$("#admTela").addEventListener("click", async e => {
+  const t = e.target;
+  try{
+    if(t.dataset.entrar){
+      avisar(await admRpc("entrar_organizacao", {p_nome: t.dataset.entrar}));
+      await admCarregarOrgs(true);
+      if(!pendentes.size && !paraExcluir.size){ await buscarTudo(); desenhar(); }   // recarrega o quadro na nova organização
+      return;
+    }
+    const org = t.closest(".adm-org");
+    if(org){ admSel = org.dataset.org; admDesenharOrgs(); await admCarregarMembros(); return; }
+    const tr = t.closest("tr[data-u]");
+    if(t.classList.contains("admSalvar")){
+      const v = c => tr.querySelector("." + c).checked;
+      await admRpc("admin_definir_acesso", {p_user: tr.dataset.u, p_papel: tr.querySelector(".papel").value,
+        p_ativo: v("ativo"), p_ver: v("ver"), p_criar: v("criar"), p_editar: v("editar"), p_excluir: v("excluir")});
+      avisar("Acesso salvo.");
+    }
+    if(t.classList.contains("admRemover") && confirm("Remover esta pessoa da organização?")){
+      await admRpc("admin_remover_membro", {p_user: tr.dataset.u});
+      avisar("Membro removido."); await admCarregarOrgs(true);
+    }
+  }catch(_){}
+});
+$("#admTela").addEventListener("change", e => {
+  if(!e.target.classList.contains("papel")) return;
+  const tr = e.target.closest("tr"), p = ADM_PAPEIS[e.target.value];
+  ["ver","criar","editar","excluir"].forEach((c,i) => tr.querySelector("." + c).checked = !!p[i]);
+});
+$("#admCriarOrg").addEventListener("click", async () => {
+  const nome = $("#admNomeOrg").value.trim(); if(!nome) return;
+  try{ await admRpc("criar_organizacao", {p_nome: nome}); $("#admNomeOrg").value = ""; avisar("Organização criada."); await admCarregarOrgs(true); }catch(_){}
+});
+$("#admAdd").addEventListener("click", async () => {
+  const org = admOrgs.find(o => o.id === admSel), email = $("#admEmail").value.trim();
+  if(!org || !email) return;
+  try{ await admRpc("adicionar_membro", {p_email: email, p_papel: $("#admPapelNovo").value, p_org: org.nome});
+       $("#admEmail").value = ""; avisar("Membro adicionado."); await admCarregarOrgs(true); }catch(_){}
+});
+
 
 iniciar();
 </script>
