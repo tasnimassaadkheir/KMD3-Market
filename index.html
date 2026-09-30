@@ -274,6 +274,7 @@
     padding:10px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.14);font-size:13.5px;
     z-index:80;opacity:0;transition:.2s;pointer-events:none}
   .aviso.on{opacity:1;transform:translate(-50%,0)}
+  .aviso.erro{background:#963029;border-color:#C9544B;font-weight:600;max-width:90vw;text-align:center}
 
   @media (max-width:900px){
     header.topo{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -543,6 +544,19 @@ let sincronizando = false, ultimaSync = null;
 const NUVEM = Boolean(SUPABASE_URL && SUPABASE_KEY);
 let sb = null, sessao = null, meuNome = "";
 let leads = [], equipe = [];
+
+/* ---- permissões da pessoa logada (vêm do banco; sem nuvem, tudo liberado) ---- */
+const perm = {criar:true, editar:true, excluir:true};
+const ACOES = {criar:"criar condomínios", editar:"editar condomínios", excluir:"excluir condomínios"};
+function negar(acao){ avisar("Você não tem permissão para "+ACOES[acao]+". Fale com um administrador.", true); }
+async function carregarPermissoes(){
+  if(!NUVEM) return;
+  try{
+    const acoes = ["criar","editar","excluir"];
+    const r = await Promise.all(acoes.map(a => sb.rpc("posso",{acao:a})));
+    acoes.forEach((a,i) => { perm[a] = r[i].error ? true : !!r[i].data; });   // se a consulta falhar, o banco continua barrando
+  }catch(e){}
+}
 let editandoId = null, arrastandoId = null;
 let observacoesForm = [];
 let obsEditandoIndex = null;
@@ -571,7 +585,7 @@ function ultimaObservacao(l){
 }
 function textoDias(n){ if(n===null) return "—"; if(n<=0) return "hoje"; if(n===1) return "ontem"; return "há "+n+" dias"; }
 function escapar(s){ return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function avisar(msg){ const el=$("#aviso"); el.textContent=msg; el.classList.add("on"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("on"),2400); }
+function avisar(msg, erro){ const el=$("#aviso"); el.textContent=msg; el.classList.toggle("erro",!!erro); el.classList.add("on"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("on"), erro?5500:2400); }
 
 function normalizarNome(s){
   return String(s ?? "")
@@ -700,18 +714,18 @@ function enfileirar(lista){
 async function gravarLead(l){
   enfileirar([l]);
   await guardarPendencias();
-  await sincronizar(false);
+  return await sincronizar(false);
 }
 async function gravarVarios(lista){
   enfileirar(lista);
   await guardarPendencias();
-  await sincronizar(false);
+  return await sincronizar(false);
 }
 async function apagarLead(id){
   pendentes.delete(id);
   paraExcluir.add(id);
   await guardarPendencias();
-  await sincronizar(false);
+  return await sincronizar(false);
 }
 
 /* ---- envia tudo o que está pendente e busca o que mudou ---- */
@@ -730,6 +744,7 @@ async function sincronizar(manual){
 
   sincronizando = true;
   atualizarBotaoSync();
+  let fase = "salvar", negou = null;
   try{
     if(pendentes.size){
       const lote = [...pendentes.values()];
@@ -737,25 +752,44 @@ async function sincronizar(manual){
       if(error) throw error;
       lote.forEach(l => pendentes.delete(l.id));
     }
+    fase = "excluir";
     if(paraExcluir.size){
       const ids = [...paraExcluir];
-      const {error} = await sb.from("condominios").delete().in("id", ids);
+      const {data, error} = await sb.from("condominios").delete().in("id", ids).select("id");
       if(error) throw error;
+      // o banco não dá erro quando a permissão barra um DELETE: ele só apaga 0 linhas
+      const apagados = new Set((data||[]).map(r => r.id));
+      const faltam = ids.filter(id => !apagados.has(id));
+      if(faltam.length){
+        const r = await sb.from("condominios").select("id").in("id", faltam);
+        if(!r.error && (r.data||[]).length) negou = "excluir condomínios";
+      }
       paraExcluir.clear();
     }
     ultimaSync = Date.now();
     await guardarPendencias();
-    if(manual){
+    if(manual && !negou){
       await buscarTudo();
       desenhar();
       avisar("Tudo salvo. As outras pessoas já veem esta versão.");
     }
   }catch(e){
-    await guardarPendencias();
-    avisar("Sem conexão com o banco. Guardei as alterações e tento de novo em instantes.");
+    const recusado = e && (e.code === "42501" || /row-level security/i.test(e.message || ""));
+    if(recusado){
+      negou = fase === "salvar" ? "salvar estas alterações" : "excluir condomínios";
+      if(fase === "salvar") pendentes.clear(); else paraExcluir.clear();   // não tentar de novo: seria recusado sempre
+    } else {
+      await guardarPendencias();
+      avisar("Sem conexão com o banco. Guardei as alterações e tento de novo em instantes.");
+    }
   }finally{
     sincronizando = false;
     atualizarBotaoSync();
+  }
+  if(negou){
+    try{ await guardarPendencias(); await buscarTudo(); desenhar(); }catch(_){}   // desfaz na tela o que o banco recusou
+    avisar("Você não tem permissão para "+negou+". A alteração foi desfeita.", true);
+    return false;
   }
 }
 
@@ -897,7 +931,10 @@ function montarCartao(l){
 
 function ligarArrastar(){
   document.querySelectorAll(".cartao").forEach(c => {
-    c.addEventListener("dragstart", ()=>{ arrastandoId=c.dataset.id; c.classList.add("arrastando"); });
+    c.addEventListener("dragstart", e=>{
+      if(!perm.editar){ e.preventDefault(); negar("editar"); return; }
+      arrastandoId=c.dataset.id; c.classList.add("arrastando");
+    });
     c.addEventListener("dragend", ()=>{
       c.classList.remove("arrastando"); arrastandoId=null;
       document.querySelectorAll(".coluna").forEach(x=>x.classList.remove("alvo"));
@@ -926,9 +963,9 @@ function ligarArrastar(){
         if(l){ l.ordem = i; tocados.push(l); }
       });
       if(mudou) registrarAtualizacao(lead, "Movido para "+FASES.find(f=>f.id===novaFase).nome);
-      await gravarVarios(tocados);
+      const okMover = await gravarVarios(tocados);
       desenhar();
-      if(mudou) avisar((lead.nome||"Cartão")+" → "+FASES.find(f=>f.id===novaFase).nome);
+      if(okMover !== false && mudou) avisar((lead.nome||"Cartão")+" → "+FASES.find(f=>f.id===novaFase).nome);
     });
   });
 }
@@ -1178,6 +1215,7 @@ function marcarSemaforo(){
   document.querySelectorAll("#semaforo label").forEach(l=>l.classList.toggle("on", l.querySelector("input").checked));
 }
 function abrirPainel(id, faseInicial){
+  if(!id && !perm.criar){ negar("criar"); return; }
   editandoId = id || null;
   preencherFases();
   if(id){
@@ -1274,6 +1312,8 @@ function descreverAlteracoes(antes, depois){
   return partes;
 }
 async function salvar(){
+  const acaoSalvar = editandoId ? "editar" : "criar";
+  if(!perm[acaoSalvar]){ negar(acaoSalvar); return; }
   if(obsEditandoIndex !== null) salvarEdicaoObservacao(obsEditandoIndex);
   const obsPendente = $("#obsTexto").value.trim();
   if(obsPendente) adicionarObservacao();
@@ -1286,7 +1326,7 @@ async function salvar(){
       Object.assign(l, dados);
       const desc = partes.length ? partes.join(" · ") : "Cadastro editado (sem alterações detectadas)";
       registrarAtualizacao(l, desc);
-      await gravarLead(l);
+      if(await gravarLead(l) === false){ fecharTudo(); desenhar(); return; }
       avisar("Alterações salvas");
     } else {
       const novo = Object.assign({
@@ -1297,7 +1337,7 @@ async function salvar(){
         historico:[{quando:agora(), o_que:"Condomínio cadastrado", por: meuNome||""}]
       }, dados);
       leads.push(novo);
-      await gravarLead(novo);
+      if(await gravarLead(novo) === false){ fecharTudo(); desenhar(); return; }
       avisar("Condomínio cadastrado");
     }
     fecharTudo(); desenhar();
@@ -1306,12 +1346,15 @@ async function salvar(){
 
 async function excluir(){
   if(!editandoId) return;
+  if(!perm.excluir){ negar("excluir"); return; }
   const l = leads.find(x=>x.id===editandoId);
   if(!confirm('Excluir "'+(l.nome||"este condomínio")+'"? Essa ação não pode ser desfeita.')) return;
   const id = editandoId;
   leads = leads.filter(x=>x.id!==id);
-  try{ await apagarLead(id); }catch(e){}
-  fecharTudo(); desenhar(); avisar("Condomínio excluído");
+  let ok;
+  try{ ok = await apagarLead(id); }catch(e){}
+  fecharTudo(); desenhar();
+  if(ok !== false) avisar("Condomínio excluído");
 }
 
 /* ================= filtros e CSV ================= */
@@ -1398,6 +1441,7 @@ async function iniciarQuadro(){
     meuNome = eu ? eu.nome : sessao.user.email.split("@")[0];
     $("#nomeUsuario").textContent = meuNome;
     $("#btnSair").style.display = "";
+    await carregarPermissoes();
     verificarAdmin();
     $("#sinal").className = "sinal";
     sb.channel("quadro")
@@ -1607,6 +1651,7 @@ $("#admTela").addEventListener("click", async e => {
   try{
     if(t.dataset.entrar){
       avisar(await admRpc("entrar_organizacao", {p_nome: t.dataset.entrar}));
+      await carregarPermissoes();
       await admCarregarOrgs(true);
       if(!pendentes.size && !paraExcluir.size){ await buscarTudo(); desenhar(); }   // recarrega o quadro na nova organização
       return;
