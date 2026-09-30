@@ -93,7 +93,7 @@
   .btn-sair{height:24px;padding:0 10px;font-size:11.5px;border-radius:6px}
   .usuario{display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:12px;color:var(--claro-45);
     flex:1 0 100%;height:26px;margin-top:-2px;white-space:nowrap}
-  .usuario #nomeUsuario{max-width:190px;overflow:hidden;text-overflow:ellipsis}
+  .usuario #nomeUsuario{overflow:hidden;text-overflow:ellipsis;min-width:0}
   .usuario b{color:#fff;font-weight:600}
   .sinal{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
   .sinal.off{background:var(--perdido)}
@@ -305,6 +305,34 @@
     .rot-2{display:none}
     .filtro-data input[type="date"]{max-width:92px}
     .btn-sync #txtSync{max-width:110px}
+  }
+  @media (max-width:720px){
+    :root{--h-ctrl:30px}
+    header.topo{padding:6px 10px;gap:4px 8px;flex-wrap:wrap;align-items:center}
+    .marca{flex:none}
+    .marca .logo-img{height:22px}
+    /* TUDO na mesma linha, arrastável para o lado */
+    .ferramentas{flex:1 1 0;min-width:0;flex-wrap:nowrap;gap:6px;
+      overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+      margin-right:-10px;padding-right:10px}
+    .ferramentas::-webkit-scrollbar{display:none}
+    .grupo-filtros,.grupo-acoes{flex:none;flex-wrap:nowrap;gap:6px;margin:0}
+    .campo-busca{flex:none;width:140px;min-width:0}
+    .campo-busca input,.campo-busca input:focus{width:100%;font-size:12px}
+    select.filtro{flex:none;width:140px;min-width:0;max-width:none;font-size:12px}
+    .filtro-data{flex:none;padding:0 8px;gap:2px}
+    .filtro-data input[type="date"]{flex:none;width:112px;max-width:none;height:26px;font-size:12px}
+    .btn{flex:none;font-size:11.5px;border-radius:7px}
+    .btn svg{width:14px;height:14px}
+    .btn-sync{flex:none;max-width:none;padding:0 9px;gap:5px}
+    .btn-sync #txtSync{max-width:none;font-size:11.5px;overflow:visible}
+    .btn-sync .pino{width:7px;height:7px}
+    .btn-destaque{padding:0 10px}
+    .btn-destaque svg{width:14px;height:14px}
+    /* nome + sair na linha de baixo */
+    .usuario{flex:1 0 100%;height:auto;margin:0;justify-content:space-between;font-size:11px}
+    .usuario #nomeUsuario{max-width:none;flex:1;min-width:0}
+    .btn-sair{height:24px;padding:0 9px;font-size:11px}
   }
   @media (max-width:640px){
     header.topo{padding:8px 12px}
