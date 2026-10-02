@@ -287,6 +287,49 @@
   .lem-novo .btn-add-lem{background:#093E4F;color:#fff;border:0;padding:8px 14px;border-radius:8px;
     font-weight:600;font-size:12.5px;cursor:pointer}
   .lem-novo .btn-add-lem:hover{background:#0E627D}
+
+  /* card inteiro vermelho quando o lembrete venceu */
+  .cartao.lem-vencido{background:#C8453C;color:#fff;box-shadow:0 0 0 1px #8E2A22,0 1px 0 rgba(0,0,0,.28)}
+  .cartao.lem-vencido h3{color:#fff}
+  .cartao.lem-vencido .etiqueta{background:rgba(255,255,255,.2);color:#fff}
+  .cartao.lem-vencido .etiqueta.lem{background:#fff;color:#8E2A22;font-weight:700}
+  .cartao.lem-vencido .meta-cartao{color:rgba(255,255,255,.88);border-top-color:rgba(255,255,255,.3)}
+  .cartao.lem-vencido .inicial{background:#fff;color:#8E2A22}
+
+  /* aba de lembretes (tela cheia) */
+  .tela-lem{position:fixed;inset:0;z-index:35;background:var(--creme);color:var(--tinta);display:none;flex-direction:column}
+  .tela-lem.aberta{display:flex}
+  .tela-lem-topo{background:#093E4F;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .tela-lem-topo h2{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:18px;margin:0;font-weight:700}
+  .tela-lem-topo .lem-ferr{margin:0 0 0 auto;color:rgba(255,255,255,.85)}
+  .tela-lem-topo .lem-ferr button{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.25)}
+  .tela-lem-topo .btn-voltar{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;
+    border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .tela-lem-topo .btn-voltar:hover{background:rgba(255,255,255,.2)}
+  .tela-lem-corpo{flex:1;overflow:auto;padding:18px 20px 40px}
+  .tela-lem-in{max-width:980px;margin:0 auto}
+  .lemr{display:flex;gap:16px;align-items:flex-start;background:#fff;border:1px solid #E1E4DA;border-left:5px solid #0E627D;
+    border-radius:10px;padding:11px 14px;margin-bottom:8px}
+  .lemr.hoje{border-left-color:var(--milho)}
+  .lemr.atrasado{border-left-color:var(--perdido);background:#FDF1F0}
+  .lemr.feito{opacity:.6;border-left-color:var(--ok)}
+  .lemr.feito .lemr-texto{text-decoration:line-through}
+  .lemr-data{flex:none;width:118px;line-height:1.3}
+  .lemr-data b{display:block;font-size:14px;color:#093E4F}
+  .lemr-data span{display:block;font-size:13px;color:#093E4F}
+  .lemr-data em{display:block;font-style:normal;font-size:11px;font-weight:700;margin-top:3px;color:var(--tinta-suave)}
+  .lemr.atrasado .lemr-data b,.lemr.atrasado .lemr-data span,.lemr.atrasado .lemr-data em{color:#8E2A22}
+  .lemr.hoje .lemr-data em{color:#8A5F10}
+  .lemr-corpo{flex:1;min-width:0}
+  .lemr-texto{display:block;font-size:13.5px;word-break:break-word;margin-top:2px}
+  .lemr .lem-acoes{margin-top:0;flex:none;justify-content:flex-end;max-width:310px}
+  @media (max-width:760px){
+    .lemr{flex-wrap:wrap;gap:8px}
+    .lemr-data{width:auto;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+    .lemr-data em{margin-top:0}
+    .lemr .lem-acoes{max-width:none;justify-content:flex-start}
+    .tela-lem-topo .lem-ferr{margin-left:0}
+  }
   .lem-abas{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .lem-aba{border:1px solid #D6D9D0;background:#fff;color:#093E4F;border-radius:999px;padding:6px 12px;
     font-size:12.5px;font-weight:600;cursor:pointer}
@@ -699,21 +742,23 @@ body.vista-mapa #quadro{display:none}
   </div>
 </aside>
 
-<!-- painel de lembretes -->
-<aside class="painel" id="painelLembretes" role="dialog" aria-modal="true" aria-labelledby="tituloLembretes">
-  <div class="cabeca">
-    <h2 id="tituloLembretes">Lembretes</h2>
-    <button class="fechar" id="btnFecharLembretes" aria-label="Fechar">✕</button>
-  </div>
-  <div class="corpo">
-    <div class="lem-abas" id="lemAbas"></div>
+<!-- aba de lembretes -->
+<section class="tela-lem" id="telaLembretes" aria-labelledby="tituloLembretes">
+  <div class="tela-lem-topo">
+    <button type="button" class="btn-voltar" id="btnFecharLembretes">← Voltar ao quadro</button>
+    <h2 id="tituloLembretes">🔔 Lembretes</h2>
     <div class="lem-ferr">
       <label><input type="checkbox" id="lemSoMeus"> Só os meus leads</label>
       <button type="button" id="btnNotif" hidden>🔔 Ativar avisos no navegador</button>
     </div>
-    <div id="lemPainelLista"></div>
   </div>
-</aside>
+  <div class="tela-lem-corpo">
+    <div class="tela-lem-in">
+      <div class="lem-abas" id="lemAbas"></div>
+      <div id="lemPainelLista"></div>
+    </div>
+  </div>
+</section>
 
 <!-- painel da equipe -->
 <aside class="painel" id="painelEquipe" role="dialog" aria-modal="true" aria-labelledby="tituloEquipe">
@@ -1201,6 +1246,7 @@ function montarCartao(l){
     etiquetas.push('<span class="etiqueta '+cls+'">'+txt+'</span>');
   }
   const proxLem = proximoLembrete(l);
+  if(lembreteVencido(l)) el.classList.add("lem-vencido");
   if(proxLem){
     const c = classeLembrete(proxLem);
     etiquetas.unshift('<span class="etiqueta lem '+c+'" title="'+escapar(proxLem.texto||"Próximo passo")+'">🔔 '+
@@ -1449,6 +1495,9 @@ function quandoLongo(lem){
   const dia = d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"});
   return dia.charAt(0).toUpperCase()+dia.slice(1)+" às "+horaCurta(d);
 }
+function lembreteVencido(l){
+  return (l.lembretes||[]).some(x=>!x.feito && x.quando && dtLembrete(x) < new Date());
+}
 function proximoLembrete(l){
   const abertos = (l.lembretes||[]).filter(x=>!x.feito && x.quando);
   if(!abertos.length) return null;
@@ -1581,7 +1630,7 @@ async function acaoLembrete(leadId, idx, acao){
 }
 
 /* ---- painel Lembretes (aba geral) ---- */
-let lemAba = "hoje";
+let lemAba = "pendentes";
 function meuLembrete(l, lem){
   if(!meuNome) return true;
   return (l.responsavel||"")===meuNome || (lem.por||"")===meuNome;
@@ -1595,50 +1644,70 @@ function todosLembretes(){
   }));
   return lista;
 }
+function relativoLembrete(lem){
+  if(lem.feito) return "Concluído";
+  const diff = dtLembrete(lem) - new Date();
+  const min = Math.round(Math.abs(diff)/60000);
+  let txt;
+  if(min < 60) txt = min+" min";
+  else if(min < 1440) txt = Math.floor(min/60)+" h";
+  else { const d = Math.floor(min/1440); txt = d+(d===1?" dia":" dias"); }
+  return diff < 0 ? "Atrasado há "+txt : (min<1 ? "Agora" : "Em "+txt);
+}
+function linhaLembreteHTML(t){
+  const {l, lem, idx, c} = t, d = dtLembrete(lem);
+  const dia = isNaN(d) ? "—" : d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"});
+  const acoes = (lem.feito
+      ? '<button type="button" data-lem-reabrir="'+idx+'" data-lid="'+escapar(l.id)+'">Reabrir</button>'
+      : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">✓ Concluir</button>'+
+        '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>')+
+    '<a class="lem-gcal" href="'+escapar(linkGoogleAgenda(l, lem))+'" target="_blank" rel="noopener">📅 Google Agenda</a>'+
+    '<button type="button" data-lem-remover="'+idx+'" data-lid="'+escapar(l.id)+'" title="Excluir lembrete">✕ Cancelar</button>';
+  return '<div class="lemr '+c+'">'+
+    '<div class="lemr-data"><b>'+escapar(dia.charAt(0).toUpperCase()+dia.slice(1))+'</b><span>'+(isNaN(d)?"":horaCurta(d))+'</span><em>'+escapar(relativoLembrete(lem))+'</em></div>'+
+    '<div class="lemr-corpo"><button type="button" class="lem-lead" data-abrir-lead="'+escapar(l.id)+'">'+escapar(l.nome||"Condomínio sem nome")+'</button>'+
+      '<span class="lemr-texto">'+escapar(lem.texto||"Retomar contato")+'</span>'+
+      (l.responsavel ? '<span class="lem-resp">Responsável: '+escapar(l.responsavel)+'</span>' : '')+'</div>'+
+    '<div class="lem-acoes">'+acoes+'</div>'+
+  '</div>';
+}
 function renderPainelLembretes(){
   const todos = todosLembretes();
   const por = {atrasado:[], hoje:[], proximo:[], feito:[]};
   todos.forEach(t => por[t.c].push(t));
-  por.atrasado.sort((a,b)=>dtLembrete(a.lem)-dtLembrete(b.lem));
-  por.hoje.sort((a,b)=>dtLembrete(a.lem)-dtLembrete(b.lem));
-  por.proximo.sort((a,b)=>dtLembrete(a.lem)-dtLembrete(b.lem));
+  const cron = (a,b)=>dtLembrete(a.lem)-dtLembrete(b.lem);
+  por.atrasado.sort(cron); por.hoje.sort(cron); por.proximo.sort(cron);
   por.feito.sort((a,b)=>new Date(b.lem.feitoEm||0)-new Date(a.lem.feitoEm||0));
-  const abas = [["atrasado","Atrasados"],["hoje","Hoje"],["proximo","Próximos"],["feito","Concluídos"]];
+  por.pendentes = [...por.atrasado, ...por.hoje, ...por.proximo];
+  const abas = [["pendentes","Todos pendentes"],["atrasado","Atrasados"],["hoje","Hoje"],["proximo","Próximos"],["feito","Concluídos"]];
   $("#lemAbas").innerHTML = abas.map(([k,n]) =>
     '<button type="button" class="lem-aba'+(k==="atrasado"?" atraso":"")+(lemAba===k?" on":"")+'" data-lem-aba="'+k+'">'+n+'<span class="n">'+por[k].length+'</span></button>').join("");
-  const msgVazia = {atrasado:"Nada atrasado. 👏", hoje:"Nenhum lembrete para hoje.", proximo:"Nenhum lembrete futuro.", feito:"Nenhum lembrete concluído ainda."};
-  const itens = por[lemAba];
-  let html = "";
-  if(lemAba==="proximo"){
-    // agrupa por dia
-    let diaAtual = "";
-    itens.forEach(t=>{
-      const d = dtLembrete(t.lem), chave = dataLocalInput(d);
-      if(chave !== diaAtual){
-        diaAtual = chave;
-        const rot = mesmoDia(d,new Date(Date.now()+86400000)) ? "Amanhã" : d.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
-        html += '<div class="lem-grupo-titulo">'+escapar(rot)+'</div>';
-      }
-      html += itemLembreteHTML(t.l, t.lem, t.idx, false);
-    });
-  } else html = itens.map(t=>itemLembreteHTML(t.l, t.lem, t.idx, false)).join("");
-  $("#lemPainelLista").innerHTML = html || '<div class="lem-vazio">'+msgVazia[lemAba]+'</div>';
+  const msgVazia = {pendentes:"Nenhum lembrete pendente. Abra um lead e adicione um lembrete.", atrasado:"Nada atrasado. 👏", hoje:"Nenhum lembrete para hoje.", proximo:"Nenhum lembrete futuro.", feito:"Nenhum lembrete concluído ainda."};
+  const itens = por[lemAba] || [];
+  $("#lemPainelLista").innerHTML = itens.map(linhaLembreteHTML).join("") || '<div class="lem-vazio">'+msgVazia[lemAba]+'</div>';
   $("#btnNotif").hidden = !("Notification" in window) || Notification.permission !== "default";
 }
+function lembretesAberto(){ return $("#telaLembretes").classList.contains("aberta"); }
 function abrirLembretes(aba){
   if(aba) lemAba = aba;
   else {
-    const t = todosLembretes();
-    lemAba = t.some(x=>x.c==="atrasado") ? "atrasado" : t.some(x=>x.c==="hoje") ? "hoje" : "proximo";
+    const t = todosLembretes().filter(x=>!x.lem.feito);
+    lemAba = t.length ? "pendentes" : "feito";
   }
   renderPainelLembretes();
-  $("#painel").classList.remove("aberto"); $("#painelEquipe").classList.remove("aberto");
-  $("#painelLembretes").classList.add("aberto"); $("#fundo").classList.add("aberto");
+  $("#telaLembretes").classList.add("aberta");
 }
+function fecharLembretes(){ $("#telaLembretes").classList.remove("aberta"); }
 
 /* ---- selo no botão + aviso quando chega a hora ---- */
 let lemAvisados = new Set(), lemPrimeiraVez = true;
+let lemChaveVencidos = null;
 function verificarLembretes(semAviso){
+  if(lembretesAberto()) renderPainelLembretes();
+  // quando um lembrete vence (ou deixa de vencer), redesenha o quadro para o cartão ficar vermelho
+  const chave = leads.filter(l=>lembreteVencido(l)).map(l=>l.id).sort().join(",");
+  if(lemChaveVencidos !== null && chave !== lemChaveVencidos && !arrastandoId){ lemChaveVencidos = chave; desenhar(); return; }
+  lemChaveVencidos = chave;
   const todos = todosLembretes().filter(t=>!t.lem.feito);
   const atrasados = todos.filter(t=>t.c==="atrasado"), hoje = todos.filter(t=>t.c==="hoje");
   const badge = $("#lemBadge"); if(!badge) return;
@@ -1802,7 +1871,6 @@ function abrirPainel(id, faseInicial){
 function fecharTudo(){
   $("#painel").classList.remove("aberto");
   $("#painelEquipe").classList.remove("aberto");
-  $("#painelLembretes").classList.remove("aberto");
   $("#fundo").classList.remove("aberto");
   editandoId = null;
 }
@@ -2076,6 +2144,7 @@ $("#semaforo").addEventListener("change", marcarSemaforo);
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(obsEditandoIndex !== null){ cancelarEdicaoObservacao(); }
+    else if(!$("#painel").classList.contains("aberto") && !$("#painelEquipe").classList.contains("aberto") && lembretesAberto()) fecharLembretes();
     else fecharTudo();
   }
 });
@@ -2128,7 +2197,7 @@ document.addEventListener("keydown", e=>{
 });
 
 $("#btnLembretes").addEventListener("click", ()=>abrirLembretes());
-$("#btnFecharLembretes").addEventListener("click", fecharTudo);
+$("#btnFecharLembretes").addEventListener("click", fecharLembretes);
 $("#lemSoMeus").addEventListener("change", ()=>{ renderPainelLembretes(); });
 $("#btnAddLem").addEventListener("click", ()=>adicionarLembreteForm());
 $("#lem_texto").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); adicionarLembreteForm(); } });
