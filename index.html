@@ -246,6 +246,62 @@
     padding:8px 14px;border-radius:8px;font-weight:600;font-size:12.5px}
   .obs-nova .btn-add-obs:hover{background:#0E627D}
 
+  /* ===== lembretes / próximos passos ===== */
+  .btn .lem-badge{min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--milho);color:#22180A;
+    font-size:10.5px;font-weight:700;display:inline-grid;place-items:center;line-height:1}
+  .btn .lem-badge.atraso{background:var(--perdido);color:#fff}
+  .btn .lem-badge[hidden]{display:none}
+  .etiqueta.lem{background:#E8F1F4;color:#093E4F;font-weight:600}
+  .etiqueta.lem.hoje{background:#FBEFD2;color:#6B4A0B}
+  .etiqueta.lem.atrasado{background:#F8DAD7;color:#8E2A22}
+  .lem-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+  .lem-vazio{font-size:12.5px;color:var(--tinta-suave);padding:8px 2px}
+  .lem-item{background:#F0F1EA;border-radius:10px;padding:9px 11px;font-size:13px;color:var(--tinta);
+    border-left:4px solid #0E627D;position:relative}
+  .lem-item.hoje{border-left-color:var(--milho)}
+  .lem-item.atrasado{border-left-color:var(--perdido)}
+  .lem-item.feito{opacity:.6;border-left-color:var(--ok)}
+  .lem-item.feito .lem-texto{text-decoration:line-through}
+  .lem-quando{display:block;font-size:11.5px;font-weight:700;color:#093E4F;margin-bottom:2px}
+  .lem-item.atrasado .lem-quando{color:#8E2A22}
+  .lem-texto{display:block;word-break:break-word;padding-right:26px;line-height:1.4}
+  .lem-lead{display:block;font-family:"Bricolage Grotesque","Inter",sans-serif;font-weight:700;font-size:13.5px;
+    color:#093E4F;margin-bottom:2px;cursor:pointer;background:none;border:0;padding:0;text-align:left}
+  .lem-lead:hover{text-decoration:underline}
+  .lem-resp{display:block;font-size:11px;color:var(--tinta-suave);margin-top:2px}
+  .lem-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .lem-acoes button,.lem-acoes a{border:0;background:#fff;color:#093E4F;border:1px solid #D6D9D0;border-radius:7px;
+    padding:5px 9px;font-size:11.5px;font-weight:600;text-decoration:none;cursor:pointer;line-height:1.2}
+  .lem-acoes button:hover,.lem-acoes a:hover{background:#EAEFE9}
+  .lem-acoes .lem-ok{background:#093E4F;color:#fff;border-color:#093E4F}
+  .lem-acoes .lem-ok:hover{background:#0E627D}
+  .lem-acoes .lem-gcal{background:#E8F1F4;border-color:#BFD6DE}
+  .lem-item .lem-x{position:absolute;top:6px;right:6px;border:0;background:none;color:var(--tinta-suave);
+    font-size:13px;line-height:1;padding:3px 5px;border-radius:6px;cursor:pointer}
+  .lem-item .lem-x:hover{background:#E2E5DB;color:#963029}
+  .lem-novo{background:#F7F8F4;border:1px dashed #C9CEC2;border-radius:10px;padding:11px 12px 12px}
+  .lem-rapido{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 10px}
+  .lem-rapido button{border:1px solid #D6D9D0;background:#fff;color:#093E4F;border-radius:999px;padding:4px 10px;
+    font-size:11.5px;font-weight:600;cursor:pointer}
+  .lem-rapido button:hover{background:#EAEFE9}
+  .lem-novo .btn-add-lem{background:#093E4F;color:#fff;border:0;padding:8px 14px;border-radius:8px;
+    font-weight:600;font-size:12.5px;cursor:pointer}
+  .lem-novo .btn-add-lem:hover{background:#0E627D}
+  .lem-abas{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .lem-aba{border:1px solid #D6D9D0;background:#fff;color:#093E4F;border-radius:999px;padding:6px 12px;
+    font-size:12.5px;font-weight:600;cursor:pointer}
+  .lem-aba .n{display:inline-block;margin-left:5px;background:#EAEFE9;border-radius:9px;padding:0 6px;font-size:11px}
+  .lem-aba.on{background:#093E4F;color:#fff;border-color:#093E4F}
+  .lem-aba.on .n{background:rgba(255,255,255,.2)}
+  .lem-aba.atraso:not(.on) .n{background:#F8DAD7;color:#8E2A22}
+  .lem-ferr{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;
+    font-size:12px;color:var(--tinta-suave)}
+  .lem-ferr label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+  .lem-ferr button{border:1px solid #D6D9D0;background:#fff;color:#093E4F;border-radius:7px;padding:5px 9px;
+    font-size:11.5px;font-weight:600;cursor:pointer}
+  .lem-grupo-titulo{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:12px;font-weight:700;
+    color:var(--tinta-suave);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px}
+
   /* contatos (síndico/administradora unificados em uma lista de contatos) */
   .contatos-lista{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
   .contato-vazio{font-size:12.5px;color:var(--tinta-suave);padding:8px 2px}
@@ -495,6 +551,7 @@ body.vista-mapa #quadro{display:none}
         <i class="pino"></i><span id="txtSync">Sincronizar</span>
       </button>
       <button class="btn" id="btnAdmin" title="Administração" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/></svg><span class="rot">Administração</span></button>
+      <button class="btn" id="btnLembretes" title="Lembretes e próximos passos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="rot">Lembretes</span><span class="lem-badge" id="lemBadge" hidden>0</span></button>
       <button class="btn" id="btnEquipe" title="Equipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.2a3.2 3.2 0 010 5.6M18 14.3c1.8.8 3 2.6 3 4.7"/></svg><span class="rot">Equipe</span></button>
       <button class="btn" id="btnExportar" title="Exportar CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg><span class="rot">Exportar CSV</span></button>
       <button class="btn btn-destaque" id="btnNovo" title="Novo condomínio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Novo<span class="rot-2"> condomínio</span></span></button>
@@ -586,11 +643,31 @@ body.vista-mapa #quadro{display:none}
     <fieldset>
       <legend>Perfil e observações</legend>
       <label class="campo"><textarea class="txt" id="f_perfil" aria-label="Perfil dos moradores"></textarea></label>
-      <label class="campo" style="margin-bottom:6px"><span>Timeline</span></label>
+      <label class="campo" style="margin-bottom:6px"><span style="font-family:'Bricolage Grotesque','Inter',sans-serif;font-size:13px;font-weight:700;color:#093E4F">Timeline</span></label>
       <div class="obs-lista" id="obsLista"></div>
       <div class="obs-nova">
         <textarea class="txt" id="obsTexto" style="min-height:70px"></textarea>
         <button type="button" class="btn-add-obs" id="btnAddObs">+ Adicionar</button>
+      </div>
+    </fieldset>
+
+    <fieldset id="blocoLembretes">
+      <legend>Lembretes</legend>
+      <div class="lem-lista" id="lemLista"></div>
+      <div class="lem-novo">
+        <div class="linha">
+          <label class="campo"><span>Data</span><input class="txt" id="lem_data" type="date"></label>
+          <label class="campo"><span>Horário</span><input class="txt" id="lem_hora" type="time" value="09:00"></label>
+        </div>
+        <div class="lem-rapido" id="lemRapido">
+          <button type="button" data-dias="0">Hoje</button>
+          <button type="button" data-dias="1">Amanhã</button>
+          <button type="button" data-dias="3">Em 3 dias</button>
+          <button type="button" data-dias="7">Em 1 semana</button>
+          <button type="button" data-dias="14">Em 2 semanas</button>
+        </div>
+        <label class="campo"><span>Próximo passo</span><input class="txt" id="lem_texto" autocomplete="off"></label>
+        <button type="button" class="btn-add-lem" id="btnAddLem">+ Adicionar lembrete</button>
       </div>
     </fieldset>
 
@@ -619,6 +696,22 @@ body.vista-mapa #quadro{display:none}
     <button class="btn-salvar" id="btnSalvar">Salvar</button>
     <button class="btn-neutro" id="btnCancelar">Cancelar</button>
     <button class="btn-excluir" id="btnExcluir" style="display:none">Excluir condomínio</button>
+  </div>
+</aside>
+
+<!-- painel de lembretes -->
+<aside class="painel" id="painelLembretes" role="dialog" aria-modal="true" aria-labelledby="tituloLembretes">
+  <div class="cabeca">
+    <h2 id="tituloLembretes">Lembretes</h2>
+    <button class="fechar" id="btnFecharLembretes" aria-label="Fechar">✕</button>
+  </div>
+  <div class="corpo">
+    <div class="lem-abas" id="lemAbas"></div>
+    <div class="lem-ferr">
+      <label><input type="checkbox" id="lemSoMeus"> Só os meus leads</label>
+      <button type="button" id="btnNotif" hidden>🔔 Ativar avisos no navegador</button>
+    </div>
+    <div id="lemPainelLista"></div>
   </div>
 </aside>
 
@@ -708,6 +801,7 @@ const CHAVE_LEADS = "quitandinha:condominios";
 const CHAVE_EQUIPE = "quitandinha:equipe";
 const CHAVE_PENDENTES = "quitandinha:pendentes";
 const CHAVE_INVERTIDAS = "quitandinha:colunasInvertidas";
+const CHAVE_LEMBRETES = "quitandinha:lembretes";
 
 let colunasInvertidas = {};
 try{ colunasInvertidas = JSON.parse(localStorage.getItem(CHAVE_INVERTIDAS) || "{}"); }catch(e){ colunasInvertidas = {}; }
@@ -737,6 +831,7 @@ async function carregarPermissoes(){
 }
 let editandoId = null, arrastandoId = null;
 let observacoesForm = [];
+let lembretesForm = [];
 let obsEditandoIndex = null;
 let contatosForm = [];
 
@@ -814,8 +909,9 @@ function verificarNomeDuplicado(){
 }
 
 /* ================= camada de dados ================= */
+let SEM_COLUNA_LEMBRETES = false;   // vira true se o banco ainda não tem a coluna "lembretes"
 function paraBanco(l){
-  return {
+  const o = {
     id:l.id, nome:l.nome||null, endereco:l.endereco||null,
     aptos:l.aptos===""||l.aptos==null?null:parseInt(l.aptos,10),
     fase:l.fase||"cadastro", status:l.status||"nenhum", ordem:l.ordem??0,
@@ -830,6 +926,8 @@ function paraBanco(l){
     criado_em:l.criadoEm, atualizado_em:l.atualizadoEm, historico:l.historico||[],
     observacoes:l.observacoes||[]
   };
+  if(!SEM_COLUNA_LEMBRETES) o.lembretes = l.lembretes||[];
+  return o;
 }
 function doBanco(r){
   return {
@@ -843,7 +941,8 @@ function doBanco(r){
     adminEmail:r.admin_email||"", concorrente:r.concorrente||"", fimContrato:r.fim_contrato||"",
     perfil:r.perfil||"", notas:r.notas||"", responsavel:r.responsavel||"",
     criadoPor:r.criado_por||"", criadoEm:r.criado_em, atualizadoEm:r.atualizado_em,
-    historico:r.historico||[], observacoes:r.observacoes||[]
+    historico:r.historico||[], observacoes:r.observacoes||[],
+    lembretes:Array.isArray(r.lembretes) ? r.lembretes : undefined
   };
 }
 
@@ -868,15 +967,20 @@ async function buscarTudo(){
     if(c.error) throw c.error;
     leads = (c.data||[]).map(doBanco);
     equipe = e.error ? [] : (e.data||[]);
+    if(c.data && c.data.length && !("lembretes" in c.data[0])) SEM_COLUNA_LEMBRETES = true;
   } else {
     leads = await localGet(CHAVE_LEADS, []);
     equipe = await localGet(CHAVE_EQUIPE, []);
   }
+  const cacheLem = await localGet(CHAVE_LEMBRETES, {});
+  leads.forEach(l => { if(l.lembretes === undefined) l.lembretes = cacheLem[l.id] || []; });
 }
 /* ---- fila de pendências: nada se perde se a internet cair ---- */
 async function guardarPendencias(){
   await localSet(CHAVE_PENDENTES, {enviar:[...pendentes.values()], excluir:[...paraExcluir]});
   await localSet(CHAVE_LEADS, leads);            // cópia de segurança sempre
+  const mapaLem = {}; leads.forEach(l => { if((l.lembretes||[]).length) mapaLem[l.id] = l.lembretes; });
+  await localSet(CHAVE_LEMBRETES, mapaLem);
   atualizarBotaoSync();
 }
 async function carregarPendencias(){
@@ -926,7 +1030,12 @@ async function sincronizar(manual){
   try{
     if(pendentes.size){
       const lote = [...pendentes.values()];
-      const {error} = await sb.from("condominios").upsert(lote.map(paraBanco));
+      let {error} = await sb.from("condominios").upsert(lote.map(paraBanco));
+      if(error && /lembretes/i.test(error.message||"") && !SEM_COLUNA_LEMBRETES){
+        SEM_COLUNA_LEMBRETES = true;
+        avisar("Os lembretes ficam só neste aparelho até criar a coluna no Supabase (veja o SQL).", true);
+        ({error} = await sb.from("condominios").upsert(lote.map(paraBanco)));
+      }
       if(error) throw error;
       lote.forEach(l => pendentes.delete(l.id));
     }
@@ -1069,6 +1178,7 @@ function desenhar(){
     if(lista) lista.scrollTop = scrollColunas[faseId];
   });
   if(window.__atualizarMapa) window.__atualizarMapa();
+  if(typeof verificarLembretes === "function") verificarLembretes(true);
 }
 
 function montarCartao(l){
@@ -1089,6 +1199,12 @@ function montarCartao(l){
       else txt += " · até "+dataBR(l.fimContrato);
     }
     etiquetas.push('<span class="etiqueta '+cls+'">'+txt+'</span>');
+  }
+  const proxLem = proximoLembrete(l);
+  if(proxLem){
+    const c = classeLembrete(proxLem);
+    etiquetas.unshift('<span class="etiqueta lem '+c+'" title="'+escapar(proxLem.texto||"Próximo passo")+'">🔔 '+
+      (c==="atrasado"?"Atrasado · ":"")+escapar(quandoCurto(proxLem))+'</span>');
   }
   const ultimaObs = ultimaObservacao(l);
   const quemObs = ultimaObs ? (ultimaObs.por||"") : "";
@@ -1306,6 +1422,246 @@ function formatarObservacoesTexto(lista){
   ).join("\n\n");
 }
 
+
+/* ================= lembretes / próximos passos ================= */
+const p2 = n => String(n).padStart(2,"0");
+function dataLocalInput(d){ return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate()); }
+function dtLembrete(lem){ return new Date(lem.quando); }          // "AAAA-MM-DDTHH:mm" = horário local
+function mesmoDia(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function classeLembrete(lem){
+  if(lem.feito) return "feito";
+  const d = dtLembrete(lem), agoraD = new Date();
+  if(isNaN(d)) return "proximo";
+  if(d < agoraD) return "atrasado";
+  if(mesmoDia(d, agoraD)) return "hoje";
+  return "proximo";
+}
+function horaCurta(d){ return p2(d.getHours())+":"+p2(d.getMinutes()); }
+function quandoCurto(lem){
+  const d = dtLembrete(lem), hoje = new Date(), amanha = new Date(Date.now()+86400000);
+  if(isNaN(d)) return "sem data";
+  if(mesmoDia(d,hoje)) return "hoje "+horaCurta(d);
+  if(mesmoDia(d,amanha)) return "amanhã "+horaCurta(d);
+  return p2(d.getDate())+"/"+p2(d.getMonth()+1)+" "+horaCurta(d);
+}
+function quandoLongo(lem){
+  const d = dtLembrete(lem); if(isNaN(d)) return "Sem data";
+  const dia = d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"});
+  return dia.charAt(0).toUpperCase()+dia.slice(1)+" às "+horaCurta(d);
+}
+function proximoLembrete(l){
+  const abertos = (l.lembretes||[]).filter(x=>!x.feito && x.quando);
+  if(!abertos.length) return null;
+  return abertos.sort((a,b)=>dtLembrete(a)-dtLembrete(b))[0];
+}
+
+/* ---- Google Agenda e .ics ---- */
+function fmtAgenda(d){ return d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+"T"+p2(d.getHours())+p2(d.getMinutes())+"00"; }
+function detalhesLembrete(l, lem){
+  const linhas = [];
+  if(lem.texto) linhas.push("Próximo passo: "+lem.texto);
+  if(l.endereco) linhas.push("Endereço: "+l.endereco);
+  (l.contatos||[]).forEach(c=>{
+    const t = [c.nome,c.telefone,c.email].filter(Boolean).join(" · ");
+    if(t) linhas.push("Contato: "+t);
+  });
+  if(l.importante) linhas.push("Importante: "+l.importante);
+  linhas.push("Funil KMD3 Market");
+  return linhas.join("\n");
+}
+function linkGoogleAgenda(l, lem){
+  const ini = dtLembrete(lem); if(isNaN(ini)) return "#";
+  const fim = new Date(ini.getTime()+30*60000);
+  const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || "America/Sao_Paulo";
+  const p = new URLSearchParams({
+    action:"TEMPLATE",
+    text:"🔔 "+(l.nome||"Condomínio")+" — "+(lem.texto||"Retomar contato"),
+    dates:fmtAgenda(ini)+"/"+fmtAgenda(fim),
+    details:detalhesLembrete(l,lem),
+    ctz:tz
+  });
+  if(l.endereco) p.set("location", l.endereco);
+  return "https://calendar.google.com/calendar/render?"+p.toString();
+}
+function escICS(t){ return String(t||"").replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;"); }
+function baixarICS(l, lem){
+  const ini = dtLembrete(lem); if(isNaN(ini)) return;
+  const fim = new Date(ini.getTime()+30*60000);
+  const carimbo = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+  const linhas = [
+    "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//KMD3 Market//Funil//PT-BR","CALSCALE:GREGORIAN","BEGIN:VEVENT",
+    "UID:"+lem.id+"@kmd3market","DTSTAMP:"+carimbo,
+    "DTSTART:"+fmtAgenda(ini),"DTEND:"+fmtAgenda(fim),
+    "SUMMARY:"+escICS("🔔 "+(l.nome||"Condomínio")+" — "+(lem.texto||"Retomar contato")),
+    "DESCRIPTION:"+escICS(detalhesLembrete(l,lem)),
+    l.endereco ? "LOCATION:"+escICS(l.endereco) : null,
+    "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+escICS(l.nome||"Lembrete"),"TRIGGER:-PT10M","END:VALARM",
+    "END:VEVENT","END:VCALENDAR"
+  ].filter(Boolean);
+  const blob = new Blob([linhas.join("\r\n")],{type:"text/calendar;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "lembrete-"+(l.nome||"condominio").toLowerCase().replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"")+".ics";
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ---- seção dentro do painel do condomínio ---- */
+function limparNovoLembrete(){
+  $("#lem_data").value = ""; $("#lem_hora").value = "09:00"; $("#lem_texto").value = "";
+}
+function itemLembreteHTML(l, lem, idx, doForm){
+  const c = classeLembrete(lem);
+  const gcal = linkGoogleAgenda(l, lem);
+  return '<div class="lem-item '+c+'">'+
+    (doForm ? "" : '<button type="button" class="lem-lead" data-abrir-lead="'+escapar(l.id)+'">'+escapar(l.nome||"Condomínio sem nome")+'</button>')+
+    '<span class="lem-quando">'+(c==="atrasado"?"⚠️ Atrasado · ":c==="hoje"?"📌 Hoje · ":c==="feito"?"✓ Concluído · ":"")+escapar(quandoLongo(lem))+'</span>'+
+    '<span class="lem-texto">'+escapar(lem.texto||"Retomar contato")+'</span>'+
+    (!doForm && l.responsavel ? '<span class="lem-resp">Responsável: '+escapar(l.responsavel)+'</span>' : '')+
+    '<div class="lem-acoes">'+
+      (lem.feito
+        ? '<button type="button" data-lem-reabrir="'+idx+'" data-lid="'+escapar(l.id)+'">Reabrir</button>'
+        : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">✓ Concluir</button>'+
+          '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>')+
+      '<a class="lem-gcal" href="'+escapar(gcal)+'" target="_blank" rel="noopener">📅 Google Agenda</a>'+
+      '<button type="button" data-lem-ics="'+idx+'" data-lid="'+escapar(l.id)+'" title="Arquivo para Apple/Outlook, com alarme 10 min antes">.ics</button>'+
+    '</div>'+
+    '<button type="button" class="lem-x" data-lem-remover="'+idx+'" data-lid="'+escapar(l.id)+'" aria-label="Excluir lembrete" title="Excluir lembrete">✕</button>'+
+  '</div>';
+}
+function leadAtualDoForm(){
+  // lead "virtual" com o que está digitado agora (serve para montar o link do Google Agenda de um lead novo)
+  const base = editandoId ? (leads.find(x=>x.id===editandoId)||{}) : {};
+  return Object.assign({}, base, {id:editandoId||"novo", nome:$("#f_nome").value.trim(), endereco:$("#f_endereco").value.trim(),
+    importante:$("#f_importante").value.trim(), contatos:lerContatosForm()});
+}
+function renderLembretesForm(){
+  const box = $("#lemLista");
+  if(!lembretesForm.length){ box.innerHTML = '<div class="lem-vazio">Nenhum lembrete. Escolha data e horário abaixo.</div>'; return; }
+  const l = leadAtualDoForm();
+  const ordem = lembretesForm.map((x,i)=>({x,i})).sort((a,b)=>{
+    if(!!a.x.feito !== !!b.x.feito) return a.x.feito ? 1 : -1;
+    return dtLembrete(a.x) - dtLembrete(b.x);
+  });
+  box.innerHTML = ordem.map(o=>itemLembreteHTML(l, o.x, o.i, true).replace(/data-lid="[^"]*"/g,'data-form="1"')).join("");
+}
+function adicionarLembreteForm(silencioso){
+  const data = $("#lem_data").value, hora = $("#lem_hora").value || "09:00";
+  if(!data){ avisar("Escolha a data do lembrete"); return; }
+  const texto = $("#lem_texto").value.trim();
+  lembretesForm.push({id:gerarId(), quando:data+"T"+hora, texto, feito:false, feitoEm:null, por:meuNome||"", criadoEm:agora()});
+  limparNovoLembrete();
+  renderLembretesForm();
+  if(!silencioso) avisar("Lembrete adicionado. Clique em Salvar para guardar.");
+}
+
+/* ---- ações em lembretes já salvos (painel Lembretes) ---- */
+async function gravarLembretes(l, descricao){
+  registrarAtualizacao(l, descricao);
+  await gravarLead(l);
+  desenhar();
+  verificarLembretes(true);
+  renderPainelLembretes();
+}
+async function acaoLembrete(leadId, idx, acao){
+  if(!perm.editar){ negar("editar"); return; }
+  const l = leads.find(x=>x.id===leadId); if(!l || !l.lembretes || !l.lembretes[idx]) return;
+  const lem = l.lembretes[idx];
+  if(acao==="feito"){ lem.feito = true; lem.feitoEm = agora(); await gravarLembretes(l, "Lembrete concluído: "+(lem.texto||"retomar contato")); avisar("Lembrete concluído"); }
+  else if(acao==="reabrir"){ lem.feito = false; lem.feitoEm = null; await gravarLembretes(l, "Lembrete reaberto"); }
+  else if(acao==="adiar"){
+    const d = dtLembrete(lem); d.setDate(d.getDate()+1);
+    lem.quando = dataLocalInput(d)+"T"+horaCurta(d);
+    await gravarLembretes(l, "Lembrete adiado para "+quandoCurto(lem)); avisar("Adiado para "+quandoCurto(lem));
+  }
+  else if(acao==="remover"){
+    if(!confirm("Excluir este lembrete?")) return;
+    l.lembretes.splice(idx,1); await gravarLembretes(l, "Lembrete excluído");
+  }
+  else if(acao==="ics"){ baixarICS(l, lem); }
+}
+
+/* ---- painel Lembretes (aba geral) ---- */
+let lemAba = "hoje";
+function meuLembrete(l, lem){
+  if(!meuNome) return true;
+  return (l.responsavel||"")===meuNome || (lem.por||"")===meuNome;
+}
+function todosLembretes(){
+  const soMeus = $("#lemSoMeus") && $("#lemSoMeus").checked;
+  const lista = [];
+  leads.forEach(l => (l.lembretes||[]).forEach((lem,idx)=>{
+    if(soMeus && !meuLembrete(l, lem)) return;
+    lista.push({l, lem, idx, c:classeLembrete(lem)});
+  }));
+  return lista;
+}
+function renderPainelLembretes(){
+  const todos = todosLembretes();
+  const por = {atrasado:[], hoje:[], proximo:[], feito:[]};
+  todos.forEach(t => por[t.c].push(t));
+  por.atrasado.sort((a,b)=>dtLembrete(a.lem)-dtLembrete(b.lem));
+  por.hoje.sort((a,b)=>dtLembrete(a.lem)-dtLembrete(b.lem));
+  por.proximo.sort((a,b)=>dtLembrete(a.lem)-dtLembrete(b.lem));
+  por.feito.sort((a,b)=>new Date(b.lem.feitoEm||0)-new Date(a.lem.feitoEm||0));
+  const abas = [["atrasado","Atrasados"],["hoje","Hoje"],["proximo","Próximos"],["feito","Concluídos"]];
+  $("#lemAbas").innerHTML = abas.map(([k,n]) =>
+    '<button type="button" class="lem-aba'+(k==="atrasado"?" atraso":"")+(lemAba===k?" on":"")+'" data-lem-aba="'+k+'">'+n+'<span class="n">'+por[k].length+'</span></button>').join("");
+  const msgVazia = {atrasado:"Nada atrasado. 👏", hoje:"Nenhum lembrete para hoje.", proximo:"Nenhum lembrete futuro.", feito:"Nenhum lembrete concluído ainda."};
+  const itens = por[lemAba];
+  let html = "";
+  if(lemAba==="proximo"){
+    // agrupa por dia
+    let diaAtual = "";
+    itens.forEach(t=>{
+      const d = dtLembrete(t.lem), chave = dataLocalInput(d);
+      if(chave !== diaAtual){
+        diaAtual = chave;
+        const rot = mesmoDia(d,new Date(Date.now()+86400000)) ? "Amanhã" : d.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
+        html += '<div class="lem-grupo-titulo">'+escapar(rot)+'</div>';
+      }
+      html += itemLembreteHTML(t.l, t.lem, t.idx, false);
+    });
+  } else html = itens.map(t=>itemLembreteHTML(t.l, t.lem, t.idx, false)).join("");
+  $("#lemPainelLista").innerHTML = html || '<div class="lem-vazio">'+msgVazia[lemAba]+'</div>';
+  $("#btnNotif").hidden = !("Notification" in window) || Notification.permission !== "default";
+}
+function abrirLembretes(aba){
+  if(aba) lemAba = aba;
+  else {
+    const t = todosLembretes();
+    lemAba = t.some(x=>x.c==="atrasado") ? "atrasado" : t.some(x=>x.c==="hoje") ? "hoje" : "proximo";
+  }
+  renderPainelLembretes();
+  $("#painel").classList.remove("aberto"); $("#painelEquipe").classList.remove("aberto");
+  $("#painelLembretes").classList.add("aberto"); $("#fundo").classList.add("aberto");
+}
+
+/* ---- selo no botão + aviso quando chega a hora ---- */
+let lemAvisados = new Set(), lemPrimeiraVez = true;
+function verificarLembretes(semAviso){
+  const todos = todosLembretes().filter(t=>!t.lem.feito);
+  const atrasados = todos.filter(t=>t.c==="atrasado"), hoje = todos.filter(t=>t.c==="hoje");
+  const badge = $("#lemBadge"); if(!badge) return;
+  const n = atrasados.length + hoje.length;
+  badge.hidden = n === 0;
+  badge.textContent = n;
+  badge.classList.toggle("atraso", atrasados.length > 0);
+  if(semAviso) return;
+  if(lemPrimeiraVez){
+    lemPrimeiraVez = false;
+    atrasados.forEach(t=>lemAvisados.add(t.lem.id));
+    if(n) avisar("🔔 Você tem "+(atrasados.length? atrasados.length+" lembrete(s) atrasado(s)"+(hoje.length?" e ":""):"")+(hoje.length? hoje.length+" para hoje":"")+".");
+    return;
+  }
+  atrasados.forEach(t=>{
+    if(lemAvisados.has(t.lem.id)) return;
+    lemAvisados.add(t.lem.id);
+    const msg = (t.l.nome||"Condomínio")+" — "+(t.lem.texto||"retomar contato");
+    avisar("🔔 Lembrete: "+msg);
+    try{ if("Notification" in window && Notification.permission==="granted") new Notification("🔔 Lembrete", {body:msg}); }catch(_){}
+  });
+}
+
 /* ================= histórico ================= */
 function registrarAtualizacao(lead, descricao){
   lead.atualizadoEm = agora();
@@ -1412,6 +1768,8 @@ function abrirPainel(id, faseInicial){
     obsEditandoIndex = null;
     $("#obsTexto").value = "";
     renderObservacoes();
+    lembretesForm = (l.lembretes||[]).map(x=>Object.assign({},x));
+    limparNovoLembrete(); renderLembretesForm();
     preencherResponsavel(l.responsavel||"");
     (document.querySelector('#semaforo input[value="'+(l.status||"nenhum")+'"]')||{}).checked = true;
     marcarSemaforo();
@@ -1430,6 +1788,8 @@ function abrirPainel(id, faseInicial){
     obsEditandoIndex = null;
     $("#obsTexto").value = "";
     renderObservacoes();
+    lembretesForm = [];
+    limparNovoLembrete(); renderLembretesForm();
     $("#f_fase").value = faseInicial || "cadastro";
     preencherResponsavel("");
     document.querySelector('#semaforo input[value="nenhum"]').checked = true;
@@ -1442,6 +1802,7 @@ function abrirPainel(id, faseInicial){
 function fecharTudo(){
   $("#painel").classList.remove("aberto");
   $("#painelEquipe").classList.remove("aberto");
+  $("#painelLembretes").classList.remove("aberto");
   $("#fundo").classList.remove("aberto");
   editandoId = null;
 }
@@ -1460,6 +1821,7 @@ function lerFormulario(){
     contatos:lerContatosForm(), concorrente:$("#f_concorrente").value.trim(),
     fimContrato:$("#f_fimContrato").value, perfil:$("#f_perfil").value.trim(),
     observacoes:observacoesForm, notas:formatarObservacoesTexto(observacoesForm),
+    lembretes:lembretesForm.map(x=>Object.assign({},x)),
     responsavel:$("#f_responsavel").value,
     status:(document.querySelector("#semaforo input:checked")||{}).value || "nenhum"
   };
@@ -1483,6 +1845,9 @@ function descreverAlteracoes(antes, depois){
   if(JSON.stringify(antes.contatos||[]) !== JSON.stringify(depois.contatos||[])){
     partes.push("Contatos alterados");
   }
+  if(JSON.stringify(antes.lembretes||[]) !== JSON.stringify(depois.lembretes||[])){
+    partes.push("Lembretes alterados");
+  }
   Object.keys(RÓTULOS_CAMPO).forEach(campo => {
     const v1 = (antes[campo] ?? "").toString().trim();
     const v2 = (depois[campo] ?? "").toString().trim();
@@ -1496,6 +1861,7 @@ async function salvar(){
   if(obsEditandoIndex !== null) salvarEdicaoObservacao(obsEditandoIndex);
   const obsPendente = $("#obsTexto").value.trim();
   if(obsPendente) adicionarObservacao();
+  if($("#lem_data").value) adicionarLembreteForm(true);
   const dados = lerFormulario();
   try{
     if(editandoId){
@@ -1636,6 +2002,7 @@ async function iniciarQuadro(){
     $("#sinal").className = "sinal local";
   }
   desenhar();
+  verificarLembretes();
 }
 
 async function iniciar(){
@@ -1759,6 +2126,49 @@ document.addEventListener("keydown", e=>{
     salvarEdicaoObservacao(parseInt($("[data-salvar-obs]").dataset.salvarObs,10));
   }
 });
+
+$("#btnLembretes").addEventListener("click", ()=>abrirLembretes());
+$("#btnFecharLembretes").addEventListener("click", fecharTudo);
+$("#lemSoMeus").addEventListener("change", ()=>{ renderPainelLembretes(); });
+$("#btnAddLem").addEventListener("click", ()=>adicionarLembreteForm());
+$("#lem_texto").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); adicionarLembreteForm(); } });
+$("#btnNotif").addEventListener("click", async ()=>{
+  try{ await Notification.requestPermission(); }catch(_){}
+  renderPainelLembretes();
+  if(Notification.permission==="granted") avisar("Avisos ativados enquanto o sistema estiver aberto.");
+});
+$("#lemRapido").addEventListener("click", e=>{
+  const b = e.target.closest("[data-dias]"); if(!b) return;
+  const d = new Date(); d.setDate(d.getDate()+parseInt(b.dataset.dias,10));
+  $("#lem_data").value = dataLocalInput(d);
+});
+document.addEventListener("click", e=>{
+  const aba = e.target.closest("[data-lem-aba]");
+  if(aba){ lemAba = aba.dataset.lemAba; renderPainelLembretes(); return; }
+  const abrir = e.target.closest("[data-abrir-lead]");
+  if(abrir){ const id = abrir.dataset.abrirLead; fecharTudo(); abrirPainel(id); return; }
+  // ações dentro do formulário do condomínio (ainda não salvas)
+  const doForm = e.target.closest('[data-form="1"]');
+  if(doForm){
+    const idx = parseInt((doForm.dataset.lemFeito ?? doForm.dataset.lemReabrir ?? doForm.dataset.lemAdiar ?? doForm.dataset.lemIcs ?? doForm.dataset.lemRemover),10);
+    const lem = lembretesForm[idx]; if(!lem) return;
+    if(doForm.dataset.lemFeito !== undefined){ lem.feito = true; lem.feitoEm = agora(); }
+    else if(doForm.dataset.lemReabrir !== undefined){ lem.feito = false; lem.feitoEm = null; }
+    else if(doForm.dataset.lemAdiar !== undefined){ const d = dtLembrete(lem); d.setDate(d.getDate()+1); lem.quando = dataLocalInput(d)+"T"+horaCurta(d); }
+    else if(doForm.dataset.lemIcs !== undefined){ baixarICS(leadAtualDoForm(), lem); return; }
+    else if(doForm.dataset.lemRemover !== undefined){ if(!confirm("Excluir este lembrete?")) return; lembretesForm.splice(idx,1); }
+    else return;
+    renderLembretesForm();
+    return;
+  }
+  // ações no painel geral (já salvas)
+  const mapa = [["lemFeito","feito"],["lemReabrir","reabrir"],["lemAdiar","adiar"],["lemIcs","ics"],["lemRemover","remover"]];
+  for(const [attr,acao] of mapa){
+    const el = e.target.closest("[data-"+attr.replace(/[A-Z]/g,m=>"-"+m.toLowerCase())+"]");
+    if(el && el.dataset.lid){ acaoLembrete(el.dataset.lid, parseInt(el.dataset[attr],10), acao); return; }
+  }
+});
+setInterval(()=>verificarLembretes(), 30000);
 $("#btnAddObs").addEventListener("click", adicionarObservacao);
 $("#btnAddContato").addEventListener("click", adicionarContato);
 $("#obsTexto").addEventListener("keydown", e=>{
