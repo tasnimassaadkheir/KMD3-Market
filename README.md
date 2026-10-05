@@ -1,7 +1,5 @@
 # KMD3 Market — Condo Sales Funnel
 
-![Tests](https://github.com/YOUR-GITHUB-USER/kmd3market/actions/workflows/tests.yml/badge.svg)
-
 A web-based Kanban board for tracking condominiums (*condomínios*) through the KMD3 Market sales funnel, from first prospecting to a signed contract. The team sees the same board in real time, can plan visit routes on a map, and gets reminders for every next step.
 
 The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaScript. It has no framework and no build step.
