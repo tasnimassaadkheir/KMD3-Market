@@ -503,6 +503,10 @@
   @media (max-width:1560px){
     .btn .rot{display:none}          /* só ícone nos botões secundários */
     .btn:not(.btn-sync):not(.btn-destaque):not(.btn-sair){width:var(--h-ctrl);padding:0}
+    /* Exception: the Lembretes (reminders) button also holds the number badge,
+       so instead of a fixed square it grows to fit the bell + the number.
+       Without a badge it still looks like a square icon button (min-width). */
+    #btnLembretes{width:auto;min-width:var(--h-ctrl);padding:0 8px;gap:5px}
   }
   /* Below 1250px: hide the word 'condomínio' in the New button and shrink the date inputs. */
   @media (max-width:1250px){
