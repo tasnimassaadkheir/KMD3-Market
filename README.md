@@ -1,5 +1,7 @@
 # KMD3 Market — Condo Sales Funnel
 
+![Tests](https://github.com/YOUR-GITHUB-USER/kmd3market/actions/workflows/tests.yml/badge.svg)
+
 A web-based Kanban board for tracking condominiums (*condomínios*) through the KMD3 Market sales funnel, from first prospecting to a signed contract. The team sees the same board in real time, can plan visit routes on a map, and gets reminders for every next step.
 
 The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaScript. It has no framework and no build step.
@@ -57,14 +59,18 @@ kmd3market/
 ├── config.js             Supabase URL and key
 ├── app.js                Main app: board, panel, sync, reminders, team, login, admin
 ├── mapa.js               Map view and route planner
-├── favicon.png           Browser tab icon
-├── apple-touch-icon.png  iPhone home-screen icon
-├── logo-header.png       Logo in the top bar
-├── logo-login.png        Logo on the login screen
+├── tests/
+│   ├── unit/             Unit tests for the app's logic (Node, no browser)
+│   ├── e2e/              End-to-end tests in a real browser (Playwright)
+│   ├── api/              Runs the Postman collection with Newman
+│   └── helpers/          Test setup (sandbox loader)
+├── postman/              Postman collection + environment for the Supabase API
+├── .github/workflows/    Runs the tests automatically on GitHub
+├── package.json          Test scripts and dev dependencies
 └── README.md
 ```
 
-> **All files must stay in the same folder as `index.html`.** The page finds its CSS, scripts and images by file name, so if one of them is missing or in a different folder, that part won't load.
+> **All files must stay in the same folder as `index.html`.** The page finds its CSS and scripts by file name, so if one of them is missing or in a different folder, that part won't load. The logos and icons are embedded inside `index.html` itself, so there are no image files to upload.
 
 Every file is commented in English to explain what each part does.
 
@@ -101,6 +107,47 @@ const SUPABASE_KEY = "sb_publishable_...";
 ```
 
 The publishable key is meant to be public. Your data is protected by the **Row Level Security** rules in Supabase, so keep RLS enabled on every table.
+
+---
+
+## Testing
+
+The project has three layers of automated tests. All of them run in **local mode** (empty Supabase keys) except the API tests, so they never touch real data.
+
+| Layer | What it checks | Tool | Count |
+|---|---|---|---|
+| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 70 |
+| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, XSS protection, plus regression tests for fixed layout bugs (reminder badge overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 16 |
+| **API** | The Supabase API the app depends on: login, CRUD on `condominios`, team list, permission functions, and that nothing is readable or writable without a login (Row Level Security) | Postman collection run by Newman | 19 requests |
+
+### Run the tests
+
+Requires Node.js 20 or newer.
+
+```bash
+npm install                          # installs Playwright and Newman (dev only)
+npx playwright install chromium      # downloads the test browser (first time only)
+
+npm test                             # unit + end-to-end
+npm run test:unit                    # unit only (no install needed)
+npm run test:e2e                     # end-to-end only
+```
+
+The unit tests freeze the clock at 5 Oct 2026, 12:00 (São Paulo time), so date-dependent results are the same on any day. The end-to-end tests start a small local web server, replace `config.js` with empty keys, and block all internet requests, so they behave the same online and offline.
+
+### API tests (real Supabase)
+
+These use a real login, passed as environment variables and never saved in the repository:
+
+```bash
+KMD3_EMAIL=you@example.com KMD3_PASSWORD=yourpassword npm run test:api
+```
+
+The collection creates a test condo named **[POSTMAN TESTE]** and deletes it at the end. You can also import the two files in `postman/` into the Postman app to run and read the requests by hand.
+
+### Continuous integration
+
+GitHub Actions (`.github/workflows/tests.yml`) runs the unit and end-to-end tests on every push and pull request. The API job only runs when started by hand from the **Actions** tab, using the `KMD3_EMAIL` and `KMD3_PASSWORD` repository secrets.
 
 ---
 
@@ -165,7 +212,7 @@ Logins are created in Supabase: **Authentication → Users → Add user**, with 
 
 ## Deploying to Vercel
 
-1. Put all the files at the top level of the GitHub repository, next to `index.html` (not inside a subfolder).
+1. Put all the files at the top level of the GitHub repository, next to `index.html` (not inside a subfolder). The `.vercelignore` file keeps the test files out of the deployed site.
 2. In Vercel, import the repository. No build settings are needed. Use framework **Other** and leave the build command empty.
 3. Every push to the main branch redeploys automatically.
 
