@@ -2,10 +2,10 @@
 <!-- ==========================================================================
      KMD3 Market — index.html
      This file only contains the STRUCTURE of the page (what elements exist).
-       - How it looks  -> css/style.css
-       - How it works  -> js/config.js, js/app.js, js/mapa.js
-       - Images        -> img/
-     Keep the folders together when you upload the site (e.g. to Vercel).
+       - How it looks  -> style.css
+       - How it works  -> config.js, app.js, mapa.js
+       - Images        -> the .png files
+     Keep ALL files in the same folder when you upload the site (e.g. to Vercel).
      Many elements start empty and are filled in by JavaScript; they are found
      by their id (e.g. id="quadro" is used as $("#quadro") in app.js).
      ========================================================================== -->
@@ -20,8 +20,8 @@
 <!-- Text shown on the browser tab. -->
 <title>KMD3 Market — Funil de Condomínios</title>
 <!-- Tab icon (favicon) and the icon used when someone adds the site to an iPhone home screen. -->
-<link rel="icon" type="image/png" href="img/favicon.png">
-<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 
 <!-- Google Fonts: 'preconnect' opens the connection early so the fonts load faster. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +29,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
 <!-- Our own stylesheet (all the CSS that was inside <style> before). -->
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -38,7 +38,7 @@
 <header class="topo">
   <div class="marca">
     <!-- Company logo (light version, for the dark background). -->
-    <img class="logo-img" src="img/logo-header.png" alt="KMD3 Market Comércio Ltda">
+    <img class="logo-img" src="logo-header.png" alt="KMD3 Market Comércio Ltda">
   </div>
 
   <!-- Toolbar: filters on the left, buttons on the right. -->
@@ -304,7 +304,7 @@
 <div class="entrada" id="entrada">
   <div class="caixa-entrada">
     <!-- Logo shown on the login box. -->
-    <img src="img/logo-login.png" alt="KMD3 Market Comércio Ltda" style="height:44px;width:auto;display:block;margin:0 auto 20px">
+    <img src="logo-login.png" alt="KMD3 Market Comércio Ltda" style="height:44px;width:auto;display:block;margin:0 auto 20px">
     <div class="erro" id="erroEntrada" style="display:none"></div>
     <label class="campo"><span>E-mail</span><input class="txt" id="in_email" type="email" autocomplete="username"></label>
     <label class="campo campo-senha">
@@ -361,8 +361,8 @@
        1. config.js -> Supabase keys
        2. app.js    -> main app (uses the keys)
        3. mapa.js   -> map view (uses functions from app.js) -->
-<script src="js/config.js"></script>
-<script src="js/app.js"></script>
-<script src="js/mapa.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="mapa.js"></script>
 </body>
 </html>
