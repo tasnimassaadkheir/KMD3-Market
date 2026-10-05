@@ -480,6 +480,20 @@
     $m("#mpLegenda").querySelectorAll(".mp-chip[data-k]").forEach(x => { if(x.dataset.k !== b.dataset.k) ocultos.add(x.dataset.k); });
     desenharPontos();
   });
+  // Sideways scrolling with a normal mouse.
+  // The legend (and the top bar) scroll horizontally. Phones swipe and touchpads scroll sideways,
+  // but a regular mouse wheel only scrolls up/down, so on a computer with a mouse you couldn't
+  // reach the chips on the right. This turns the up/down wheel movement into left/right scrolling.
+  function rolarDeLado(el){
+    el.addEventListener("wheel", e => {
+      if(el.scrollWidth <= el.clientWidth) return;               // everything already fits: nothing to do
+      if(Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;      // touchpad already scrolling sideways: leave it
+      e.preventDefault();                                       // stop the page from scrolling up/down instead
+      el.scrollLeft += e.deltaY;
+    }, {passive:false});                                        // passive:false is required to allow preventDefault()
+  }
+  rolarDeLado($m("#mpLegenda"));
+  rolarDeLado($m(".mp-barra"));
   // Route panel header: collapse/expand.
   $m("#mpRotaCab").addEventListener("click", () => $m("#mpRota").classList.toggle("aberta"));
   // Route list buttons: move a stop up/down (swap with neighbor) or remove it.
