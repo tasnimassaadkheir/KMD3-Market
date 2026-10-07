@@ -1,6 +1,10 @@
 -- ============================================================
--- Minha Quitandinha — estrutura do banco
+-- KMD3 Market — estrutura do banco
 -- Cole tudo isto no SQL Editor do Supabase e clique em RUN.
+-- Pode rodar de novo com segurança: não apaga nem duplica nada.
+-- ATENÇÃO: este arquivo cobre as tabelas condominios e equipe.
+-- As funções (posso, sou_admin, admin_*, etc.) e as organizações NÃO estão
+-- aqui. Para ter o banco real completo, veja database/README.md.
 -- ============================================================
 
 -- Tabela dos condomínios (os cartões do quadro)
@@ -27,8 +31,20 @@ create table if not exists public.condominios (
   criado_por    text,
   criado_em     timestamptz default now(),
   atualizado_em timestamptz default now(),
-  historico     jsonb default '[]'::jsonb
+  historico     jsonb default '[]'::jsonb,
+  zona          text,
+  importante    text,
+  contatos      jsonb default '[]'::jsonb,
+  observacoes   jsonb default '[]'::jsonb,
+  lembretes     jsonb default '[]'::jsonb
 );
+
+-- Para bancos que já existem: acrescenta as colunas que faltam (não mexe nos dados)
+alter table public.condominios add column if not exists zona        text;
+alter table public.condominios add column if not exists importante  text;
+alter table public.condominios add column if not exists contatos    jsonb default '[]'::jsonb;
+alter table public.condominios add column if not exists observacoes jsonb default '[]'::jsonb;
+alter table public.condominios add column if not exists lembretes   jsonb default '[]'::jsonb;
 
 -- Tabela da equipe (quem pode ser responsável por um lead)
 create table if not exists public.equipe (
@@ -59,4 +75,12 @@ create policy "equipe logada usa equipe"
 -- ============================================================
 -- Atualização em tempo real (as sócias veem o cartão mudar sozinho)
 -- ============================================================
-alter publication supabase_realtime add table public.condominios;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'condominios'
+  ) then
+    alter publication supabase_realtime add table public.condominios;
+  end if;
+end $$;
