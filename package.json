@@ -1,0 +1,19 @@
+{
+  "name": "kmd3market",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KMD3 Market — condo sales funnel (Kanban board, reminders, map, team access) on Supabase.",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.js",
+    "test:api": "node tests/api/run-postman.js"
+  },
+  "devDependencies": {
+    "newman": "^6.2.1",
+    "playwright": "^1.56.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

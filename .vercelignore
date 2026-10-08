@@ -1,0 +1,7 @@
+# Files Vercel does not need to serve the website
+tests/
+postman/
+.github/
+node_modules/
+package.json
+package-lock.json
