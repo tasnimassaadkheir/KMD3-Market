@@ -1,0 +1,1062 @@
+{
+  "info": {
+    "name": "KMD3 Market API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "API tests and documentation for **KMD3 Market — Funil de Condomínios**.\n\nThe app talks directly to **Supabase**: Auth for login, the REST API (PostgREST) for the `condominios` and `equipe` tables, and RPC for permission functions.\n\n## How to use\n1. Select the **KMD3 Market** environment and fill in `user_email` and `user_password`.\n2. Run **1. Auth → Log in** (saves the token).\n3. Run any request, or the whole collection with the Collection Runner.\n\n## Headers on every request\n- `apikey`: the Supabase publishable key\n- `Authorization: Bearer <access_token>`: the logged-in user (omitted in the security folder)\n\n## Filters (Supabase syntax)\n`?id=eq.123` equals · `?order=ordem.asc` sort · `?select=id,nome` choose columns"
+  },
+  "item": [
+    {
+      "name": "1. Auth",
+      "description": "Log in with a real KMD3 Market user. The returned access token is saved automatically and used by every other request.\n\nRun this first. Tokens expire after about 1 hour; just run it again.",
+      "item": [
+        {
+          "name": "Log in (email + password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/token?grant_type=password",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "auth",
+                "v1",
+                "token"
+              ],
+              "query": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                }
+              ]
+            },
+            "description": "Same login the app does in `entrar()` (app.js).\n\n**Body:** the user's email and password (from the environment).\n\n**Returns:** `access_token` (saved to the environment), `refresh_token`, `expires_in` and the `user` object.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Returns an access token\", () => pm.expect(j.access_token).to.be.a(\"string\"));",
+                  "pm.environment.set(\"access_token\", j.access_token);",
+                  "pm.environment.set(\"user_id\", j.user && j.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log in with wrong password (should fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/token?grant_type=password",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "auth",
+                "v1",
+                "token"
+              ],
+              "query": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                }
+              ]
+            },
+            "description": "Negative test: a wrong password must be rejected with **400** and no token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"senha-errada-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Rejected with 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"No token returned\", () => pm.expect(pm.response.json().access_token).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Condomínios (leads)",
+      "description": "CRUD on the `condominios` table, the same calls the app makes through the Supabase client.\n\nThe create request makes a test condo named **[POSTMAN TESTE]** and the delete request removes it, so run them in order. If a run stops halfway, delete the test condo in the app.",
+      "item": [
+        {
+          "name": "List all condos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios?select=*&order=ordem.asc",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ],
+              "query": [
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "ordem.asc"
+                }
+              ]
+            },
+            "description": "Loads every condo the logged-in user is allowed to see, sorted by board position. Same as `buscarTudo()` in app.js.\n\nRow Level Security decides which rows come back."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responds in under 2 seconds\", () => pm.expect(pm.response.responseTime).to.be.below(2000));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Returns an array\", () => pm.expect(j).to.be.an(\"array\"));",
+                  "pm.test(\"Each condo has id, nome and fase\", () => j.forEach(c => pm.expect(c).to.include.keys(\"id\",\"nome\",\"fase\")));",
+                  "const fases = [\"concorrencia\",\"futura\",\"cadastro\",\"contato\",\"reuniao\",\"proposta\",\"assembleia\",\"contrato\"];",
+                  "pm.test(\"Every fase is a valid stage\", () => j.forEach(c => pm.expect(fases).to.include(c.fase)));",
+                  "console.log(\"Condos returned:\", j.length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a test condo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ]
+            },
+            "description": "Creates a condo. `lead_id` and `agora` (now) are generated in the Pre-request script.\n\n`Prefer: return=representation` makes Supabase return the created row.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{lead_id}}\",\n  \"nome\": \"[POSTMAN TESTE] Condomínio de teste\",\n  \"endereco\": \"Av. Paulista, 1000, São Paulo, SP\",\n  \"aptos\": 50,\n  \"fase\": \"cadastro\",\n  \"status\": \"nenhum\",\n  \"ordem\": 999,\n  \"zona\": \"Bela Vista\",\n  \"contatos\": [],\n  \"responsavel\": \"\",\n  \"criado_por\": \"Postman\",\n  \"criado_em\": \"{{agora}}\",\n  \"atualizado_em\": \"{{agora}}\",\n  \"historico\": [\n    {\n      \"quando\": \"{{agora}}\",\n      \"o_que\": \"Criado pelo Postman\",\n      \"por\": \"Postman\"\n    }\n  ],\n  \"observacoes\": [],\n  \"lembretes\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"lead_id\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "pm.environment.set(\"agora\", new Date().toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Created (201)\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Returned the new condo\", () => pm.expect(j[0].id).to.eql(pm.environment.get(\"lead_id\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get the test condo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios?id=eq.{{lead_id}}&select=*",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "eq.{{lead_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
+              ]
+            },
+            "description": "Reads one condo by id (`id=eq.<id>` is Supabase's filter syntax)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Found exactly one\", () => pm.expect(j.length).to.eql(1));",
+                  "pm.test(\"Name is the test name\", () => pm.expect(j[0].nome).to.include(\"POSTMAN TESTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Move test condo to Reunião + set status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios?id=eq.{{lead_id}}",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "eq.{{lead_id}}"
+                }
+              ]
+            },
+            "description": "Updates only the fields sent, like dragging a card to another column.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fase\": \"reuniao\",\n  \"status\": \"amarelo\",\n  \"atualizado_em\": \"{{agora}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Stage changed to reuniao\", () => pm.expect(j[0].fase).to.eql(\"reuniao\"));",
+                  "pm.test(\"Status changed to amarelo\", () => pm.expect(j[0].status).to.eql(\"amarelo\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upsert test condo (what the Sync button does)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "resolution=merge-duplicates,return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ]
+            },
+            "description": "Insert-or-update, used by `sincronizar()` in app.js. `resolution=merge-duplicates` updates the row when the id already exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{lead_id}}\",\n  \"nome\": \"[POSTMAN TESTE] Condomínio de teste\",\n  \"endereco\": \"Av. Paulista, 1000, São Paulo, SP\",\n  \"aptos\": 50,\n  \"fase\": \"proposta\",\n  \"status\": \"amarelo\",\n  \"ordem\": 999,\n  \"zona\": \"Bela Vista\",\n  \"contatos\": [],\n  \"responsavel\": \"\",\n  \"criado_por\": \"Postman\",\n  \"criado_em\": \"{{agora}}\",\n  \"atualizado_em\": \"{{agora}}\",\n  \"historico\": [\n    {\n      \"quando\": \"{{agora}}\",\n      \"o_que\": \"Criado pelo Postman\",\n      \"por\": \"Postman\"\n    }\n  ],\n  \"observacoes\": [],\n  \"lembretes\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Saved (200 or 201)\", () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "pm.test(\"Stage is now proposta\", () => pm.expect(pm.response.json()[0].fase).to.eql(\"proposta\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete the test condo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios?id=eq.{{lead_id}}",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "eq.{{lead_id}}"
+                }
+              ]
+            },
+            "description": "Deletes the test condo. Same as `apagarLead()` + sync."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Deleted one row\", () => pm.expect(pm.response.json().length).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm it is gone",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios?id=eq.{{lead_id}}&select=id",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "eq.{{lead_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "id"
+                }
+              ]
+            },
+            "description": "After deleting, searching for the id must return an empty list."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"No longer exists\", () => pm.expect(pm.response.json()).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Equipe (team)",
+      "description": "The `equipe` table: people who can be responsible for a lead.",
+      "item": [
+        {
+          "name": "List team",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/equipe?select=*&order=nome.asc",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "equipe"
+              ],
+              "query": [
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "nome.asc"
+                }
+              ]
+            },
+            "description": "Same query as the app: all team members sorted by name."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Returns an array\", () => pm.expect(j).to.be.an(\"array\"));",
+                  "pm.test(\"Each member has a nome\", () => j.forEach(m => pm.expect(m.nome).to.be.a(\"string\")));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Permissões (RPC functions)",
+      "description": "Database functions the app calls with `sb.rpc(...)`. Results depend on the logged-in user's role, so run this folder with different users to compare.",
+      "item": [
+        {
+          "name": "Can I create?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/posso",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "rpc",
+                "posso"
+              ]
+            },
+            "description": "Returns true/false. Used by `carregarPermissoes()`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acao\": \"criar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns a boolean\", () => pm.expect(pm.response.json()).to.be.a(\"boolean\"));",
+                  "console.log(\"posso criar:\", pm.response.json());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Can I edit?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/posso",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "rpc",
+                "posso"
+              ]
+            },
+            "description": "Returns true/false.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acao\": \"editar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns a boolean\", () => pm.expect(pm.response.json()).to.be.a(\"boolean\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Can I delete?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/posso",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "rpc",
+                "posso"
+              ]
+            },
+            "description": "Returns true/false.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acao\": \"excluir\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns a boolean\", () => pm.expect(pm.response.json()).to.be.a(\"boolean\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Am I admin?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/sou_admin",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "rpc",
+                "sou_admin"
+              ]
+            },
+            "description": "Controls whether the Admin button appears.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "console.log(\"sou_admin:\", pm.response.json());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Am I super-admin?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/sou_super",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "rpc",
+                "sou_super"
+              ]
+            },
+            "description": "Controls super-admin features (creating organizations).",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "console.log(\"sou_super:\", pm.response.json());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List organizations (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/admin_organizacoes",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "rpc",
+                "admin_organizacoes"
+              ]
+            },
+            "description": "Admin screen: organizations with member/lead counts. Non-admins should get an error.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Answered (200 for admins, error for others)\", () => pm.expect(pm.response.code).to.be.oneOf([200,400,401,403]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Segurança (security checks)",
+      "description": "These requests send **no login token**. They prove Row Level Security is protecting the data: nobody without a login should see or change anything.",
+      "item": [
+        {
+          "name": "List condos WITHOUT login",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios?select=id,nome",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ],
+              "query": [
+                {
+                  "key": "select",
+                  "value": "id,nome"
+                }
+              ]
+            },
+            "description": "Must return an empty list or an error, never real data."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"No data leaked\", () => {",
+                  "  if (pm.response.code === 200) pm.expect(pm.response.json()).to.eql([]);",
+                  "  else pm.expect(pm.response.code).to.be.oneOf([401,403]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create condo WITHOUT login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/condominios",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "condominios"
+              ]
+            },
+            "description": "Must be refused.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{$guid}}\",\n  \"nome\": \"[POSTMAN] não deveria entrar\",\n  \"fase\": \"cadastro\",\n  \"status\": \"nenhum\",\n  \"ordem\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Insert refused\", () => pm.expect(pm.response.code).to.be.oneOf([401,403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List team WITHOUT login",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/equipe?select=*",
+              "host": [
+                "{{supabase_url}}"
+              ],
+              "path": [
+                "rest",
+                "v1",
+                "equipe"
+              ],
+              "query": [
+                {
+                  "key": "select",
+                  "value": "*"
+                }
+              ]
+            },
+            "description": "Must return an empty list or an error."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"No data leaked\", () => {",
+                  "  if (pm.response.code === 200) pm.expect(pm.response.json()).to.eql([]);",
+                  "  else pm.expect(pm.response.code).to.be.oneOf([401,403]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -121,18 +121,51 @@
     </div>
     <div class="mp-legenda" id="mpLegenda"></div>
   </div>
-  <!-- 'Rota de visitas' box: list of stops, total distance, and buttons (sort, add visible, clear, open in Google Maps). -->
+  <!-- 'Rota de visitas' box: start point, list of stops, add a typed address, total distance, and buttons (sort, add visible, clear, export, open in Google Maps). -->
   <aside class="mp-rota" id="mpRota">
     <button class="mp-rota-cab" id="mpRotaCab" type="button">Rota de visitas <span class="n" id="mpRotaN">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
     <div class="mp-rota-corpo">
-      <div class="mp-rota-vazia" id="mpRotaVazia">Toque num ponto do mapa e escolha “Adicionar à rota”. Depois ordene e abra no Google Maps.</div>
+      <!-- Start point (ponto de partida): shown when set; otherwise the form to set it
+           (typed address, or 📍 = the device's current location). -->
+      <div class="mp-partida">
+        <div class="mp-partida-atual" id="mpPartidaAtual" hidden>
+          <span class="ico" aria-hidden="true">▶</span>
+          <span class="txt"><small>Ponto de partida</small><b id="mpPartidaNome"></b></span>
+          <button type="button" id="mpPartidaLimpar" title="Remover ponto de partida" aria-label="Remover ponto de partida">✕</button>
+        </div>
+        <div id="mpPartidaForm">
+          <label class="mp-rotulo" for="mpPartidaInput">Ponto de partida (opcional)</label>
+          <div class="mp-campo">
+            <input id="mpPartidaInput" type="text" placeholder="Endereço de saída" autocomplete="street-address">
+            <button type="button" id="mpPartidaOk">Definir</button>
+            <button type="button" class="sec" id="mpPartidaGps" title="Usar minha localização atual" aria-label="Usar minha localização atual">📍</button>
+          </div>
+        </div>
+      </div>
+      <div class="mp-rota-vazia" id="mpRotaVazia">Toque num ponto do mapa ou abra um condomínio e escolha “Adicionar à rota”. Você também pode digitar um endereço abaixo.</div>
       <ol class="mp-rota-lista" id="mpRotaLista"></ol>
+      <!-- Add any typed address as a stop (it doesn't need to be a registered condo). -->
+      <div class="mp-novo-end">
+        <label class="mp-rotulo" for="mpEndInput">Adicionar endereço à rota</label>
+        <div class="mp-campo">
+          <input id="mpEndInput" type="text" placeholder="Rua, número, cidade" autocomplete="off">
+          <button type="button" id="mpEndOk">Adicionar</button>
+        </div>
+      </div>
       <div class="mp-rota-total" id="mpRotaTotal"></div>
       <div class="mp-rota-acoes">
         <button id="mpRotaOtimizar" type="button" title="Mantém o primeiro ponto e ordena os demais pelo mais próximo">Ordenar por proximidade</button>
         <button id="mpRotaArea" type="button" title="Adiciona os pontos que estão na tela agora">Adicionar da tela</button>
         <button id="mpRotaLimpar" type="button">Limpar</button>
+        <button id="mpRotaExportar" type="button" aria-expanded="false" aria-controls="mpRotaExport">Exportar ▾</button>
         <button class="prim" id="mpRotaGmaps" type="button">Abrir no Google Maps</button>
+      </div>
+      <!-- Export menu: spreadsheet, WhatsApp, copy as text, print / save as PDF. -->
+      <div class="mp-rota-export" id="mpRotaExport" hidden>
+        <button type="button" data-exp="csv">📊 Planilha (Excel)</button>
+        <button type="button" data-exp="whats">💬 WhatsApp</button>
+        <button type="button" data-exp="copiar">📋 Copiar texto</button>
+        <button type="button" data-exp="imprimir">🖨️ Imprimir / PDF</button>
       </div>
     </div>
   </aside>
@@ -165,6 +198,11 @@
         <div class="dropdown-duplicados" id="avisoNomeDuplicado" hidden></div>
       </label>
       <label class="campo"><span>Endereço completo</span><input class="txt" id="f_endereco"></label>
+      <!-- Adds/removes this condo from the visit route of the Map view (mapa.js).
+           Only shown for condos that are already saved. -->
+      <div class="acao-rota" id="blocoRotaLead" hidden>
+        <button type="button" class="btn-rota-lead" id="btnRotaLead"></button>
+      </div>
       <div class="linha">
         <label class="campo"><span>Nº de apartamentos</span><input class="txt" id="f_aptos" type="number" min="0"></label>
         <!-- Stage options are added by JavaScript (preencherFases), from the FASES list. -->
