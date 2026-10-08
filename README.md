@@ -33,7 +33,12 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 **Map view**
 - Shows all condos on a map, colored by status, stage or competitor.
 - Heatmap mode.
-- Visit route planner: add stops, reorder them, sort by proximity, then open the route in Google Maps.
+- Visit route planner:
+  - Add condos from a map point **or straight from the condo's panel** ("Adicionar à rota"), which works even with the map closed.
+  - Set an optional **starting point** (*ponto de partida*): a typed address, or your current location with 📍.
+  - Add **any typed address** as a stop (a supplier, a lunch stop, a prospect not registered yet).
+  - Reorder stops, or sort them by proximity starting from the starting point.
+  - Open the route in Google Maps, or **export** it as an Excel spreadsheet, a WhatsApp message, plain text, or a printable page / PDF with a "Visitado" column to tick on the go.
 - Addresses are converted to coordinates automatically and cached in the browser.
 
 **Team and access**
@@ -63,6 +68,8 @@ kmd3market/
 │   ├── api/              Runs the Postman collection with Newman
 │   └── helpers/          Test setup (sandbox loader)
 ├── postman/              Postman collection + environment for the Supabase API
+├── database/             SQL schema for the Supabase tables (see database/README.md)
+├── docs/testing/         Manual Postman checks of the external integrations, with screenshots
 ├── .github/workflows/    Runs the tests automatically on GitHub
 ├── package.json          Test scripts and dev dependencies
 └── README.md
@@ -115,7 +122,7 @@ The project has three layers of automated tests. All of them run in **local mode
 | Layer | What it checks | Tool | Count |
 |---|---|---|---|
 | **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 70 |
-| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, XSS protection, plus regression tests for fixed layout bugs (reminder badge overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 16 |
+| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, XSS protection, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminder badge overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 33 |
 | **API** | The Supabase API the app depends on: login, CRUD on `condominios`, team list, permission functions, and that nothing is readable or writable without a login (Row Level Security) | Postman collection run by Newman | 19 requests |
 
 ### Run the tests
@@ -131,7 +138,7 @@ npm run test:unit                    # unit only (no install needed)
 npm run test:e2e                     # end-to-end only
 ```
 
-The unit tests freeze the clock at 5 Oct 2026, 12:00 (São Paulo time), so date-dependent results are the same on any day. The end-to-end tests start a small local web server, replace `config.js` with empty keys, and block all internet requests, so they behave the same online and offline.
+The unit tests freeze the clock at 5 Oct 2026, 12:00 (São Paulo time), so date-dependent results are the same on any day. The end-to-end tests start a small local web server, replace `config.js` with empty keys, and block all internet requests, so they behave the same online and offline. The map tests use a small fake Leaflet (`tests/e2e/fake-leaflet.js`) that records what would be drawn, and a fake address search, so they can check the route line and its order without loading real maps.
 
 ### API tests (real Supabase)
 
@@ -240,7 +247,9 @@ The app keeps a local copy in `localStorage` so nothing is lost if the connectio
 | `quitandinha:lembretes` | Reminders backup |
 | `quitandinha:colunasInvertidas` | Which columns are reversed |
 | `quitandinha:geocache` | Address coordinates for the map |
-| `quitandinha:rota` | The current visit route |
+| `quitandinha:rota` | The current visit route (stops in order) |
+| `quitandinha:rotaExtras` | Typed addresses added to the route |
+| `quitandinha:rotaInicio` | The route's starting point |
 
 The `quitandinha:` prefix comes from the project's previous name. Changing it would make browsers lose their saved data and pending changes, so it was kept on purpose.
 

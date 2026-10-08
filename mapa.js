@@ -23,6 +23,8 @@
   const CIDADE_PADRAO = "São Paulo, SP";          // usada quando o endereço não traz cidade
   // localStorage keys: geocache = saved address coordinates, rota = saved visit route.
   const CHAVE_GEO = "quitandinha:geocache", CHAVE_ROTA = "quitandinha:rota";
+  // rotaExtras = manual addresses added to the route, rotaInicio = the route's start point.
+  const CHAVE_ROTA_EXTRAS = "quitandinha:rotaExtras", CHAVE_ROTA_INICIO = "quitandinha:rotaInicio";
   // Where the Leaflet library and its heatmap plugin are downloaded from.
   const LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
   const HEAT = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js";
@@ -53,9 +55,21 @@
   // Load the coordinates cache and the saved route from localStorage.
   let geo = {}; try{ geo = JSON.parse(localStorage.getItem(CHAVE_GEO) || "{}"); }catch(e){ geo = {}; }
   try{ rota = JSON.parse(localStorage.getItem(CHAVE_ROTA) || "[]"); if(!Array.isArray(rota)) rota = []; }catch(e){ rota = []; }
+  // extras = manual address stops (id -> {id, nome, endereco, lat, lng}); inicio = start point or null.
+  let extras = {}, inicio = null;
+  try{ extras = JSON.parse(localStorage.getItem(CHAVE_ROTA_EXTRAS) || "{}") || {}; }catch(e){ extras = {}; }
+  try{ inicio = JSON.parse(localStorage.getItem(CHAVE_ROTA_INICIO) || "null"); }catch(e){ inicio = null; }
   // Small helpers to save the cache/route, and to wait a number of milliseconds.
   const salvarGeo = () => { try{ localStorage.setItem(CHAVE_GEO, JSON.stringify(geo)); }catch(e){} };
-  const salvarRota = () => { try{ localStorage.setItem(CHAVE_ROTA, JSON.stringify(rota)); }catch(e){} };
+  // Saves the route, its manual addresses (only the ones still in the route) and the start point.
+  const salvarRota = () => {
+    Object.keys(extras).forEach(id => { if(!rota.includes(id)) delete extras[id]; });
+    try{
+      localStorage.setItem(CHAVE_ROTA, JSON.stringify(rota));
+      localStorage.setItem(CHAVE_ROTA_EXTRAS, JSON.stringify(extras));
+      localStorage.setItem(CHAVE_ROTA_INICIO, JSON.stringify(inicio));
+    }catch(e){}
+  };
   const esperar = ms => new Promise(r => setTimeout(r, ms));
 
   /* ---------- carregar Leaflet só quando o mapa for aberto ---------- */
@@ -310,83 +324,318 @@
 
   /* ---------- rota ---------- */
   // ---------- VISIT ROUTE ----------
+  // The route is a list of stops, in order. A stop is either:
+  //   - a condo: its id, e.g. "c_lq3k9a8xyz" (position comes from its geocoded address)
+  //   - a manual address typed by the user: an id starting with "x_", whose data
+  //     ({nome, endereco, lat, lng}) is kept in the 'extras' object.
+  // 'inicio' is the optional starting point (ponto de partida): an address or the user's GPS location.
+  // It is not a numbered stop: the route starts there and goes through the stops in order.
+  const ehExtra = id => typeof id === "string" && id.startsWith("x_");
+
   // Straight-line distance in km between two points (Haversine formula; 6371 = Earth radius in km).
   function km(a, b){
     const R = 6371, rad = x => x*Math.PI/180, dLat = rad(b.lat-a.lat), dLng = rad(b.lng-a.lng);
     const h = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;
     return 2*R*Math.asin(Math.sqrt(h));
   }
-  // Position of a route stop, or null if it's not on the map right now (filtered out or no location).
-  function pontoDaRota(id){ return pontos.get(id) || null; }
-  // Draws the route panel (numbered list with up/down/remove buttons), the total distance,
-  // a dashed gold line connecting the stops on the map and a numbered marker on each stop. Then saves the route.
+  // Position of a route stop, or null if it has no known location.
+  // For condos: the dot on the map if it's drawn, otherwise the exact position saved in the
+  // geocoding cache (so a condo hidden by a filter still counts in the route).
+  function pontoDaRota(id){
+    if(ehExtra(id)){ const x = extras[id]; return x && x.lat != null ? {lat:x.lat, lng:x.lng} : null; }
+    const p = pontos.get(id); if(p) return {lat:p.lat, lng:p.lng};
+    const l = leads.find(x => x.id === id), k = l && chave(l), g = k && geo[k];
+    return g && g.lat != null ? {lat:g.lat, lng:g.lng} : null;
+  }
+  const temInicio = () => !!(inicio && inicio.lat != null);
+  // Name/address of a stop, for the list and the exports. 'l' = the condo (empty for manual addresses).
+  function infoParada(id){
+    if(ehExtra(id)){ const x = extras[id] || {}; return {nome:x.nome || x.endereco || "Endereço", endereco:x.endereco || "", extra:true, l:{}}; }
+    const l = leads.find(x => x.id === id) || {};
+    return {nome:l.nome || "(sem nome)", endereco:l.endereco || "", extra:false, l};
+  }
+  // The full path in order, only with points that have a location: [start?, stop, stop, ...].
+  function percurso(){
+    const pts = [];
+    if(temInicio()) pts.push({id:"__inicio", lat:inicio.lat, lng:inicio.lng, inicio:true});
+    rota.forEach(id => { const p = pontoDaRota(id); if(p) pts.push({id, lat:p.lat, lng:p.lng}); });
+    return pts;
+  }
+  function distanciaTotal(pts){
+    let total = 0;
+    for(let i = 1; i < pts.length; i++) total += km(pts[i-1], pts[i]);
+    return total;
+  }
+  const fmtKm = n => n.toFixed(1).replace(".", ",");
+
+  // Draws the route panel (start point, numbered list with up/down/remove buttons, total distance)
+  // and, when the map is open, the dashed gold line and the numbered markers. Then saves the route.
+  // The panel part also works while the map is closed (e.g. when adding from the condo panel).
   function desenharRota(){
-    rota = rota.filter(id => leads.some(l => l.id === id));
-    const validos = rota.filter(id => pontoDaRota(id));
+    rota = rota.filter(id => ehExtra(id) ? !!extras[id] : leads.some(l => l.id === id));   // drop deleted condos
+    const pts = percurso(), nComPos = pts.filter(p => !p.inicio).length;
+
+    // start point block: shows the current start, or the form to set one
+    $m("#mpPartidaAtual").hidden = !temInicio();
+    $m("#mpPartidaForm").hidden = temInicio();
+    $m("#mpPartidaNome").textContent = temInicio() ? inicio.nome : "";
+
     $m("#mpRotaN").textContent = rota.length;
     $m("#mpRotaVazia").style.display = rota.length ? "none" : "";
     $m("#mpRotaLista").innerHTML = rota.map((id, i) => {
-      const l = leads.find(x => x.id === id), ok = !!pontoDaRota(id);
-      return '<li data-id="'+escapar(id)+'"><span class="num">'+(i+1)+'</span><div class="txt"><b>'+escapar(l.nome||"(sem nome)")+'</b><span>'+
-        escapar(ok ? (l.endereco||"") : "fora do mapa (filtro ou sem localização)")+'</span></div>'+
-        '<button data-acao="sobe" title="Subir" '+(i===0?'disabled':'')+'>▲</button>'+
-        '<button data-acao="desce" title="Descer" '+(i===rota.length-1?'disabled':'')+'>▼</button>'+
-        '<button data-acao="tira" title="Tirar da rota">✕</button></li>';
+      const inf = infoParada(id), ok = !!pontoDaRota(id);
+      const sub = !ok ? (inf.extra ? "endereço não encontrado" : "sem localização ainda · confira o endereço")
+                      : (inf.extra ? "📌 Endereço adicionado" : inf.endereco);
+      return '<li data-id="'+escapar(id)+'"><span class="num'+(inf.extra?' extra':'')+'">'+(i+1)+'</span><div class="txt"><b>'+escapar(inf.nome)+'</b><span>'+
+        escapar(sub)+'</span></div>'+
+        '<button data-acao="sobe" title="Subir" aria-label="Subir" '+(i===0?'disabled':'')+'>▲</button>'+
+        '<button data-acao="desce" title="Descer" aria-label="Descer" '+(i===rota.length-1?'disabled':'')+'>▼</button>'+
+        '<button data-acao="tira" title="Tirar da rota" aria-label="Tirar da rota">✕</button></li>';
     }).join("");
-    let total = 0;
-    for(let i = 1; i < validos.length; i++) total += km(pontoDaRota(validos[i-1]), pontoDaRota(validos[i]));
-    $m("#mpRotaTotal").textContent = validos.length > 1 ? "≈ " + total.toFixed(1).replace(".",",") + " km em linha reta (o trajeto real é maior)" : "";
-    $m("#mpRotaGmaps").disabled = validos.length < 2;
-    $m("#mpRotaOtimizar").disabled = validos.length < 3;
-    camadaRota.clearLayers();
-    if(validos.length > 1) L.polyline(validos.map(id => [pontoDaRota(id).lat, pontoDaRota(id).lng]),
-      {color:"#D4A85C", weight:3, opacity:.9, dashArray:"6 6", interactive:false}).addTo(camadaRota);
-    validos.forEach(id => {
-      const p = pontoDaRota(id);
-      L.marker([p.lat, p.lng], {interactive:false, zIndexOffset:1000,
-        icon:L.divIcon({className:"", html:'<div class="mp-num">'+(rota.indexOf(id)+1)+'</div>', iconSize:[22,22], iconAnchor:[11,11]})}).addTo(camadaRota);
-    });
+
+    $m("#mpRotaTotal").textContent = pts.length > 1
+      ? "≈ " + fmtKm(distanciaTotal(pts)) + " km em linha reta" + (temInicio() ? ", saindo do ponto de partida" : "") + " (o trajeto real é maior)" : "";
+    $m("#mpRotaGmaps").disabled = pts.length < 2;
+    $m("#mpRotaOtimizar").disabled = nComPos < (temInicio() ? 2 : 3);
+    $m("#mpRotaOtimizar").title = temInicio()
+      ? "Sai do ponto de partida e vai sempre para a parada mais próxima"
+      : "Mantém o primeiro ponto e ordena os demais pelo mais próximo";
+    $m("#mpRotaExportar").disabled = !rota.length;
+    if(!rota.length){ $m("#mpRotaExport").hidden = true; $m("#mpRotaExportar").setAttribute("aria-expanded", "false"); }
     salvarRota();
+    document.dispatchEvent(new CustomEvent("rota-mudou"));   // lets app.js update the button in the condo panel
+
+    if(!mapa || !camadaRota || !L) return;                    // map not open yet: panel only
+    camadaRota.clearLayers();
+    if(pts.length > 1) L.polyline(pts.map(p => [p.lat, p.lng]),
+      {color:"#D4A85C", weight:3, opacity:.9, dashArray:"6 6", interactive:false}).addTo(camadaRota);
+    pts.forEach(p => {
+      const html = p.inicio
+        ? '<div class="mp-num mp-inicio" title="Ponto de partida">▶</div>'
+        : '<div class="mp-num'+(ehExtra(p.id)?' mp-extra':'')+'">'+(rota.indexOf(p.id)+1)+'</div>';
+      L.marker([p.lat, p.lng], {interactive:false, zIndexOffset:1000,
+        icon:L.divIcon({className:"", html, iconSize:[22,22], iconAnchor:[11,11]})}).addTo(camadaRota);
+    });
   }
   // Adds a condo to the route, or removes it if it's already there.
   function alternarNaRota(id){
     const i = rota.indexOf(id);
-    if(i >= 0) rota.splice(i, 1); else { rota.push(id); $m("#mpRota").classList.add("aberta"); }
-    desenharRota();
-  }
-  // 'Ordenar por proximidade': keeps the first stop and then always goes to the closest
-  // remaining one ("nearest neighbor" — simple and good enough, not always the perfect route).
-  function otimizar(){
-    const ids = rota.filter(id => pontoDaRota(id)), fora = rota.filter(id => !pontoDaRota(id));
-    if(ids.length < 3) return;
-    const ordem = [ids.shift()];
-    while(ids.length){
-      const ult = pontoDaRota(ordem[ordem.length-1]);
-      let melhor = 0, dMin = Infinity;
-      ids.forEach((id, i) => { const d = km(ult, pontoDaRota(id)); if(d < dMin){ dMin = d; melhor = i; } });
-      ordem.push(ids.splice(melhor, 1)[0]);
+    if(i >= 0) rota.splice(i, 1);
+    else {
+      rota.push(id); $m("#mpRota").classList.add("aberta");
+      const l = leads.find(x => x.id === id);
+      if(l) enfileirar([l]);              // make sure its address gets a position, even with the map closed
     }
-    rota = ordem.concat(fora);
     desenharRota();
-    avisar("Rota reordenada: primeiro ponto mantido, os demais pelo mais próximo.");
   }
-  // Opens the route in Google Maps (driving directions).
-  // Google Maps accepts at most 11 stops in a link, so longer routes are cut.
+  // 'Ordenar por proximidade' ("nearest neighbor": simple and good enough, not always the perfect route).
+  // With a start point: leave from it and always go to the closest remaining stop.
+  // Without one: keep the first stop and order the rest the same way.
+  // Stops without a location stay at the end, in their current order.
+  function otimizar(){
+    const comPos = rota.filter(id => pontoDaRota(id)), sem = rota.filter(id => !pontoDaRota(id));
+    if(comPos.length < (temInicio() ? 2 : 3)) return;
+    const ordem = temInicio() ? [] : [comPos.shift()];
+    let atual = temInicio() ? inicio : pontoDaRota(ordem[0]);
+    while(comPos.length){
+      let melhor = 0, dMin = Infinity;
+      comPos.forEach((id, i) => { const d = km(atual, pontoDaRota(id)); if(d < dMin){ dMin = d; melhor = i; } });
+      const prox = comPos.splice(melhor, 1)[0];
+      ordem.push(prox); atual = pontoDaRota(prox);
+    }
+    rota = ordem.concat(sem);
+    desenharRota();
+    avisar(temInicio() ? "Rota reordenada a partir do ponto de partida, sempre para a parada mais próxima."
+                       : "Rota reordenada: primeiro ponto mantido, os demais pelo mais próximo.");
+  }
+  // Builds the Google Maps directions link (driving). The start point, if any, is the origin.
+  // Google Maps accepts at most 11 points in a link (origin + 9 stops + destination), so longer routes are cut.
+  function urlGmaps(){
+    let pts = percurso();
+    if(pts.length < 2) return null;
+    const cortado = pts.length > 11;
+    if(cortado) pts = pts.slice(0, 11);
+    const c = p => p.lat.toFixed(6)+","+p.lng.toFixed(6);
+    let url = "https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+c(pts[0])+"&destination="+c(pts[pts.length-1]);
+    if(pts.length > 2) url += "&waypoints="+pts.slice(1, -1).map(c).join("%7C");
+    return {url, cortado};
+  }
   function abrirGmaps(){
-    let ids = rota.filter(id => pontoDaRota(id));
-    if(ids.length < 2) return;
-    if(ids.length > 11){ avisar("O Google Maps aceita até 11 paradas por rota. Abri as 11 primeiras.", true); ids = ids.slice(0, 11); }
-    const c = id => pontoDaRota(id).lat.toFixed(6)+","+pontoDaRota(id).lng.toFixed(6);
-    let url = "https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+c(ids[0])+"&destination="+c(ids[ids.length-1]);
-    if(ids.length > 2) url += "&waypoints="+ids.slice(1, -1).map(c).join("%7C");
-    window.open(url, "_blank", "noopener");
+    const r = urlGmaps(); if(!r) return;
+    if(r.cortado) avisar("O Google Maps aceita até 11 pontos por rota. Abri os 11 primeiros.", true);
+    window.open(r.url, "_blank", "noopener");
   }
   // Adds every point currently visible on screen to the route (up to 25 stops).
   function adicionarDaTela(){
+    if(!mapa) return;
     const b = mapa.getBounds(); let novos = 0;
     pontos.forEach((p, id) => { if(!rota.includes(id) && b.contains([p.lat, p.lng]) && rota.length < 25){ rota.push(id); novos++; } });
     if(!novos) avisar("Nenhum ponto novo na área visível."); else { $m("#mpRota").classList.add("aberta"); desenharRota(); }
   }
+
+  /* ---------- endereços digitados (parada avulsa e ponto de partida) ---------- */
+  // ---------- TYPED ADDRESSES (manual stop and start point) ----------
+  // Turns a typed address into coordinates, using the same cache and rules as the condos.
+  // Returns {lat, lng}, or null if not found. Throws if the service can't be reached.
+  async function geocodificarTexto(txt){
+    const q = consulta({endereco:txt}); if(!q) return null;
+    const k = normalizarNome(q), g = geo[k];
+    if(g && g.lat != null) return {lat:g.lat, lng:g.lng};
+    let r = await nominatim(q);
+    const curto = txt.split(",")[0].trim()+", "+CIDADE_PADRAO+", Brasil";
+    if(!r && curto !== q){ await esperar(1100); r = await nominatim(curto); }
+    geo[k] = r ? {lat:r.lat, lng:r.lng, t:Date.now()} : {lat:null, t:Date.now()};
+    salvarGeo();
+    return r;
+  }
+  // Shared flow for the two address forms: validate, lock the button while searching, report errors.
+  async function comEndereco(campo, botao, aoAchar){
+    const txt = campo.value.trim();
+    if(!txt){ avisar("Digite um endereço (rua, número e cidade)."); campo.focus(); return; }
+    const rotulo = botao.textContent;
+    botao.disabled = true; botao.textContent = "…";
+    try{
+      const p = await geocodificarTexto(txt);
+      if(!p){ avisar("Endereço não encontrado. Confira rua, número e cidade e tente de novo.", true); campo.focus(); return; }
+      campo.value = "";
+      aoAchar(txt, p);
+    }catch(e){
+      avisar("Não consegui consultar o endereço agora. Verifique a internet e tente de novo.", true);
+    }finally{
+      botao.disabled = false; botao.textContent = rotulo;
+    }
+  }
+  // Adds a typed address as a route stop (e.g. a supplier, a lunch stop, a prospect not registered yet).
+  function adicionarEndereco(){
+    comEndereco($m("#mpEndInput"), $m("#mpEndOk"), (txt, p) => {
+      const id = "x_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      extras[id] = {id, nome:txt, endereco:txt, lat:p.lat, lng:p.lng};
+      rota.push(id);
+      desenharRota();
+      avisar("Endereço adicionado à rota.");
+    });
+  }
+  // Sets the start point from a typed address.
+  function definirPartida(){
+    comEndereco($m("#mpPartidaInput"), $m("#mpPartidaOk"), (txt, p) => {
+      inicio = {nome:txt, endereco:txt, lat:p.lat, lng:p.lng};
+      desenharRota();
+      avisar("Ponto de partida definido.");
+    });
+  }
+  // Sets the start point to where the user is now (asks the browser for permission; needs HTTPS).
+  function usarMinhaLocalizacao(){
+    if(!("geolocation" in navigator)){ avisar("Este navegador não informa a localização. Digite o endereço de partida.", true); return; }
+    const b = $m("#mpPartidaGps"); b.disabled = true;
+    navigator.geolocation.getCurrentPosition(pos => {
+      b.disabled = false;
+      inicio = {nome:"Minha localização", endereco:"", lat:pos.coords.latitude, lng:pos.coords.longitude, gps:true};
+      desenharRota();
+      avisar("Ponto de partida: sua localização atual.");
+    }, err => {
+      b.disabled = false;
+      avisar(err && err.code === 1
+        ? "A localização foi bloqueada no navegador. Libere a permissão ou digite o endereço de partida."
+        : "Não foi possível obter sua localização. Digite o endereço de partida.", true);
+    }, {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
+  }
+
+  /* ---------- exportar a rota ---------- */
+  // ---------- EXPORT THE ROUTE ----------
+  // One row per point, in order (start point first), with the distance from the previous point.
+  function linhasRota(){
+    const linhas = []; let anterior = null;
+    if(temInicio()){
+      linhas.push({ordem:"Partida", tipo:"Ponto de partida", nome:inicio.nome, endereco:inicio.endereco || "",
+        zona:"", fase:"", responsavel:"", contatos:"", lat:inicio.lat, lng:inicio.lng, dist:null});
+      anterior = inicio;
+    }
+    rota.forEach((id, i) => {
+      const inf = infoParada(id), l = inf.l, p = pontoDaRota(id);
+      const dist = p && anterior ? km(anterior, p) : null;
+      if(p) anterior = p;
+      linhas.push({
+        ordem:String(i+1), tipo:inf.extra ? "Endereço avulso" : "Condomínio", nome:inf.nome, endereco:inf.endereco,
+        zona:l.zona || "", fase:inf.extra ? "" : ((FASES.find(f => f.id === (l.fase||"cadastro")) || {}).nome || ""),
+        responsavel:l.responsavel || "",
+        contatos:(l.contatos || []).map(c => [c.nome, c.telefone].filter(Boolean).join(" ")).filter(Boolean).join(" | "),
+        lat:p ? p.lat : null, lng:p ? p.lng : null, dist
+      });
+    });
+    return linhas;
+  }
+  const hojeBR = () => new Date().toLocaleDateString("pt-BR");
+  const linkPonto = r => r.lat != null ? "https://www.google.com/maps/search/?api=1&query="+r.lat.toFixed(6)+","+r.lng.toFixed(6) : "";
+
+  // Plain-text version, for WhatsApp and the clipboard.
+  function textoRota(){
+    const linhas = linhasRota(), g = urlGmaps(), pts = percurso();
+    const out = ["🚗 Rota de visitas — KMD3 Market ("+hojeBR()+")", ""];
+    linhas.forEach(r => {
+      if(r.ordem === "Partida"){ out.push("🏁 Partida: "+r.nome); return; }
+      out.push(r.ordem+". "+r.nome+(r.endereco && r.endereco !== r.nome ? " — "+r.endereco : ""));
+      if(r.contatos) out.push("   Contato: "+r.contatos);
+      if(r.lat == null) out.push("   (sem localização no mapa)");
+    });
+    out.push("");
+    if(pts.length > 1) out.push("≈ "+fmtKm(distanciaTotal(pts))+" km em linha reta");
+    if(g) out.push("🗺️ Google Maps: "+g.url+(g.cortado ? " (só os 11 primeiros pontos)" : ""));
+    return out.join("\n");
+  }
+  // Spreadsheet (CSV) in the same Excel-friendly format as the main export: ";" separator + BOM for accents.
+  function exportarCSVRota(){
+    const cab = ["Ordem","Tipo","Nome","Endereço","Zona","Fase","Responsável","Contatos",
+      "Distância do ponto anterior (km)","Latitude","Longitude","Abrir no Google Maps"];
+    const linhas = linhasRota().map(r => [r.ordem, r.tipo, r.nome, r.endereco, r.zona, r.fase, r.responsavel, r.contatos,
+      r.dist == null ? "" : fmtKm(r.dist), r.lat == null ? "" : r.lat.toFixed(6), r.lng == null ? "" : r.lng.toFixed(6), linkPonto(r)]);
+    const g = urlGmaps(), pts = percurso();
+    linhas.push([]);
+    if(pts.length > 1) linhas.push(["Total", "", "≈ "+fmtKm(distanciaTotal(pts))+" km em linha reta"]);
+    if(g) linhas.push(["Rota completa", "", g.url]);
+    const csv = [cab, ...linhas].map(r => r.map(c => '"'+String(c ?? "").replace(/"/g,'""')+'"').join(";")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"}));
+    a.download = "rota-de-visitas-"+new Date().toISOString().slice(0,10)+".csv";
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    avisar("Planilha da rota gerada.");
+  }
+  // Opens WhatsApp with the route text ready to send (the user picks the contact).
+  function enviarWhatsRota(){
+    window.open("https://wa.me/?text="+encodeURIComponent(textoRota()), "_blank", "noopener");
+  }
+  // Copies the route text. Falls back to a hidden textarea on browsers without the Clipboard API.
+  async function copiarRota(){
+    const txt = textoRota();
+    try{ await navigator.clipboard.writeText(txt); }
+    catch(e){
+      const t = document.createElement("textarea"); t.value = txt; t.style.position = "fixed"; t.style.opacity = "0";
+      document.body.appendChild(t); t.select();
+      try{ document.execCommand("copy"); }catch(_){}
+      t.remove();
+    }
+    avisar("Rota copiada. Cole onde quiser.");
+  }
+  // Printable page (also "Save as PDF" from the print dialog), to take on the visits.
+  function imprimirRota(){
+    const w = window.open("", "_blank");
+    if(!w){ avisar("O navegador bloqueou a janela de impressão. Permita pop-ups para este site.", true); return; }
+    const g = urlGmaps(), pts = percurso();
+    const linhas = linhasRota().map(r => '<tr><td class="n">'+escapar(r.ordem)+'</td><td><b>'+escapar(r.nome)+'</b>'+
+      (r.endereco && r.endereco !== r.nome ? '<br><span>'+escapar(r.endereco)+'</span>' : '')+'</td><td>'+escapar(r.contatos)+'</td><td>'+
+      escapar(r.responsavel)+'</td><td class="d">'+(r.dist == null ? "" : escapar(fmtKm(r.dist))+" km")+'</td><td class="ok"></td></tr>').join("");
+    w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Rota de visitas</title><style>'+
+      'body{font:13px/1.4 system-ui,sans-serif;color:#0E2A33;margin:24px}h1{font-size:18px;margin:0 0 2px}p{margin:0 0 14px;color:#4B6459}'+
+      'table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #D6D9D0;padding:7px 6px;text-align:left;vertical-align:top}'+
+      'th{font-size:11px;color:#4B6459}td span{color:#4B6459;font-size:12px}.n{width:52px;font-weight:700}.d{white-space:nowrap}'+
+      '.ok{width:46px;border-left:1px solid #D6D9D0}.rod{margin-top:14px;font-size:12px;word-break:break-all}'+
+      '</style></head><body><h1>Rota de visitas — KMD3 Market</h1><p>'+escapar(hojeBR())+
+      (pts.length > 1 ? ' · ≈ '+escapar(fmtKm(distanciaTotal(pts)))+' km em linha reta' : '')+'</p>'+
+      '<table><thead><tr><th>Ordem</th><th>Local</th><th>Contatos</th><th>Responsável</th><th>Distância</th><th>Visitado</th></tr></thead><tbody>'+
+      linhas+'</tbody></table>'+(g ? '<p class="rod">Google Maps: '+escapar(g.url)+'</p>' : '')+
+      '<script>window.onload=function(){window.print()}<\/script></body></html>');
+    w.document.close();
+  }
+  const EXPORTAR = {csv:exportarCSVRota, whats:enviarWhatsRota, copiar:copiarRota, imprimir:imprimirRota};
 
   /* ---------- lista “sem localização” ---------- */
   // ---------- 'NO LOCATION' LIST ----------
@@ -434,6 +683,7 @@
       mostrarBotao(true);
       mapa.invalidateSize();
       enfileirar(filtrar());
+      enfileirar(leads.filter(l => rota.includes(l.id)));   // route condos hidden by a filter still need a position
       desenharPontos();
     } else {
       ativo = false;
@@ -507,8 +757,29 @@
   });
   $m("#mpRotaOtimizar").addEventListener("click", otimizar);
   $m("#mpRotaArea").addEventListener("click", adicionarDaTela);
-  $m("#mpRotaLimpar").addEventListener("click", () => { rota = []; desenharRota(); });
+  // 'Limpar' removes all stops (asks first when there are several). The start point is kept.
+  $m("#mpRotaLimpar").addEventListener("click", () => {
+    if(rota.length > 2 && !confirm("Tirar as "+rota.length+" paradas da rota? O ponto de partida continua.")) return;
+    rota = []; desenharRota();
+  });
   $m("#mpRotaGmaps").addEventListener("click", abrirGmaps);
+  // Start point: typed address, current GPS location, or remove it.
+  $m("#mpPartidaOk").addEventListener("click", definirPartida);
+  $m("#mpPartidaInput").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); definirPartida(); } });
+  $m("#mpPartidaGps").addEventListener("click", usarMinhaLocalizacao);
+  $m("#mpPartidaLimpar").addEventListener("click", () => { inicio = null; desenharRota(); });
+  // Manual address stop.
+  $m("#mpEndOk").addEventListener("click", adicionarEndereco);
+  $m("#mpEndInput").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); adicionarEndereco(); } });
+  // 'Exportar' opens a small menu; each option has data-exp = csv / whats / copiar / imprimir.
+  $m("#mpRotaExportar").addEventListener("click", () => {
+    const menu = $m("#mpRotaExport"); menu.hidden = !menu.hidden;
+    $m("#mpRotaExportar").setAttribute("aria-expanded", menu.hidden ? "false" : "true");
+  });
+  $m("#mpRotaExport").addEventListener("click", e => {
+    const b = e.target.closest("[data-exp]"); if(!b || !rota.length) return;
+    EXPORTAR[b.dataset.exp]();
+  });
   // '⚠ N sem localização' button: show/hide the list.
   $m("#mpSemLoc").addEventListener("click", () => {
     const box = $m("#mpLista"); box.hidden = !box.hidden;
@@ -523,11 +794,19 @@
     const b = e.target.closest("button.it"); if(b){ $m("#mpLista").hidden = true; abrirPainel(b.dataset.id); }
   });
 
-  // The ONE function this file exposes to app.js: desenhar() calls it after every change,
+  // Function exposed to app.js: desenhar() calls it after every change,
   // so the map stays in sync with the board (only does work while the map is open).
   window.__atualizarMapa = function(){
     if(!ativo) return;
     enfileirar(filtrar());
     agendarDesenho();
+  };
+  // Small route API used by the condo panel in app.js ("Adicionar à rota" button).
+  // It works even while the map is closed: the route is saved and appears when the map opens.
+  window.__rota = {
+    tem: id => rota.includes(id),
+    posicao: id => rota.indexOf(id) + 1,
+    total: () => rota.length,
+    alternar(id){ alternarNaRota(id); return rota.includes(id); }
   };
 })();

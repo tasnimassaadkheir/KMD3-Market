@@ -1277,7 +1277,29 @@ function abrirPainel(id, faseInicial){
   }
   // Slide the panel in, show the dark overlay, and focus the name field after the animation.
   $("#painel").classList.add("aberto"); $("#fundo").classList.add("aberto");
+  atualizarBotaoRotaLead();
   setTimeout(()=>$("#f_nome").focus(), 180);
+}
+// "Adicionar à rota" button in the panel. The route itself lives in mapa.js (window.__rota).
+// Shows "📍 Adicionar à rota de visitas" or "✓ Parada 2 de 5 na rota · Remover".
+// Hidden for a new condo (it has no id until it's saved).
+function atualizarBotaoRotaLead(){
+  const bloco = $("#blocoRotaLead"), btn = $("#btnRotaLead"), api = window.__rota;
+  bloco.hidden = !(editandoId && api);
+  if(bloco.hidden) return;
+  const na = api.tem(editandoId);
+  btn.classList.toggle("na-rota", na);
+  btn.textContent = na
+    ? "✓ Parada "+api.posicao(editandoId)+" de "+api.total()+" na rota · Remover"
+    : "📍 Adicionar à rota de visitas";
+}
+function alternarRotaLead(){
+  if(!editandoId || !window.__rota) return;
+  const l = leads.find(x=>x.id===editandoId) || {};
+  const entrou = window.__rota.alternar(editandoId);
+  avisar(entrou
+    ? (l.nome||"Condomínio")+" entrou na rota de visitas. Abra o Mapa para ver o trajeto."
+    : (l.nome||"Condomínio")+" saiu da rota de visitas.");
 }
 // Closes the condo panel and the team panel.
 function fecharTudo(){
@@ -1713,6 +1735,9 @@ $("#obsTexto").addEventListener("keydown", e=>{
 
 // Check for similar names while typing the condo name.
 $("#f_nome").addEventListener("input", verificarNomeDuplicado);
+// Visit route button in the panel; mapa.js fires "rota-mudou" whenever the route changes.
+$("#btnRotaLead").addEventListener("click", alternarRotaLead);
+document.addEventListener("rota-mudou", atualizarBotaoRotaLead);
 
 /* ================= administração (organizações, membros, acessos) ================= */
 // =============================================================================

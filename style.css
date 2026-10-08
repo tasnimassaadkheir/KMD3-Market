@@ -449,7 +449,16 @@
   .btn-whats:hover{background:#1EBE5A}
   .btn-whats:disabled{background:#C7CAC0;cursor:not-allowed}
   /* '+ Adicionar contato' button. */
-  .btn-add-contato{align-self:flex-end;background:#093E4F;color:#fff;border:0;
+  /* "Adicionar à rota" button under the address field in the condo panel.
+   .na-rota = the condo is already in the route (green). */
+.acao-rota{margin:-4px 0 12px}
+.acao-rota[hidden]{display:none}
+.btn-rota-lead{border:1px dashed #9FB7BF;background:#F4F8F9;color:#093E4F;border-radius:8px;padding:7px 11px;
+  font-size:12.5px;font-weight:600;cursor:pointer}
+.btn-rota-lead:hover{background:#E8F1F4;border-style:solid}
+.btn-rota-lead.na-rota{border:1px solid #9FD3B4;background:#EAF6EF;color:#1D6B3E}
+.btn-rota-lead.na-rota:hover{background:#DDF0E4}
+.btn-add-contato{align-self:flex-end;background:#093E4F;color:#fff;border:0;
     padding:8px 14px;border-radius:8px;font-weight:600;font-size:12.5px}
   .btn-add-contato:hover{background:#0E627D}
   /* Panel footer: Salvar (save), Cancelar (cancel) and Excluir (delete) buttons. */
@@ -633,10 +642,12 @@ body.vista-mapa #quadro{display:none}
 .mp-rota-cab .n{background:#093E4F;color:#fff;border-radius:20px;padding:1px 8px;font-size:11px}
 .mp-rota-cab svg{margin-left:auto;width:14px;height:14px;transition:transform .15s}
 .mp-rota.aberta .mp-rota-cab svg{transform:rotate(180deg)}
-.mp-rota-corpo{display:none;flex-direction:column;min-height:0;border-top:1px solid #E1E5DC}
+/* The whole route body scrolls (start point, stops, address field, buttons) when it doesn't fit. */
+.mp-rota-corpo{display:none;flex-direction:column;min-height:0;border-top:1px solid #E1E5DC;overflow-y:auto}
 .mp-rota.aberta .mp-rota-corpo{display:flex}
 /* Numbered list of stops in the route, with up/down/remove buttons. */
-.mp-rota-lista{list-style:none;margin:0;padding:6px;overflow-y:auto;min-height:40px;flex:1}
+.mp-rota-lista{list-style:none;margin:0;padding:6px;flex:none}
+.mp-rota-lista:empty{display:none}
 .mp-rota-lista li{display:flex;align-items:center;gap:6px;padding:5px 4px;border-radius:8px;font-size:12px}
 .mp-rota-lista li:hover{background:#EEF2EC}
 .mp-rota-lista .num{flex:none;width:20px;height:20px;border-radius:50%;background:#093E4F;color:#fff;font-size:11px;font-weight:700;
@@ -655,6 +666,43 @@ body.vista-mapa #quadro{display:none}
 .mp-rota-acoes .prim{background:#093E4F;color:#fff;flex-basis:100%}
 .mp-rota-acoes .prim:hover{background:#0E627D}
 .mp-rota-acoes button:disabled{opacity:.5;cursor:not-allowed}
+/* manual-address stops: gold number, so they stand out from the condos */
+.mp-rota-lista .num.extra{background:var(--milho);color:#22180A}
+/* small field label + "input + button" row, used by the start point and the add-address forms */
+.mp-rotulo{display:block;font-size:11px;font-weight:700;color:var(--tinta-suave);margin:0 0 5px}
+.mp-campo{display:flex;gap:5px}
+.mp-campo input{flex:1;min-width:0;height:30px;padding:0 9px;border:1px solid #D6D9D0;border-radius:8px;
+  background:#fff;color:var(--tinta);font-size:12px;outline:none}
+.mp-campo input:focus{border-color:#093E4F;box-shadow:0 0 0 3px rgba(9,62,79,.14)}
+.mp-campo button{flex:none;height:30px;padding:0 10px;border:0;border-radius:8px;background:#093E4F;color:#fff;
+  font-size:12px;font-weight:600;cursor:pointer}
+.mp-campo button:hover{background:#0E627D}
+.mp-campo button.sec{width:30px;padding:0;background:#E6ECE6;color:var(--tinta)}
+.mp-campo button.sec:hover{background:#D3DDD3}
+.mp-campo button:disabled{opacity:.6;cursor:wait}
+/* start point (ponto de partida) block at the top of the route */
+.mp-partida{padding:9px 10px 8px;border-bottom:1px solid #E1E5DC}
+.mp-partida-atual{display:flex;align-items:center;gap:8px}
+.mp-partida-atual[hidden],#mpPartidaForm[hidden]{display:none}
+.mp-partida-atual .ico{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ok);color:#fff;font-size:9px;
+  display:flex;align-items:center;justify-content:center}
+.mp-partida-atual .txt{flex:1;min-width:0;line-height:1.25}
+.mp-partida-atual small{display:block;font-size:10.5px;color:var(--tinta-suave);font-weight:600}
+.mp-partida-atual b{display:block;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-partida-atual button{flex:none;width:22px;height:22px;border:0;border-radius:6px;background:#E6ECE6;color:var(--tinta);
+  font-size:11px;cursor:pointer;padding:0}
+.mp-partida-atual button:hover{background:#D3DDD3}
+.mp-novo-end{padding:4px 10px 6px}
+/* export menu under the buttons */
+.mp-rota-export{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px;margin-top:-2px}
+.mp-rota-export[hidden]{display:none}
+.mp-rota-export button{flex:1 1 calc(50% - 3px);height:30px;border-radius:8px;border:1px solid #D6D9D0;background:#fff;
+  color:#093E4F;font-size:12px;font-weight:600;cursor:pointer;padding:0 8px;white-space:nowrap}
+.mp-rota-export button:hover{background:#EEF2EC}
+#mpRotaExportar[aria-expanded="true"]{background:#093E4F;color:#fff}
+/* route markers on the map: green ▶ = start point, gold = typed address */
+.mp-num.mp-inicio{background:var(--ok);font-size:9px}
+.mp-num.mp-extra{background:var(--milho);color:#22180A}
 /* Floating list of condos that could not be placed on the map. */
 .mp-lista{position:absolute;top:84px;left:10px;width:300px;max-width:calc(100% - 20px);max-height:50%;overflow:auto;z-index:1100;
   background:rgba(251,250,245,.98);color:var(--tinta);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.35);padding:10px}
@@ -682,6 +730,10 @@ body.vista-mapa #quadro{display:none}
   display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.5)}
 /* On phones the route box moves to the bottom of the map. */
 @media (max-width:720px){
+  .mp-campo input{font-size:16px}     /* 16px+ stops iPhones from zooming in when the field is tapped */
+  /* in the map view the route box sits at the bottom, so messages (toasts) show at the top instead */
+  body.vista-mapa .aviso{bottom:auto;top:12px;transform:translate(-50%,-80px)}
+  body.vista-mapa .aviso.on{transform:translate(-50%,0)}
   .mp-topo{right:10px}
   .mp-rota{top:auto;bottom:10px;left:10px;right:10px;width:auto;max-height:46%}
   .leaflet-bottom.leaflet-left{bottom:56px}
