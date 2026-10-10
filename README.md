@@ -22,6 +22,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - A timeline of notes, with the date and author added automatically. Notes can be edited.
 - An automatic change log with update frequency statistics.
 - A duplicate warning while typing a name that looks like an existing condo.
+- A green **SULTS** toggle in the panel header. When on, the card shows a green **S** badge next to the name of whoever edited it last.
 
 **Reminders (Lembretes)**
 - Reminders per condo, with quick buttons (*Hoje, Amanhã, Em 3 dias…*).
@@ -121,8 +122,8 @@ The project has three layers of automated tests. All of them run in **local mode
 
 | Layer | What it checks | Tool | Count |
 |---|---|---|---|
-| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 70 |
-| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, XSS protection, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminder badge overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 33 |
+| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 73 |
+| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, XSS protection, the SULTS toggle and badge, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminder badge overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 38 |
 | **API** | The Supabase API the app depends on: login, CRUD on `condominios`, team list, permission functions, and that nothing is readable or writable without a login (Row Level Security) | Postman collection run by Newman | 19 requests |
 
 ### Run the tests
@@ -179,9 +180,10 @@ The app expects the following objects in the `public` schema.
 | `historico` | `jsonb` | Change log |
 | `observacoes` | `jsonb` | Timeline notes |
 | `lembretes` | `jsonb` | Reminders (optional, see below) |
+| `sults` | `boolean` | Green SULTS flag (optional, see below) |
 | `sindico`, `sindico_tel`, `sindico_email`, `admin_nome`, `admin_contato`, `admin_tel`, `admin_email` | `text` | Legacy columns. The app clears them and migrates old data to `contatos` |
 
-If the `lembretes` column doesn't exist, the app still works, but reminders are kept only on each person's device. A warning appears until the column is created.
+If the `lembretes` or `sults` column doesn't exist, the app still works, but that information is kept only on each person's device. A warning appears until the column is created. `database/schema.sql` adds both safely.
 
 ### Table `equipe`
 
@@ -245,6 +247,7 @@ The app keeps a local copy in `localStorage` so nothing is lost if the connectio
 | `quitandinha:pendentes` | Changes not yet sent to the database |
 | `quitandinha:equipe` | Team list (local mode) |
 | `quitandinha:lembretes` | Reminders backup |
+| `quitandinha:sults` | SULTS flags backup (only used if the database has no `sults` column) |
 | `quitandinha:colunasInvertidas` | Which columns are reversed |
 | `quitandinha:geocache` | Address coordinates for the map |
 | `quitandinha:rota` | The current visit route (stops in order) |

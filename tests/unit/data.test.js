@@ -101,3 +101,19 @@ describe("descreverAlteracoes() / registrarAtualizacao() — change history", ()
     assert.equal(h[0].o_que, "change 45");
   });
 });
+
+describe("SULTS flag", () => {
+  test("is sent to the database as a true/false 'sults' column", () => {
+    assert.equal(app.json(`paraBanco({id:"a", sults:true})`).sults, true);
+    assert.equal(app.json(`paraBanco({id:"b"})`).sults, false, "missing = false");
+  });
+  test("is read back from the database; a missing column stays undefined (uses the local backup)", () => {
+    assert.equal(app.json(`doBanco({id:"a", sults:true})`).sults, true);
+    assert.equal(app.json(`doBanco({id:"b"})`).sults, undefined);
+  });
+  test("turning it on or off is written in the history", () => {
+    assert.ok(app.json(`descreverAlteracoes({fase:"a"}, {fase:"a", sults:true})`).includes("Marcado como SULTS"));
+    assert.ok(app.json(`descreverAlteracoes({fase:"a", sults:true}, {fase:"a", sults:false})`).includes("Desmarcado de SULTS"));
+    assert.deepEqual(app.json(`descreverAlteracoes({fase:"a", sults:false}, {fase:"a"})`), [], "false and missing are the same");
+  });
+});
