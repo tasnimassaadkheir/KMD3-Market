@@ -192,6 +192,10 @@
   .meta-cartao{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:11px;color:var(--tinta-suave);
     border-top:1px solid #E6E4DA;padding-top:7px}
   .meta-cartao .quem{display:inline-flex;align-items:center;gap:5px;font-weight:500}
+  /* green "S" badge = condo marked as SULTS (white ring keeps it visible on red overdue cards) */
+  .selo-sults{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;margin-left:5px;
+    background:var(--ok);color:#fff;font-size:10px;font-weight:800;font-style:normal;line-height:1;
+    box-shadow:0 0 0 1.5px #fff;vertical-align:middle}
   .inicial{width:19px;height:19px;border-radius:50%;background:#0E627D;color:#fff;
     display:grid;place-items:center;font-size:10px;font-weight:600}
   /* Message shown inside an empty column. */
@@ -212,8 +216,9 @@
   @media (prefers-reduced-motion:reduce){.painel{transition:none}}
   /* Panel header (title + close button) and the scrollable body (.corpo). */
   .painel .cabeca{padding:16px 20px;border-bottom:1px solid #E6E4DA;display:flex;align-items:center;gap:12px}
-  .painel .cabeca h2{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:17px;margin:0;font-weight:700}
-  .fechar{margin-left:auto;border:0;background:#EAEFE9;color:var(--tinta);width:30px;height:30px;
+  .painel .cabeca h2{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:17px;margin:0;font-weight:700;
+    flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fechar{margin-left:0;border:0;background:#EAEFE9;color:var(--tinta);width:30px;height:30px;
     border-radius:8px;font-size:16px;line-height:1}
   .corpo{flex:1;overflow-y:auto;padding:18px 20px 26px}
   /* Form sections. fieldset groups related fields, legend is the section title. */
@@ -462,6 +467,12 @@
     padding:8px 14px;border-radius:8px;font-weight:600;font-size:12.5px}
   .btn-add-contato:hover{background:#0E627D}
   /* Panel footer: Salvar (save), Cancelar (cancel) and Excluir (delete) buttons. */
+  /* SULTS toggle in the panel header: green outline when off, solid green when on */
+  .btn-sults{flex:none;height:30px;padding:0 12px;border-radius:8px;border:1.5px solid var(--ok);background:#fff;
+    color:#1F8A4C;font-size:12.5px;font-weight:800;letter-spacing:.04em;cursor:pointer}
+  .btn-sults:hover{background:#EAF6EF}
+  .btn-sults.ativo{background:var(--ok);color:#fff}
+  .btn-sults.ativo:hover{background:#28924F}
   .rodape-painel{border-top:1px solid #E6E4DA;padding:12px 20px;display:flex;gap:8px;align-items:center;background:#F4F3EC}
   .btn-salvar{background:#093E4F;color:#fff;border:0;padding:10px 20px;border-radius:8px;font-weight:600}
   .btn-salvar:hover{background:#0E627D}
