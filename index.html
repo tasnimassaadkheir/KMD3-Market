@@ -200,10 +200,13 @@
         <div class="dropdown-duplicados" id="avisoNomeDuplicado" hidden></div>
       </label>
       <label class="campo"><span>Endereço completo</span><input class="txt" id="f_endereco"></label>
-      <!-- Adds/removes this condo from the visit route of the Map view (mapa.js).
-           Only shown for condos that are already saved. -->
+      <!-- Only shown for condos that are already saved:
+           - "Adicionar à rota": adds/removes this condo from the visit route of the Map view (mapa.js)
+           - "Visitar": marks the condo to be visited; the card then shows a small car on its corner.
+             Both save right away. -->
       <div class="acao-rota" id="blocoRotaLead" hidden>
         <button type="button" class="btn-rota-lead" id="btnRotaLead"></button>
+        <button type="button" class="btn-visitar-lead" id="btnVisitarLead" aria-pressed="false">Visitar</button>
       </div>
       <div class="linha">
         <label class="campo"><span>Nº de apartamentos</span><input class="txt" id="f_aptos" type="number" min="0"></label>
