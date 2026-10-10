@@ -117,3 +117,17 @@ describe("SULTS flag", () => {
     assert.deepEqual(app.json(`descreverAlteracoes({fase:"a", sults:false}, {fase:"a"})`), [], "false and missing are the same");
   });
 });
+
+describe("Visitar flag", () => {
+  test("is sent to and read from the database as a true/false 'visitar' column", () => {
+    assert.equal(app.json(`paraBanco({id:"a", visitar:true})`).visitar, true);
+    assert.equal(app.json(`paraBanco({id:"b"})`).visitar, false);
+    assert.equal(app.json(`doBanco({id:"a", visitar:true})`).visitar, true);
+    assert.equal(app.json(`doBanco({id:"b"})`).visitar, undefined, "missing column -> uses the browser backup");
+  });
+  test("if the database has no 'visitar' column, it is left out of the save (and SULTS still goes)", () => {
+    const row = app.json(`(() => { SEM_COLUNA_FLAG.add("visitar"); const r = paraBanco({id:"a", visitar:true, sults:true}); SEM_COLUNA_FLAG.clear(); return r; })()`);
+    assert.equal("visitar" in row, false);
+    assert.equal(row.sults, true);
+  });
+});

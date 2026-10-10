@@ -156,7 +156,7 @@
   .trilha{height:3px;border-radius:3px;margin:0 12px 8px;background:rgba(255,255,255,.14)}
   .trilha i{display:block;height:100%;border-radius:3px;background:var(--milho)}
   /* The scrollable area that holds the cards of a column. */
-  .lista{flex:1;overflow-y:auto;padding:0 8px 8px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+  .lista{flex:1;overflow-y:auto;padding:8px 8px 8px;display:flex;flex-direction:column;gap:8px;min-height:60px}
   .lista::-webkit-scrollbar{width:8px}
   .lista::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:8px}
   /* Column footer with the '+ Adicionar condomínio' (add condo) button. */
@@ -172,6 +172,13 @@
   .cartao{background:var(--creme);color:var(--tinta);border-radius:var(--raio);padding:10px 11px 9px;
     box-shadow:0 1px 0 rgba(0,0,0,.28);border-left:4px solid transparent;cursor:grab}
   .cartao:hover{box-shadow:0 0 0 2px var(--milho),0 1px 0 rgba(0,0,0,.28)}
+  /* small car on the card's top-right corner, sticking out of the card = marked "Visitar".
+     .lista has 8px padding so the part outside the card isn't cut off. */
+  .cartao{position:relative}
+  .selo-visitar{position:absolute;top:-8px;right:-8px;z-index:2;width:27px;height:27px;border-radius:50%;
+    background:var(--milho);color:#22180A;display:grid;place-items:center;
+    box-shadow:0 0 0 2px #093E4F,0 2px 5px rgba(0,0,0,.35);pointer-events:none}
+  .selo-visitar svg{width:19px;height:19px}
   .cartao.arrastando{opacity:.35;cursor:grabbing}
   .cartao.st-verde{border-left-color:var(--ok)}
   .cartao.st-amarelo{border-left-color:var(--andamento)}
@@ -456,13 +463,21 @@
   /* '+ Adicionar contato' button. */
   /* "Adicionar à rota" button under the address field in the condo panel.
    .na-rota = the condo is already in the route (green). */
-.acao-rota{margin:-4px 0 12px}
+.acao-rota{margin:-4px 0 12px;display:flex;flex-wrap:wrap;gap:8px}
 .acao-rota[hidden]{display:none}
 .btn-rota-lead{border:1px dashed #9FB7BF;background:#F4F8F9;color:#093E4F;border-radius:8px;padding:7px 11px;
   font-size:12.5px;font-weight:600;cursor:pointer}
 .btn-rota-lead:hover{background:#E8F1F4;border-style:solid}
 .btn-rota-lead.na-rota{border:1px solid #9FD3B4;background:#EAF6EF;color:#1D6B3E}
 .btn-rota-lead.na-rota:hover{background:#DDF0E4}
+.btn-rota-lead[hidden]{display:none}
+/* "Visitar" button next to it: dashed gold when off, solid gold with the car when on */
+.btn-visitar-lead{display:inline-flex;align-items:center;gap:6px;border:1px dashed #D9B97A;background:#FBF6EC;color:#6B4A0B;
+  border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:600;cursor:pointer}
+.btn-visitar-lead svg{width:16px;height:16px;flex:none}
+.btn-visitar-lead:hover{background:#F6ECD8;border-style:solid}
+.btn-visitar-lead.ativo{border:1px solid var(--milho);background:var(--milho);color:#22180A}
+.btn-visitar-lead.ativo:hover{background:#DDB97C}
 .btn-add-contato{align-self:flex-end;background:#093E4F;color:#fff;border:0;
     padding:8px 14px;border-radius:8px;font-weight:600;font-size:12.5px}
   .btn-add-contato:hover{background:#0E627D}

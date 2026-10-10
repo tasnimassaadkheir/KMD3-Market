@@ -41,8 +41,15 @@ const CHAVE_EQUIPE = "quitandinha:equipe";
 const CHAVE_PENDENTES = "quitandinha:pendentes";
 const CHAVE_INVERTIDAS = "quitandinha:colunasInvertidas";
 const CHAVE_LEMBRETES = "quitandinha:lembretes";
-// Local backup of the SULTS flag (used only if the database has no "sults" column yet).
-const CHAVE_SULTS = "quitandinha:sults";
+// Optional true/false columns on a condo:
+//   sults   = green SULTS mark (green "S" badge next to who edited last)
+//   visitar = "to visit" mark (small car badge on the card's corner)
+// If the database doesn't have one of these columns yet, the app keeps working:
+// the flag is kept in this browser under 'chave' and the 'aviso' warning is shown once.
+const FLAGS = {
+  sults:   {chave:"quitandinha:sults",   aviso:"A marcação SULTS fica só neste aparelho até criar a coluna no Supabase (veja database/schema.sql)."},
+  visitar: {chave:"quitandinha:visitar", aviso:"A marcação Visitar fica só neste aparelho até criar a coluna no Supabase (veja database/schema.sql)."}
+};
 
 // Which columns the user has reversed (e.g. {reuniao:true}).
 // Read from localStorage at startup; try/catch protects against corrupted data.
@@ -205,8 +212,8 @@ function verificarNomeDuplicado(){
 // =============================================================================
 // Becomes true if the database table doesn't have a "lembretes" (reminders) column yet.
 let SEM_COLUNA_LEMBRETES = false;   // vira true se o banco ainda não tem a coluna "lembretes"
-// Same idea for the "sults" column (the green SULTS flag on a condo).
-let SEM_COLUNA_SULTS = false;
+// Names of the FLAGS whose column is missing in the database (e.g. "visitar").
+const SEM_COLUNA_FLAG = new Set();
 // paraBanco = "to database": converts a condo from the app format (camelCase, e.g. fimContrato)
 // to the database column format (snake_case, e.g. fim_contrato). Empty values become null.
 function paraBanco(l){
@@ -226,7 +233,7 @@ function paraBanco(l){
     observacoes:l.observacoes||[]
   };
   if(!SEM_COLUNA_LEMBRETES) o.lembretes = l.lembretes||[];
-  if(!SEM_COLUNA_SULTS) o.sults = !!l.sults;
+  Object.keys(FLAGS).forEach(f => { if(!SEM_COLUNA_FLAG.has(f)) o[f] = !!l[f]; });
   return o;
 }
 // doBanco = "from database": the opposite of paraBanco. Converts a database row
@@ -245,7 +252,9 @@ function doBanco(r){
     criadoPor:r.criado_por||"", criadoEm:r.criado_em, atualizadoEm:r.atualizado_em,
     historico:r.historico||[], observacoes:r.observacoes||[],
     lembretes:Array.isArray(r.lembretes) ? r.lembretes : undefined,
-    sults:typeof r.sults === "boolean" ? r.sults : undefined
+    // flags: undefined when the column doesn't exist (then the browser backup is used)
+    sults:typeof r.sults === "boolean" ? r.sults : undefined,
+    visitar:typeof r.visitar === "boolean" ? r.visitar : undefined
   };
 }
 
@@ -277,7 +286,7 @@ async function buscarTudo(){
     leads = (c.data||[]).map(doBanco);
     equipe = e.error ? [] : (e.data||[]);
     if(c.data && c.data.length && !("lembretes" in c.data[0])) SEM_COLUNA_LEMBRETES = true;
-    if(c.data && c.data.length && !("sults" in c.data[0])) SEM_COLUNA_SULTS = true;
+    if(c.data && c.data.length) Object.keys(FLAGS).forEach(f => { if(!(f in c.data[0])) SEM_COLUNA_FLAG.add(f); });
   } else {
     leads = await localGet(CHAVE_LEADS, []);
     equipe = await localGet(CHAVE_EQUIPE, []);
@@ -285,9 +294,11 @@ async function buscarTudo(){
   // If the database has no reminders column, use the reminders saved locally in this browser.
   const cacheLem = await localGet(CHAVE_LEMBRETES, {});
   leads.forEach(l => { if(l.lembretes === undefined) l.lembretes = cacheLem[l.id] || []; });
-  // Same for the SULTS flag.
-  const cacheSults = await localGet(CHAVE_SULTS, {});
-  leads.forEach(l => { if(l.sults === undefined) l.sults = !!cacheSults[l.id]; });
+  // Same for the flags (SULTS, Visitar).
+  for(const f of Object.keys(FLAGS)){
+    const cache = await localGet(FLAGS[f].chave, {});
+    leads.forEach(l => { if(l[f] === undefined) l[f] = !!cache[l.id]; });
+  }
 }
 /* ---- fila de pendências: nada se perde se a internet cair ---- */
 // Saves the offline queue (and a backup copy of all condos and reminders) in local storage,
@@ -297,8 +308,10 @@ async function guardarPendencias(){
   await localSet(CHAVE_LEADS, leads);            // cópia de segurança sempre
   const mapaLem = {}; leads.forEach(l => { if((l.lembretes||[]).length) mapaLem[l.id] = l.lembretes; });
   await localSet(CHAVE_LEMBRETES, mapaLem);
-  const mapaSults = {}; leads.forEach(l => { if(l.sults) mapaSults[l.id] = true; });
-  await localSet(CHAVE_SULTS, mapaSults);
+  for(const f of Object.keys(FLAGS)){
+    const mapa = {}; leads.forEach(l => { if(l[f]) mapa[l.id] = true; });
+    await localSet(FLAGS[f].chave, mapa);
+  }
   atualizarBotaoSync();
 }
 // At startup: reloads the offline queue saved by guardarPendencias().
@@ -358,7 +371,8 @@ async function sincronizar(manual){
   try{
     if(pendentes.size){
       // upsert = insert new rows OR update existing ones (matched by id).
-      // If it fails because the 'lembretes' or 'sults' column doesn't exist, retry without that column.
+      // If it fails because the 'lembretes' column or a flag column (sults, visitar) doesn't exist,
+      // retry without that column.
       const lote = [...pendentes.values()];
       let {error} = await sb.from("condominios").upsert(lote.map(paraBanco));
       if(error && /lembretes/i.test(error.message||"") && !SEM_COLUNA_LEMBRETES){
@@ -366,10 +380,12 @@ async function sincronizar(manual){
         avisar("Os lembretes ficam só neste aparelho até criar a coluna no Supabase (veja o SQL).", true);
         ({error} = await sb.from("condominios").upsert(lote.map(paraBanco)));
       }
-      if(error && /sults/i.test(error.message||"") && !SEM_COLUNA_SULTS){
-        SEM_COLUNA_SULTS = true;
-        avisar("A marcação SULTS fica só neste aparelho até criar a coluna no Supabase (veja database/schema.sql).", true);
-        ({error} = await sb.from("condominios").upsert(lote.map(paraBanco)));
+      for(const f of Object.keys(FLAGS)){
+        if(error && new RegExp(f, "i").test(error.message||"") && !SEM_COLUNA_FLAG.has(f)){
+          SEM_COLUNA_FLAG.add(f);
+          avisar(FLAGS[f].aviso, true);
+          ({error} = await sb.from("condominios").upsert(lote.map(paraBanco)));
+        }
       }
       if(error) throw error;
       lote.forEach(l => pendentes.delete(l.id));
@@ -539,6 +555,10 @@ function desenhar(){
 
 // Builds ONE card element for a condo.
 // draggable = can be dragged; tabIndex = 0 makes it reachable with the Tab key.
+// Small car icon (drawn with SVG so it looks the same on every phone and computer).
+const ICONE_CARRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+  '<path d="M3.5 16.5V12l2.2-4.6A1.5 1.5 0 0 1 7.1 6.5h8.6a1.5 1.5 0 0 1 1.3.8l2.5 4.7h.5a1 1 0 0 1 1 1v3.5"/>'+
+  '<path d="M3.5 12h17"/><circle cx="7.5" cy="16.5" r="1.9"/><circle cx="16.5" cy="16.5" r="1.9"/><path d="M9.4 16.5h5.2"/></svg>';
 function montarCartao(l){
   const el = document.createElement("article");
   el.className = "cartao st-" + (l.status||"nenhum");
@@ -581,7 +601,11 @@ function montarCartao(l){
       (quemObs?'<span class="quem"><i class="inicial">'+escapar(inicial)+"</i>por "+escapar(quemObs)+seloSults+"</span>":"")+
       "</div>"
     : (seloSults ? '<div class="meta-cartao"><span class="quem">'+seloSults+"</span></div>" : "");
+  // "Visitar" mark: a small car on the card's top-right corner, sticking out of the card.
+  const seloVisitar = l.visitar
+    ? '<span class="selo-visitar" title="Para visitar" aria-label="Para visitar">'+ICONE_CARRO+'</span>' : "";
   el.innerHTML =
+    seloVisitar+
     "<h3>"+escapar(l.nome||"Condomínio sem nome")+"</h3>"+
     (l.importante?'<p class="aviso-importante">⚠️ '+escapar(l.importante)+"</p>":"")+
     (etiquetas.length?'<div class="etiquetas">'+etiquetas.join("")+"</div>":"")+
@@ -1302,7 +1326,32 @@ function abrirPainel(id, faseInicial){
   sultsForm = id ? !!(leads.find(x=>x.id===id)||{}).sults : false;
   atualizarBotaoSults();
   atualizarBotaoRotaLead();
+  atualizarBotaoVisitar();
   setTimeout(()=>$("#f_nome").focus(), 180);
+}
+// "Visitar" button, next to "Adicionar à rota" (only for saved condos).
+// Unlike the form fields, it saves RIGHT AWAY when clicked (like the route button beside it),
+// and the card gets a small car on its corner.
+function atualizarBotaoVisitar(){
+  const b = $("#btnVisitarLead");
+  const l = editandoId ? leads.find(x=>x.id===editandoId) : null;
+  const on = !!(l && l.visitar);
+  b.classList.toggle("ativo", on);
+  b.setAttribute("aria-pressed", on ? "true" : "false");
+  b.innerHTML = ICONE_CARRO + (on ? " Visitar ✓" : " Visitar");
+  b.title = on ? "Marcado para visitar. Clique para desmarcar." : "Marcar este condomínio para visitar";
+}
+async function alternarVisitar(){
+  if(!editandoId) return;
+  if(!perm.editar){ negar("editar"); return; }
+  const l = leads.find(x=>x.id===editandoId); if(!l) return;
+  l.visitar = !l.visitar;
+  registrarAtualizacao(l, l.visitar ? "Marcado para visitar" : "Desmarcado de visitar");
+  atualizarBotaoVisitar();
+  const ok = await gravarLead(l);
+  desenhar();
+  atualizarBotaoVisitar();              // if the database refused, this shows the real state again
+  if(ok !== false) avisar((l.nome||"Condomínio")+(l.visitar ? " marcado para visitar 🚗" : " não está mais marcado para visitar"));
 }
 // Green SULTS toggle at the top of the panel. On = the card shows a green "S" badge
 // next to the name of who edited last. The change is saved with the "Salvar" button.
@@ -1318,8 +1367,9 @@ function atualizarBotaoSults(){
 // Hidden for a new condo (it has no id until it's saved).
 function atualizarBotaoRotaLead(){
   const bloco = $("#blocoRotaLead"), btn = $("#btnRotaLead"), api = window.__rota;
-  bloco.hidden = !(editandoId && api);
-  if(bloco.hidden) return;
+  bloco.hidden = !editandoId;            // the block also holds the "Visitar" button
+  btn.hidden = !api;                     // route button needs mapa.js
+  if(bloco.hidden || !api) return;
   const na = api.tem(editandoId);
   btn.classList.toggle("na-rota", na);
   btn.textContent = na
@@ -1469,12 +1519,12 @@ function exportarCSV(){
   if(!leads.length){ avisar("Não há condomínios para exportar"); return; }
   const cab = ["Condomínio","Endereço","Zona","Apartamentos","Fase","Situação","Informação importante","Contatos",
     "Concorrente","Fim do contrato","Perfil dos moradores","Observações","Responsável","Cadastrado por",
-    "Data de cadastro","Última atualização","Nº de atualizações","SULTS"];
+    "Data de cadastro","Última atualização","Nº de atualizações","SULTS","Visitar"];
   const linhas = leads.map(l => [
     l.nome,l.endereco,l.zona,l.aptos,(FASES.find(f=>f.id===l.fase)||{}).nome,ROTULO_STATUS[l.status||"nenhum"],l.importante,
     (l.contatos||[]).map(c=>[c.nome,c.telefone,c.email].filter(Boolean).join(" / ")).join(" | "),
     l.concorrente,l.fimContrato?dataBR(l.fimContrato):"",l.perfil,l.notas,l.responsavel,l.criadoPor,
-    dataBR(l.criadoEm),dataBR(l.atualizadoEm),(l.historico||[]).length,l.sults?"Sim":"Não"
+    dataBR(l.criadoEm),dataBR(l.atualizadoEm),(l.historico||[]).length,l.sults?"Sim":"Não",l.visitar?"Sim":"Não"
   ]);
   const csv = [cab,...linhas].map(r=>r.map(c=>'"'+String(c??"").replace(/"/g,'""')+'"').join(";")).join("\r\n");
   const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
@@ -1772,6 +1822,8 @@ $("#obsTexto").addEventListener("keydown", e=>{
 
 // Check for similar names while typing the condo name.
 $("#f_nome").addEventListener("input", verificarNomeDuplicado);
+// "Visitar" button in the panel (saves right away).
+$("#btnVisitarLead").addEventListener("click", alternarVisitar);
 // SULTS toggle in the panel.
 $("#btnSults").addEventListener("click", ()=>{ sultsForm = !sultsForm; atualizarBotaoSults(); });
 // Visit route button in the panel; mapa.js fires "rota-mudou" whenever the route changes.
