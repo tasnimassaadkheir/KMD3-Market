@@ -366,7 +366,18 @@
     font-size:13px;line-height:1;padding:3px 5px;border-radius:6px;cursor:pointer}
   .lem-item .lem-x:hover{background:#E2E5DB;color:#963029}
   /* Box to create a new reminder, with quick-date buttons (Hoje, Amanhã, Em 3 dias...). */
-  .lem-novo{background:#F7F8F4;border:1px dashed #C9CEC2;border-radius:10px;padding:11px 12px 12px}
+  /* reminder in edit mode: date + time side by side, then the text, then Salvar / Cancelar */
+.lem-item.editando{background:#fff;border:1px solid #093E4F;border-left:4px solid #093E4F}
+.lemr.editando{display:block;border-left-color:#093E4F;background:#fff}
+.lem-edicao{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.lem-edicao label{display:block}
+.lem-edicao label > span{display:block;font-size:11.5px;color:var(--tinta-suave);margin-bottom:3px}
+.lem-edicao-campos{display:grid;grid-template-columns:repeat(2,minmax(0,170px));gap:10px}
+.lem-edicao .txt{width:100%;padding:7px 9px}
+.lem-edicao .lem-acoes{margin-top:2px}
+.lemr.editando .lem-acoes{justify-content:flex-start;max-width:none}
+@media (max-width:520px){.lem-edicao-campos{grid-template-columns:1fr 1fr}}
+.lem-novo{background:#F7F8F4;border:1px dashed #C9CEC2;border-radius:10px;padding:11px 12px 12px}
   .lem-rapido{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 10px}
   .lem-rapido button{border:1px solid #D6D9D0;background:#fff;color:#093E4F;border-radius:999px;padding:4px 10px;
     font-size:11.5px;font-weight:600;cursor:pointer}

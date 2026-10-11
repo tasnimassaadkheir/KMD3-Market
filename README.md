@@ -35,6 +35,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 
 **Reminders (Lembretes)**
 - Reminders per condo, with quick buttons (*Hoje, Amanhã, Em 3 dias…*).
+- **Edit** any reminder (date, time and text) with ✎ Editar, in the condo panel or on the reminders page.
 - A full-screen reminders page with Overdue, Today, Upcoming and Done tabs.
 - Cards turn red when a reminder is overdue, and a badge shows the count on the toolbar.
 - Export to Google Calendar, or as a `.ics` file for Apple Calendar or Outlook (with an alarm 10 minutes before).
@@ -133,7 +134,7 @@ The project has three layers of automated tests. All of them run in **local mode
 | Layer | What it checks | Tool | Count |
 |---|---|---|---|
 | **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 83 |
-| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the SULTS toggle and badge, the Visitar button and car badge, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 64 |
+| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, editing reminders, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the SULTS toggle and badge, the Visitar button and car badge, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 72 |
 | **API** | The Supabase API the app depends on: login, CRUD on `condominios`, team list, permission functions, and that nothing is readable or writable without a login (Row Level Security) | Postman collection run by Newman | 19 requests |
 
 ### Run the tests
