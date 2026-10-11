@@ -19,8 +19,8 @@ describe("Reminders", () => {
     assert.equal(await page.locator(".cartao.lem-vencido h3").textContent(), "Atrasado");
     assert.equal(await page.locator(".cartao.lem-vencido").count(), 1, "the card with a future reminder stays normal");
     assert.equal((await page.textContent("#lemBadge")).trim(), "1");
-    assert.equal((await page.textContent("#menuBadge")).trim(), "1", "same count on the ☰ button");
-    assert.match(await page.getAttribute("#menuBadge", "class"), /atraso/, "red, because it's overdue");
+    assert.match(await page.getAttribute("#lemBadge", "class"), /atraso/, "red, because it's overdue");
+    assert.equal(await page.locator("#btnMenu .lem-badge").count(), 0, "no number on the ☰ button");
     await context.close();
   });
 

@@ -9,7 +9,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 ## Features
 
 **Navigation**
-- A ☰ side menu (top left) with **Mapa**, **Administração** (admins only), **Lembretes**, **Equipe** and **Contatos**. The ☰ button shows the number of reminders due today or overdue, so it's visible with the menu closed.
+- A ☰ side menu (top left) with **Mapa**, **Administração** (admins only), **Lembretes**, **Equipe** and **Contatos**. The Lembretes item shows the number of reminders due today or overdue.
 
 **Kanban board**
 - Eight funnel stages, from *Possui Concorrência* (has a competitor) to *Assinatura de Contrato* (contract signed).
