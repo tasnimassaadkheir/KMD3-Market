@@ -1029,8 +1029,52 @@ function limparNovoLembrete(){
 // Returns the HTML of one reminder with its buttons.
 // doForm = true when shown inside the condo panel (then the condo name isn't repeated).
 // The data-* attributes tell the click handler (near the end of this file) what to do.
+// ---- Editing a reminder (date, time and text) ----
+// Only one reminder is edited at a time. lemEditando = {onde, idx}:
+//   onde = "form" -> a reminder inside the open condo panel (saved with the panel's "Salvar")
+//   onde = <condo id> -> a reminder on the Lembretes page (saved right away)
+let lemEditando = null;
+const editandoLem = (onde, idx) => !!lemEditando && lemEditando.onde === onde && lemEditando.idx === idx;
+// The small edit form that replaces the reminder while it's being edited.
+// data-lid is turned into data-form="1" for reminders inside the panel (see renderLembretesForm).
+function formEdicaoLembreteHTML(lem, idx, lid){
+  const partes = String(lem.quando||"").split("T");
+  return '<div class="lem-edicao">'+
+    '<div class="lem-edicao-campos">'+
+      '<label><span>Data</span><input type="date" class="txt" id="lemEdData" value="'+escapar(partes[0]||"")+'"></label>'+
+      '<label><span>Horário</span><input type="time" class="txt" id="lemEdHora" value="'+escapar((partes[1]||"09:00").slice(0,5))+'"></label>'+
+    '</div>'+
+    '<label class="lem-edicao-texto"><span>Próximo passo</span><input class="txt" id="lemEdTexto" autocomplete="off" value="'+escapar(lem.texto||"")+'"></label>'+
+    '<div class="lem-acoes">'+
+      '<button type="button" class="lem-ok" data-lem-salvar-ed="'+idx+'" data-lid="'+escapar(lid)+'">Salvar</button>'+
+      '<button type="button" data-lem-cancelar-ed="'+idx+'" data-lid="'+escapar(lid)+'">Cancelar</button>'+
+    '</div>'+
+  '</div>';
+}
+// Reads the edit form. Returns {quando, texto}, or null (with a message) if the date is missing.
+function lerEdicaoLembrete(){
+  const data = $("#lemEdData").value, hora = $("#lemEdHora").value || "09:00";
+  if(!data){ avisar("Escolha a data do lembrete"); $("#lemEdData").focus(); return null; }
+  return {quando:data+"T"+hora, texto:$("#lemEdTexto").value.trim()};
+}
+function focarEdicaoLembrete(){ const t = $("#lemEdTexto"); if(t){ t.focus(); t.selectionStart = t.selectionEnd = t.value.length; } }
+// Panel: apply the edit to the form copy (saved for real when the condo is saved).
+function salvarEdicaoLembreteForm(){
+  const v = lerEdicaoLembrete(); if(!v) return false;
+  const lem = lembretesForm[lemEditando.idx];
+  if(lem){ Object.assign(lem, v, {editadoEm:agora(), editadoPor:meuNome||""}); lemAvisados.delete(lem.id); }
+  lemEditando = null;
+  renderLembretesForm();
+  return true;
+}
+
 function itemLembreteHTML(l, lem, idx, doForm){
   const c = classeLembrete(lem);
+  if(editandoLem(doForm ? "form" : l.id, idx)){
+    return '<div class="lem-item editando">'+
+      (doForm ? "" : '<button type="button" class="lem-lead" data-abrir-lead="'+escapar(l.id)+'">'+escapar(l.nome||"Condomínio sem nome")+'</button>')+
+      formEdicaoLembreteHTML(lem, idx, l.id)+'</div>';
+  }
   const gcal = linkGoogleAgenda(l, lem);
   return '<div class="lem-item '+c+'">'+
     (doForm ? "" : '<button type="button" class="lem-lead" data-abrir-lead="'+escapar(l.id)+'">'+escapar(l.nome||"Condomínio sem nome")+'</button>')+
@@ -1042,6 +1086,7 @@ function itemLembreteHTML(l, lem, idx, doForm){
         ? '<button type="button" data-lem-reabrir="'+idx+'" data-lid="'+escapar(l.id)+'">Reabrir</button>'
         : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">✓ Concluir</button>'+
           '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>')+
+      '<button type="button" data-lem-editar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Mudar data, horário ou texto">✎ Editar</button>'+
       '<a class="lem-gcal" href="'+escapar(gcal)+'" target="_blank" rel="noopener">📅 Google Agenda</a>'+
       '<button type="button" data-lem-ics="'+idx+'" data-lid="'+escapar(l.id)+'" title="Arquivo para Apple/Outlook, com alarme 10 min antes">.ics</button>'+
     '</div>'+
@@ -1066,6 +1111,7 @@ function renderLembretesForm(){
     return dtLembrete(a.x) - dtLembrete(b.x);
   });
   box.innerHTML = ordem.map(o=>itemLembreteHTML(l, o.x, o.i, true).replace(/data-lid="[^"]*"/g,'data-form="1"')).join("");
+  if(lemEditando && lemEditando.onde === "form") focarEdicaoLembrete();
 }
 // Adds a reminder from the date/time/text fields to the form list.
 // It's only really saved when the user clicks Salvar. silencioso = don't show a message.
@@ -1106,6 +1152,16 @@ async function acaoLembrete(leadId, idx, acao){
     l.lembretes.splice(idx,1); await gravarLembretes(l, "Lembrete excluído");
   }
   else if(acao==="ics"){ baixarICS(l, lem); }
+  else if(acao==="editar"){ lemEditando = {onde:leadId, idx}; renderPainelLembretes(); focarEdicaoLembrete(); }
+  else if(acao==="cancelarEd"){ lemEditando = null; renderPainelLembretes(); }
+  else if(acao==="salvarEd"){
+    const v = lerEdicaoLembrete(); if(!v) return;
+    Object.assign(lem, v, {editadoEm:agora(), editadoPor:meuNome||""});
+    lemAvisados.delete(lem.id);          // if it becomes overdue again, it alerts again
+    lemEditando = null;
+    await gravarLembretes(l, "Lembrete editado: "+quandoCurto(lem)+" · "+(lem.texto||"retomar contato"));
+    avisar("Lembrete atualizado");
+  }
 }
 
 /* ---- painel Lembretes (aba geral) ---- */
@@ -1141,11 +1197,17 @@ function relativoLembrete(lem){
 // HTML of one row on the reminders page.
 function linhaLembreteHTML(t){
   const {l, lem, idx, c} = t, d = dtLembrete(lem);
+  if(editandoLem(l.id, idx)){
+    return '<div class="lemr editando"><div class="lemr-corpo">'+
+      '<button type="button" class="lem-lead" data-abrir-lead="'+escapar(l.id)+'">'+escapar(l.nome||"Condomínio sem nome")+'</button>'+
+      formEdicaoLembreteHTML(lem, idx, l.id)+'</div></div>';
+  }
   const dia = isNaN(d) ? "—" : d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"});
   const acoes = (lem.feito
       ? '<button type="button" data-lem-reabrir="'+idx+'" data-lid="'+escapar(l.id)+'">Reabrir</button>'
       : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">✓ Concluir</button>'+
         '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>')+
+    '<button type="button" data-lem-editar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Mudar data, horário ou texto">✎ Editar</button>'+
     '<a class="lem-gcal" href="'+escapar(linkGoogleAgenda(l, lem))+'" target="_blank" rel="noopener">📅 Google Agenda</a>'+
     '<button type="button" data-lem-remover="'+idx+'" data-lid="'+escapar(l.id)+'" title="Excluir lembrete">✕ Cancelar</button>';
   return '<div class="lemr '+c+'">'+
@@ -1187,7 +1249,7 @@ function abrirLembretes(aba){
   $("#telaLembretes").classList.add("aberta");
 }
 // Closes the reminders page.
-function fecharLembretes(){ $("#telaLembretes").classList.remove("aberta"); }
+function fecharLembretes(){ lemEditando = null; $("#telaLembretes").classList.remove("aberta"); }
 
 /* ---- selo no botão + aviso quando chega a hora ---- */
 // ---- Badge on the toolbar button + alerts when a reminder is due ----
@@ -1199,7 +1261,7 @@ let lemChaveVencidos = null;
 // - Updates the number badge on the 'Lembretes' button.
 // - Shows a toast / browser notification for newly overdue reminders (unless semAviso).
 function verificarLembretes(semAviso){
-  if(lembretesAberto()) renderPainelLembretes();
+  if(lembretesAberto() && !lemEditando) renderPainelLembretes();   // don't wipe an edit being typed
   // quando um lembrete vence (ou deixa de vencer), redesenha o quadro para o cartão ficar vermelho
   const chave = leads.filter(l=>lembreteVencido(l)).map(l=>l.id).sort().join(",");
   if(lemChaveVencidos !== null && chave !== lemChaveVencidos && !arrastandoId){ lemChaveVencidos = chave; desenhar(); return; }
@@ -1524,6 +1586,7 @@ function marcarSemaforo(){
 function abrirPainel(id, faseInicial){
   if(!id && !perm.criar){ negar("criar"); return; }
   editandoId = id || null;
+  lemEditando = null;                    // no reminder starts in edit mode
   preencherFases();
   if(id){
     const l = leads.find(x=>x.id===id); if(!l) return;
@@ -1704,6 +1767,8 @@ async function salvar(){
   const acaoSalvar = editandoId ? "editar" : "criar";
   if(!perm[acaoSalvar]){ negar(acaoSalvar); return; }
   if(obsEditandoIndex !== null) salvarEdicaoObservacao(obsEditandoIndex);
+  // a reminder still open in edit mode is applied too (stops if its date is empty)
+  if(lemEditando && lemEditando.onde === "form" && !salvarEdicaoLembreteForm()) return;
   const obsPendente = $("#obsTexto").value.trim();
   if(obsPendente) adicionarObservacao();
   if($("#lem_data").value) adicionarLembreteForm(true);
@@ -2102,25 +2167,44 @@ document.addEventListener("click", e=>{
   // ações dentro do formulário do condomínio (ainda não salvas)
   const doForm = e.target.closest('[data-form="1"]');
   if(doForm){
-    const idx = parseInt((doForm.dataset.lemFeito ?? doForm.dataset.lemReabrir ?? doForm.dataset.lemAdiar ?? doForm.dataset.lemIcs ?? doForm.dataset.lemRemover),10);
+    const idx = parseInt((doForm.dataset.lemFeito ?? doForm.dataset.lemReabrir ?? doForm.dataset.lemAdiar ?? doForm.dataset.lemIcs ??
+      doForm.dataset.lemRemover ?? doForm.dataset.lemEditar ?? doForm.dataset.lemSalvarEd ?? doForm.dataset.lemCancelarEd),10);
     const lem = lembretesForm[idx]; if(!lem) return;
+    if(doForm.dataset.lemEditar !== undefined){ lemEditando = {onde:"form", idx}; renderLembretesForm(); return; }
+    if(doForm.dataset.lemSalvarEd !== undefined){ salvarEdicaoLembreteForm(); return; }
+    if(doForm.dataset.lemCancelarEd !== undefined){ lemEditando = null; renderLembretesForm(); return; }
     if(doForm.dataset.lemFeito !== undefined){ lem.feito = true; lem.feitoEm = agora(); }
     else if(doForm.dataset.lemReabrir !== undefined){ lem.feito = false; lem.feitoEm = null; }
     else if(doForm.dataset.lemAdiar !== undefined){ const d = dtLembrete(lem); d.setDate(d.getDate()+1); lem.quando = dataLocalInput(d)+"T"+horaCurta(d); }
     else if(doForm.dataset.lemIcs !== undefined){ baixarICS(leadAtualDoForm(), lem); return; }
-    else if(doForm.dataset.lemRemover !== undefined){ if(!confirm("Excluir este lembrete?")) return; lembretesForm.splice(idx,1); }
+    else if(doForm.dataset.lemRemover !== undefined){ if(!confirm("Excluir este lembrete?")) return; lembretesForm.splice(idx,1); lemEditando = null; }
     else return;
     renderLembretesForm();
     return;
   }
   // ações no painel geral (já salvas)
   // Maps each data attribute (e.g. data-lem-feito) to an action name and runs it.
-  const mapa = [["lemFeito","feito"],["lemReabrir","reabrir"],["lemAdiar","adiar"],["lemIcs","ics"],["lemRemover","remover"]];
+  const mapa = [["lemFeito","feito"],["lemReabrir","reabrir"],["lemAdiar","adiar"],["lemIcs","ics"],["lemRemover","remover"],
+    ["lemEditar","editar"],["lemSalvarEd","salvarEd"],["lemCancelarEd","cancelarEd"]];
   for(const [attr,acao] of mapa){
     const el = e.target.closest("[data-"+attr.replace(/[A-Z]/g,m=>"-"+m.toLowerCase())+"]");
     if(el && el.dataset.lid){ acaoLembrete(el.dataset.lid, parseInt(el.dataset[attr],10), acao); return; }
   }
 });
+// While editing a reminder: Enter = Salvar, Esc = Cancelar (without closing the panel or the page).
+["#lemLista", "#lemPainelLista"].forEach(sel => $(sel).addEventListener("keydown", e=>{
+  if(!lemEditando || !["lemEdData","lemEdHora","lemEdTexto"].includes(e.target.id)) return;
+  const noForm = lemEditando.onde === "form";
+  if(e.key === "Enter"){
+    e.preventDefault();
+    if(noForm) salvarEdicaoLembreteForm(); else acaoLembrete(lemEditando.onde, lemEditando.idx, "salvarEd");
+  }
+  if(e.key === "Escape"){
+    e.stopPropagation();
+    lemEditando = null;
+    if(noForm) renderLembretesForm(); else renderPainelLembretes();
+  }
+}));
 // Check reminders every 30 seconds.
 setInterval(()=>verificarLembretes(), 30000);
 $("#btnAddObs").addEventListener("click", adicionarObservacao);
