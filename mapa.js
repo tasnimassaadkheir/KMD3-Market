@@ -706,6 +706,8 @@
   /* ---------- eventos ---------- */
   // ---------- EVENTS ----------
   $m("#btnVista").addEventListener("click", alternarVista);
+  // "Voltar ao quadro" button at the top-left of the map: closes the map view.
+  $m("#mpVoltar").addEventListener("click", () => { if(ativo) alternarVista(); });
   // Color mode changed: reset hidden categories and redraw.
   $m("#mpCor").addEventListener("change", e => { modoCor = e.target.value; ocultos.clear(); assinaturaLegenda = ""; desenharPontos(); });
   // Heatmap button on/off (aria-pressed tells screen readers if it's on).
