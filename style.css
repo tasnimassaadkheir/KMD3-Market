@@ -664,6 +664,10 @@ body.vista-mapa #quadro{display:none}
 .mp-btn:hover,.mp-sel:hover{background:rgba(14,60,76,.95)}
 .mp-btn[aria-pressed="true"]{background:var(--milho);color:#22180A;border-color:transparent}
 .mp-btn svg{width:14px;height:14px;flex:none}
+/* "Voltar ao quadro": the first button on the map, in gold so it's easy to find */
+.mp-voltar{background:var(--milho);color:#22180A;border-color:transparent;font-weight:600}
+.mp-voltar:hover{background:#DDB97C}
+.mp-voltar svg{width:15px;height:15px;margin-left:-3px}
 /* Small status pill ('12 no mapa', 'Localizando 3 de 10...'). .mp-aviso = red border warning. */
 .mp-status{flex:none;font-size:11.5px;color:#fff;background:rgba(6,36,46,.88);border:1px solid rgba(255,255,255,.14);
   border-radius:8px;height:30px;padding:0 10px;display:inline-flex;align-items:center;white-space:nowrap}

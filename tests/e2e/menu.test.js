@@ -115,3 +115,24 @@ describe("Side menu (☰)", () => {
     await context.close();
   });
 });
+
+describe("Map view", () => {
+  test("'Voltar ao quadro' is the first button on the map and goes back to the board", async () => {
+    const { page, context, errors } = await openApp(env, { fakeLeaflet: true });
+    await abrir(page); await page.click("#btnVista");
+    await page.waitForSelector("body.vista-mapa");
+    const voltar = page.locator("#mpVoltar");
+    assert.equal(await voltar.isVisible(), true);
+    assert.equal(await page.locator(".mp-barra > *").first().getAttribute("id"), "mpVoltar");
+    assert.match(await voltar.textContent(), /Voltar ao quadro/);
+
+    await voltar.click();
+    await page.waitForFunction(() => !document.body.classList.contains("vista-mapa"));
+    assert.equal(await page.locator(".coluna").count(), 8, "board is back");
+    assert.equal(await voltar.isVisible(), false, "the button is hidden together with the map");
+    // the ☰ menu item is in sync again ("Mapa", not "Quadro")
+    assert.equal(await page.textContent("#rotVista"), "Mapa");
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+});
