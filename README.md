@@ -9,7 +9,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 ## Features
 
 **Navigation**
-- A ☰ side menu (top left) with **Mapa**, **Administração** (admins only), **Lembretes** and **Equipe**. The ☰ button shows the number of reminders due today or overdue, so it's visible with the menu closed.
+- A ☰ side menu (top left) with **Mapa**, **Administração** (admins only), **Lembretes**, **Equipe** and **Contatos**. The ☰ button shows the number of reminders due today or overdue, so it's visible with the menu closed.
 
 **Kanban board**
 - Eight funnel stages, from *Possui Concorrência* (has a competitor) to *Assinatura de Contrato* (contract signed).
@@ -20,7 +20,12 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 
 **Condo details**
 - Name, address, number of apartments, zone, and a highlighted "Importante" warning.
-- Multiple contacts per condo, each with a one-click WhatsApp button.
+- Multiple contacts per condo, each with a one-click WhatsApp button and a **Quem é** dropdown (Síndico, ADM, Zelador, Morador, Gerente predial, or **Outro…** to type a new type, which then appears in every card's dropdown).
+
+**Contacts page (☰ → Contatos)**
+- Every contact from every condo in one table: Nome, Número, E-mail, Condomínio. Click the condo name to open it.
+- Add **standalone contacts** that don't belong to any condo, then edit or delete them.
+- Search by name, number, e-mail or condo; filter by "Quem é"; **export** what's on screen as an Excel spreadsheet (CSV).
 - Competitor and contract end date. The card turns red when the contract ends within 90 days.
 - A timeline of notes, with the date and author added automatically. Notes can be edited.
 - An automatic change log with update frequency statistics.
@@ -127,8 +132,8 @@ The project has three layers of automated tests. All of them run in **local mode
 
 | Layer | What it checks | Tool | Count |
 |---|---|---|---|
-| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 75 |
-| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), the SULTS toggle and badge, the Visitar button and car badge, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 53 |
+| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 83 |
+| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the SULTS toggle and badge, the Visitar button and car badge, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 64 |
 | **API** | The Supabase API the app depends on: login, CRUD on `condominios`, team list, permission functions, and that nothing is readable or writable without a login (Row Level Security) | Postman collection run by Newman | 19 requests |
 
 ### Run the tests
@@ -190,6 +195,19 @@ The app expects the following objects in the `public` schema.
 | `sindico`, `sindico_tel`, `sindico_email`, `admin_nome`, `admin_contato`, `admin_tel`, `admin_email` | `text` | Legacy columns. The app clears them and migrates old data to `contatos` |
 
 If the `lembretes`, `sults` or `visitar` column doesn't exist, the app still works, but that information is kept only on each person's device. A warning appears until the column is created. `database/schema.sql` adds them safely.
+
+### Table `contatos_avulsos`
+
+Standalone contacts from the Contatos page (contacts inside a condo stay in `condominios.contatos`). Every logged-in user can see and edit them. If the table doesn't exist yet, they are kept only in each person's browser and a warning explains it.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `nome` | `text` | Required |
+| `telefone`, `email` | `text` | |
+| `tipo` | `text` | "Quem é" |
+| `criado_por` | `text` | Name of who added it |
+| `criado_em` | `timestamptz` | |
 
 ### Table `equipe`
 
@@ -255,6 +273,8 @@ The app keeps a local copy in `localStorage` so nothing is lost if the connectio
 | `quitandinha:lembretes` | Reminders backup |
 | `quitandinha:sults` | SULTS flags backup (only used if the database has no `sults` column) |
 | `quitandinha:visitar` | Visitar flags backup (only used if the database has no `visitar` column) |
+| `quitandinha:tiposContato` | "Quem é" types created with "Outro…" (so they show up right away) |
+| `quitandinha:contatosAvulsos` | Copy of the standalone contacts (the only copy if the database has no `contatos_avulsos` table) |
 | `quitandinha:colunasInvertidas` | Which columns are reversed |
 | `quitandinha:geocache` | Address coordinates for the map |
 | `quitandinha:rota` | The current visit route (stops in order) |

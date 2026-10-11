@@ -450,11 +450,24 @@
   .contato-item{background:#F0F1EA;border-radius:10px;padding:11px 11px 2px}
   .contato-cabeca{display:flex;gap:8px;align-items:flex-end}
   .contato-cabeca .campo{flex:1;min-width:0}
+  /* "Quem é" next to the name (appears once the name is filled) */
+  .contato-cabeca .contato-tipo{flex:0 0 160px}
+  .contato-cabeca .contato-tipo[hidden]{display:none}
+  label.campo > span.tipo-outro,.tipo-outro{display:flex;gap:4px}
+  .tipo-outro input{flex:1;min-width:0}
+  .tipo-outro button{flex:none;border:0;border-radius:8px;padding:0 10px;font-size:12px;font-weight:600}
+  .tipo-outro .tipo-ok{background:#093E4F;color:#fff}
+  .tipo-outro .tipo-cancelar{background:#E2E5DB;color:var(--tinta)}
+  @media (max-width:520px){
+    .contato-cabeca{flex-wrap:wrap}
+    .contato-cabeca .contato-tipo{flex:1 1 calc(100% - 40px);order:3}
+  }
   .contato-remover{flex:none;border:0;background:none;color:var(--tinta-suave);font-size:13px;
     line-height:1;padding:9px 7px;border-radius:6px;margin-bottom:12px}
   .contato-remover:hover{background:#E2E5DB;color:#963029}
   /* Phone input + green WhatsApp button side by side. :disabled = greyed out. */
-  .tel-com-whats{display:flex;gap:6px}
+  /* "label.campo > span" (display:block) would win over this, so the selector is made as specific */
+  label.campo > span.tel-com-whats,.tel-com-whats{display:flex;gap:6px}
   .tel-com-whats input{flex:1;min-width:0}
   .btn-whats{flex:none;border:0;border-radius:8px;background:#25D366;color:#fff;
     width:38px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -793,4 +806,66 @@ body.vista-mapa #quadro{display:none}
   .mp-topo{right:10px}
   .mp-rota{top:auto;bottom:10px;left:10px;right:10px;width:auto;max-height:46%}
   .leaflet-bottom.leaflet-left{bottom:56px}
+}
+
+/* ===== página de contatos (☰ → Contatos) ===== */
+/* Uses the same full-screen frame as the reminders page (.tela-lem). */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ct-ferr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.ct-busca,.ct-filtro{height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);
+  color:#fff;font-size:12.5px;padding:0 10px;outline:none}
+.ct-busca{width:230px}
+.ct-busca::placeholder{color:rgba(255,255,255,.6)}
+.ct-filtro option{background:#062C38;color:#fff}
+.ct-busca:focus,.ct-filtro:focus{border-color:var(--milho)}
+.ct-prim,.ct-sec{height:32px;border-radius:8px;padding:0 12px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.ct-prim{border:0;background:var(--milho);color:#22180A}
+.ct-prim:hover{background:#DDB97C}
+.ct-sec{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff}
+.ct-sec:hover{background:rgba(255,255,255,.2)}
+/* standalone contact form */
+.ct-form{background:#fff;border:1px solid #E1E4DA;border-radius:12px;padding:14px 16px 12px;margin-bottom:14px}
+.ct-form[hidden]{display:none}
+.ct-form h3{margin:0 0 10px;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:15px;color:#093E4F}
+.ct-form-campos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 12px}
+.ct-tipo-outro{margin-top:6px}
+.ct-tipo-outro[hidden]{display:none}
+.ct-form-botoes{display:flex;gap:8px}
+.ct-resumo{margin:0 0 8px;font-size:12px;color:var(--tinta-suave)}
+/* the table */
+.ct-tabela{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid #E1E4DA;border-radius:12px;overflow:hidden}
+.ct-tabela th{background:#F0F1EA;color:var(--tinta-suave);font-size:11.5px;font-weight:700;text-align:left;padding:9px 12px}
+.ct-tabela td{padding:10px 12px;border-top:1px solid #EEF0E8;font-size:13px;vertical-align:middle;word-break:break-word}
+.ct-tabela tbody tr:hover td{background:#FAFBF7}
+.ct-tabela td b{font-weight:600;color:#093E4F}
+.ct-tipo{display:inline-block;margin-left:7px;font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:#E8F1F4;color:#0E4E64}
+.ct-zap{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:4px;border-radius:6px;background:#25D366;color:#fff;vertical-align:middle}
+.ct-zap:hover{background:#1EBE5A}
+.ct-tabela a[href^="mailto"]{color:#0E627D}
+.ct-condo{border:0;background:none;padding:0;color:#0E627D;font-weight:600;text-align:left;text-decoration:underline;text-underline-offset:2px}
+.ct-condo:hover{color:#093E4F}
+.ct-avulso{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:#F9F3E9;color:#A0752A}
+.ct-vazio{color:#B7BDB3}
+.ct-acoes{width:70px;white-space:nowrap;text-align:right}
+.ct-acoes button{border:0;background:none;color:var(--tinta-suave);font-size:13px;padding:4px 6px;border-radius:6px}
+.ct-acoes button:hover{background:#E2E5DB;color:#093E4F}
+.ct-acoes button[data-ct-excluir]:hover{color:#963029}
+.ct-nada td{text-align:center;color:var(--tinta-suave);padding:22px 12px}
+@media (max-width:900px){
+  .ct-form-campos{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ct-ferr{margin-left:0;width:100%}
+  .ct-busca{flex:1;width:auto;min-width:140px}
+}
+/* phones: each contact becomes a small card, with the column name before each value */
+@media (max-width:640px){
+  .ct-form-campos{grid-template-columns:1fr}
+  .ct-tabela,.ct-tabela tbody,.ct-tabela tr,.ct-tabela td{display:block;width:100%}
+  .ct-tabela thead{display:none}
+  .ct-tabela{background:none;border:0}
+  .ct-tabela tr{position:relative;background:#fff;border:1px solid #E1E4DA;border-radius:10px;margin-bottom:8px;padding:6px 0}
+  .ct-tabela td{border:0;padding:3px 12px}
+  .ct-tabela td[data-label]::before{content:attr(data-label);display:block;font-size:10.5px;font-weight:700;color:var(--tinta-suave)}
+  .ct-tabela td[data-label="Nome"]::before{display:none}
+  .ct-acoes{position:absolute;top:6px;right:4px;width:auto}
+  .ct-nada{border:0 !important;background:none !important}
 }
