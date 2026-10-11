@@ -487,7 +487,7 @@ function filtrar(){
     if(resp && (l.responsavel||"") !== resp) return false;
     if(!dataNoIntervalo(l.criadoEm, dataDe, dataAte)) return false;
     if(!termo) return true;
-    const textoContatos = (l.contatos||[]).map(c=>[c.nome,c.telefone,c.email].join(" ")).join(" ");
+    const textoContatos = (l.contatos||[]).map(c=>[c.nome,c.telefone,c.email,c.tipo].join(" ")).join(" ");
     return [l.nome,l.endereco,l.zona,l.importante,textoContatos,l.concorrente,l.perfil,l.notas,l.responsavel]
       .join(" ").toLowerCase().includes(termo);
   });
@@ -551,6 +551,7 @@ function desenhar(){
   // If the map view exists (mapa.js), tell it to refresh too; then update reminder badges.
   if(window.__atualizarMapa) window.__atualizarMapa();
   if(typeof verificarLembretes === "function") verificarLembretes(true);
+  if(contatosAberto()) renderContatosPagina();
 }
 
 // Builds ONE card element for a condo.
@@ -568,7 +569,8 @@ function montarCartao(l){
   const etiquetas = [];
   if(l.zona) etiquetas.push('<span class="etiqueta zona">'+escapar(l.zona)+'</span>');
   if(l.aptos !== "" && l.aptos != null) etiquetas.push('<span class="etiqueta">'+escapar(l.aptos)+' aptos</span>');
-  if(l.contatos && l.contatos.length) etiquetas.push('<span class="etiqueta">'+escapar(l.contatos[0].nome||("Contato"))+(l.contatos.length>1?' +'+(l.contatos.length-1):'')+'</span>');
+  if(l.contatos && l.contatos.length) etiquetas.push('<span class="etiqueta">'+escapar(l.contatos[0].nome||("Contato"))+
+    (textoTipo(l.contatos[0]) ? ' · '+escapar(textoTipo(l.contatos[0])) : '')+(l.contatos.length>1?' +'+(l.contatos.length-1):'')+'</span>');
   // Competitor tag. If the competitor's contract ends in 90 days or less (or already ended),
   // the tag turns red ('perigo'), because that's a sales opportunity.
   if(l.concorrente){
@@ -683,19 +685,58 @@ function alvoPosicao(lista, y){
 // in separate fields. This converts them into the new unified 'contatos' list.
 function migrarContatosAntigos(l){
   if(Array.isArray(l.contatos) && l.contatos.length){
-    return l.contatos.map(c=>({nome:c.nome||"", telefone:c.telefone||"", email:c.email||""}));
+    return l.contatos.map(c=>({nome:c.nome||"", telefone:c.telefone||"", email:c.email||"", tipo:c.tipo||""}));
   }
   // condomínios cadastrados antes da unificação: junta síndico e administradora num contato cada
   const legado = [];
   if(l.sindico || l.sindicoTel || l.sindicoEmail){
-    legado.push({nome:l.sindico||"", telefone:l.sindicoTel||"", email:l.sindicoEmail||""});
+    legado.push({nome:l.sindico||"", telefone:l.sindicoTel||"", email:l.sindicoEmail||"", tipo:"Síndico"});
   }
   const nomeAdmin = [l.admin, l.adminContato].filter(Boolean).join(" – ");
   if(nomeAdmin || l.adminTel || l.adminEmail){
-    legado.push({nome:nomeAdmin, telefone:l.adminTel||"", email:l.adminEmail||""});
+    legado.push({nome:nomeAdmin, telefone:l.adminTel||"", email:l.adminEmail||"", tipo:"ADM"});
   }
   return legado;
 }
+// ---- "Quem é" (contact type) ----
+// Fixed options + any custom type someone typed with "Outro…". Custom types are learned from
+// every saved contact (condo contacts and standalone ones), so a type created on one card shows
+// up in the dropdown of all other cards. 'tiposExtras' also remembers new types right away,
+// before the contact is saved.
+const TIPOS_PADRAO = ["Síndico","ADM","Zelador","Morador","Gerente predial"];
+const CHAVE_TIPOS = "quitandinha:tiposContato";
+let tiposExtras = [];
+try{ tiposExtras = JSON.parse(localStorage.getItem(CHAVE_TIPOS) || "[]"); if(!Array.isArray(tiposExtras)) tiposExtras = []; }catch(e){ tiposExtras = []; }
+// All types, without duplicates (accents/case ignored): fixed ones first, then custom ones A→Z.
+function tiposContato(){
+  const vistos = new Set(TIPOS_PADRAO.map(normalizarNome)), extras = [];
+  const add = t => { t = String(t||"").trim(); const k = normalizarNome(t); if(t && !vistos.has(k)){ vistos.add(k); extras.push(t); } };
+  tiposExtras.forEach(add);
+  leads.forEach(l => (l.contatos||[]).forEach(c => add(c.tipo)));
+  (typeof avulsos !== "undefined" ? avulsos : []).forEach(c => add(c.tipo));
+  contatosForm.forEach(c => add(c.tipo));
+  return TIPOS_PADRAO.concat(extras.sort((a,b) => a.localeCompare(b, "pt-BR")));
+}
+// Saves a type typed in "Outro…". If it already exists (e.g. "zelador"), returns the existing spelling.
+function registrarTipo(txt){
+  txt = String(txt||"").trim().replace(/\s+/g," "); if(!txt) return "";
+  const existente = tiposContato().find(t => normalizarNome(t) === normalizarNome(txt));
+  if(existente) return existente;
+  tiposExtras.push(txt);
+  try{ localStorage.setItem(CHAVE_TIPOS, JSON.stringify(tiposExtras)); }catch(e){}
+  return txt;
+}
+// <option>s for a "Quem é" dropdown, with the current value selected and "Outro…" at the end.
+function opcoesTipo(atual){
+  const tipos = tiposContato();
+  if(atual && !tipos.includes(atual)) tipos.push(atual);
+  return '<option value="">Quem é?</option>'+
+    tipos.map(t => '<option value="'+escapar(t)+'"'+(t===atual?' selected':'')+'>'+escapar(t)+'</option>').join("")+
+    '<option value="__outro">Outro…</option>';
+}
+// Contact type as a short label for cards and lists ("" when not set).
+const textoTipo = c => (c && c.tipo) ? String(c.tipo) : "";
+
 // Builds a WhatsApp link (https://wa.me/55...) from a phone number.
 // Keeps digits only; Brazilian numbers with 10/11 digits get the country code 55 added.
 function whatsappLink(telefone){
@@ -712,10 +753,19 @@ function renderContatos(){
     el.innerHTML = '<p class="contato-vazio">Nenhum contato adicionado. Clique em "Adicionar contato" abaixo.</p>';
     return;
   }
+  // "Quem é" appears once the name has text. 'tipoOutroAberto' = the contact where the
+  // "Outro…" text box is open (to type a new type).
   el.innerHTML = contatosForm.map((c,i) =>
     '<div class="contato-item" data-i="'+i+'">'+
       '<div class="contato-cabeca">'+
         '<label class="campo"><span>Nome</span><input class="txt contato-nome" data-i="'+i+'" value="'+escapar(c.nome||"")+'"></label>'+
+        '<label class="campo contato-tipo" data-i="'+i+'"'+((c.nome||"").trim() ? '' : ' hidden')+'><span>Quem é</span>'+
+          (tipoOutroAberto === i
+            ? '<span class="tipo-outro"><input class="txt tipo-outro-txt" data-i="'+i+'" placeholder="Ex.: Porteiro" maxlength="40">'+
+              '<button type="button" class="tipo-ok" data-tipo-ok="'+i+'">OK</button>'+
+              '<button type="button" class="tipo-cancelar" data-tipo-cancelar="'+i+'" aria-label="Cancelar">✕</button></span>'
+            : '<select class="txt contato-tipo-sel" data-i="'+i+'">'+opcoesTipo(c.tipo||"")+'</select>')+
+        '</label>'+
         '<button type="button" class="contato-remover" data-remover-contato="'+i+'" title="Remover contato" aria-label="Remover contato">✕</button>'+
       '</div>'+
       '<div class="linha">'+
@@ -731,10 +781,22 @@ function renderContatos(){
       '</div>'+
     '</div>'
   ).join("");
+  if(tipoOutroAberto !== null){ const t = el.querySelector(".tipo-outro-txt"); if(t) t.focus(); }
 }
+let tipoOutroAberto = null;
+// "Outro…" box: OK saves the new type on that contact (and in the shared list of types).
+function confirmarTipoOutro(i){
+  const campo = $("#contatosLista .tipo-outro-txt");
+  const tipo = registrarTipo(campo ? campo.value : "");
+  if(!tipo){ avisar("Escreva quem é o contato (ex.: Porteiro)."); if(campo) campo.focus(); return; }
+  contatosForm[i].tipo = tipo;
+  tipoOutroAberto = null;
+  renderContatos();
+}
+function cancelarTipoOutro(){ tipoOutroAberto = null; renderContatos(); }
 // Adds an empty contact and puts the cursor in its name field.
 function adicionarContato(){
-  contatosForm.push({nome:"", telefone:"", email:""});
+  contatosForm.push({nome:"", telefone:"", email:"", tipo:""});
   renderContatos();
   const campos = document.querySelectorAll("#contatosLista .contato-nome");
   const ultimo = campos[campos.length-1];
@@ -744,12 +806,13 @@ function adicionarContato(){
 function removerContatoForm(i){
   if(!confirm("Remover este contato? Essa ação não pode ser desfeita.")) return;
   contatosForm.splice(i,1);
+  tipoOutroAberto = null;
   renderContatos();
 }
 // Reads the contacts from the form, trimming spaces and dropping completely empty ones.
 function lerContatosForm(){
   return contatosForm
-    .map(c=>({nome:(c.nome||"").trim(), telefone:(c.telefone||"").trim(), email:(c.email||"").trim()}))
+    .map(c=>({nome:(c.nome||"").trim(), telefone:(c.telefone||"").trim(), email:(c.email||"").trim(), tipo:(c.tipo||"").trim()}))
     .filter(c=>c.nome||c.telefone||c.email);
 }
 
@@ -1168,6 +1231,187 @@ function verificarLembretes(semAviso){
   });
 }
 
+/* ================= página de contatos ================= */
+// =============================================================================
+// CONTACTS PAGE (☰ → Contatos)
+// =============================================================================
+// Lists every contact: the ones saved inside the condos + "avulsos" (standalone contacts
+// that don't belong to any condo). Avulsos are saved in the Supabase table
+// "contatos_avulsos", seen by the whole team. If that table doesn't exist yet, they are
+// kept in this browser only and a warning explains it (see database/schema.sql).
+const CHAVE_AVULSOS = "quitandinha:contatosAvulsos";
+let avulsos = [];                 // [{id, nome, telefone, email, tipo, criadoPor, criadoEm}]
+let SEM_TABELA_AVULSOS = false;
+let avulsoEditando = null;        // id of the standalone contact open in the form (null = new)
+
+// True when Supabase says the table doesn't exist (so we fall back to the browser).
+function tabelaNaoExiste(e){
+  const msg = (e && e.message) || "";
+  return !!e && (e.code === "42P01" || e.code === "PGRST205" ||
+    (/contatos_avulsos/i.test(msg) && /(does not exist|could not find|schema cache)/i.test(msg)));
+}
+const avulsoDoBanco = r => ({id:r.id, nome:r.nome||"", telefone:r.telefone||"", email:r.email||"", tipo:r.tipo||"",
+  criadoPor:r.criado_por||"", criadoEm:r.criado_em||""});
+const avulsoParaBanco = c => ({id:c.id, nome:c.nome, telefone:c.telefone||null, email:c.email||null, tipo:c.tipo||null,
+  criado_por:c.criadoPor||null, criado_em:c.criadoEm||agora()});
+function avisarSemTabela(){
+  avisar("Os contatos avulsos ficam só neste aparelho até criar a tabela no Supabase (veja database/schema.sql).", true);
+}
+// Loads the standalone contacts (database, or the browser copy).
+async function buscarAvulsos(){
+  if(NUVEM && !SEM_TABELA_AVULSOS){
+    const r = await sb.from("contatos_avulsos").select("*").order("nome", {ascending:true});
+    if(!r.error){ avulsos = (r.data||[]).map(avulsoDoBanco); await localSet(CHAVE_AVULSOS, avulsos); return; }
+    if(tabelaNaoExiste(r.error)) SEM_TABELA_AVULSOS = true;
+  }
+  avulsos = await localGet(CHAVE_AVULSOS, []);
+}
+// Creates or updates a standalone contact. Returns false if it couldn't be saved.
+async function gravarAvulso(c){
+  if(NUVEM && !SEM_TABELA_AVULSOS){
+    const {error} = await sb.from("contatos_avulsos").upsert(avulsoParaBanco(c));
+    if(error){
+      if(tabelaNaoExiste(error)){ SEM_TABELA_AVULSOS = true; avisarSemTabela(); }
+      else if(error.code === "42501" || /row-level security/i.test(error.message||"")){ avisar("Você não tem permissão para salvar contatos.", true); return false; }
+      else { avisar("Sem conexão com o banco. O contato não foi salvo; tente de novo.", true); return false; }
+    }
+  }
+  const i = avulsos.findIndex(x => x.id === c.id);
+  if(i >= 0) avulsos[i] = c; else avulsos.push(c);
+  await localSet(CHAVE_AVULSOS, avulsos);
+  return true;
+}
+async function apagarAvulso(id){
+  if(NUVEM && !SEM_TABELA_AVULSOS){
+    const {error} = await sb.from("contatos_avulsos").delete().eq("id", id);
+    if(error && !tabelaNaoExiste(error)){ avisar("Não foi possível excluir o contato agora. Tente de novo.", true); return false; }
+  }
+  avulsos = avulsos.filter(x => x.id !== id);
+  await localSet(CHAVE_AVULSOS, avulsos);
+  return true;
+}
+
+// One row per contact: condo contacts (from every card) + standalone ones, A→Z by name.
+function todosContatos(){
+  const linhas = [];
+  leads.forEach(l => migrarContatosAntigos(l).forEach(c => {
+    if(c.nome || c.telefone || c.email)
+      linhas.push({nome:c.nome, telefone:c.telefone, email:c.email, tipo:c.tipo||"",
+        condominio:l.nome || "Condomínio sem nome", endereco:l.endereco || "", leadId:l.id});
+  }));
+  avulsos.forEach(c => linhas.push({nome:c.nome, telefone:c.telefone, email:c.email, tipo:c.tipo||"",
+    condominio:"", endereco:"", avulsoId:c.id}));
+  return linhas.sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR") || (a.condominio||"").localeCompare(b.condominio||"", "pt-BR"));
+}
+// Applies the search box and the "Quem é" filter.
+function contatosFiltrados(){
+  const termo = normalizarNome($("#ctBusca").value), tipo = $("#ctFiltroTipo").value;
+  return todosContatos().filter(c => {
+    if(tipo === "__sem" ? c.tipo : (tipo && c.tipo !== tipo)) return false;
+    if(!termo) return true;
+    const digitos = termo.replace(/\D/g,"");
+    return normalizarNome([c.nome,c.email,c.condominio,c.tipo].join(" ")).includes(termo) ||
+      (digitos.length >= 3 && String(c.telefone||"").replace(/\D/g,"").includes(digitos));
+  });
+}
+function renderContatosPagina(){
+  const filtroAtual = $("#ctFiltroTipo").value;
+  $("#ctFiltroTipo").innerHTML = '<option value="">Todos os tipos</option>'+
+    tiposContato().map(t => '<option value="'+escapar(t)+'">'+escapar(t)+'</option>').join("")+
+    '<option value="__sem">Sem tipo</option>';
+  $("#ctFiltroTipo").value = filtroAtual;
+  if($("#ctFiltroTipo").value !== filtroAtual) $("#ctFiltroTipo").value = "";
+
+  const todos = todosContatos(), lista = contatosFiltrados();
+  const nAvulsos = todos.filter(c => c.avulsoId).length;
+  $("#ctResumo").textContent = lista.length === todos.length
+    ? todos.length+" contato(s) · "+(todos.length-nAvulsos)+" de condomínios · "+nAvulsos+" avulso(s)"
+    : lista.length+" de "+todos.length+" contato(s)";
+  const zap = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>';
+  $("#ctCorpo").innerHTML = lista.map(c => {
+    const wa = whatsappLink(c.telefone);
+    return '<tr>'+
+      '<td data-label="Nome"><b>'+escapar(c.nome || "(sem nome)")+'</b>'+(c.tipo ? '<span class="ct-tipo">'+escapar(c.tipo)+'</span>' : '')+'</td>'+
+      '<td data-label="Número">'+(c.telefone ? escapar(c.telefone)+(wa ? ' <a class="ct-zap" href="'+escapar(wa)+'" target="_blank" rel="noopener" title="Abrir no WhatsApp" aria-label="Abrir no WhatsApp">'+zap+'</a>' : '') : '<span class="ct-vazio">—</span>')+'</td>'+
+      '<td data-label="E-mail">'+(c.email ? '<a href="mailto:'+escapar(c.email)+'">'+escapar(c.email)+'</a>' : '<span class="ct-vazio">—</span>')+'</td>'+
+      '<td data-label="Condomínio">'+(c.leadId
+        ? '<button type="button" class="ct-condo" data-ct-abrir="'+escapar(c.leadId)+'" title="Abrir o condomínio">'+escapar(c.condominio)+'</button>'
+        : '<span class="ct-avulso">Avulso</span>')+'</td>'+
+      '<td class="ct-acoes">'+(c.avulsoId
+        ? '<button type="button" data-ct-editar="'+escapar(c.avulsoId)+'" title="Editar contato" aria-label="Editar contato">✎</button>'+
+          '<button type="button" data-ct-excluir="'+escapar(c.avulsoId)+'" title="Excluir contato" aria-label="Excluir contato">✕</button>'
+        : '')+'</td>'+
+    '</tr>';
+  }).join("") || '<tr class="ct-nada"><td colspan="5">'+(todos.length
+    ? 'Nenhum contato encontrado com esse filtro.'
+    : 'Nenhum contato ainda. Eles aparecem aqui quando você adiciona contatos nos condomínios, ou clique em "+ Novo contato".')+'</td></tr>';
+}
+function contatosAberto(){ return $("#telaContatos").classList.contains("aberta"); }
+async function abrirContatos(){
+  renderContatosPagina();
+  $("#telaContatos").classList.add("aberta");
+  await buscarAvulsos();             // refresh the standalone contacts from the database
+  renderContatosPagina();
+}
+function fecharContatos(){ fecharFormAvulso(); $("#telaContatos").classList.remove("aberta"); }
+
+// ---- form for a standalone contact ----
+function abrirFormAvulso(id){
+  if(!perm.editar){ negar("editar"); return; }
+  const c = id ? avulsos.find(x => x.id === id) : null;
+  avulsoEditando = c ? c.id : null;
+  $("#ctFormTitulo").textContent = c ? "Editar contato" : "Novo contato";
+  $("#ct_nome").value = c ? c.nome : "";
+  $("#ct_tel").value = c ? (c.telefone||"") : "";
+  $("#ct_email").value = c ? (c.email||"") : "";
+  $("#ct_tipo").innerHTML = opcoesTipo(c ? c.tipo : "");
+  $("#ct_tipoOutro").value = ""; $("#ct_tipoOutro").hidden = true;
+  $("#ctForm").hidden = false;
+  $("#ct_nome").focus();
+}
+function fecharFormAvulso(){ $("#ctForm").hidden = true; avulsoEditando = null; }
+async function salvarAvulso(){
+  const nome = $("#ct_nome").value.trim();
+  if(!nome){ avisar("Escreva o nome do contato."); $("#ct_nome").focus(); return; }
+  let tipo = $("#ct_tipo").value;
+  if(tipo === "__outro"){
+    tipo = registrarTipo($("#ct_tipoOutro").value);
+    if(!tipo){ avisar("Escreva quem é o contato (ex.: Porteiro)."); $("#ct_tipoOutro").focus(); return; }
+  }
+  const antigo = avulsoEditando ? avulsos.find(x => x.id === avulsoEditando) : null;
+  const c = {
+    id: antigo ? antigo.id : (NUVEM ? crypto.randomUUID() : gerarId()),
+    nome, telefone:$("#ct_tel").value.trim(), email:$("#ct_email").value.trim(), tipo,
+    criadoPor: antigo ? antigo.criadoPor : (meuNome||""), criadoEm: antigo ? antigo.criadoEm : agora()
+  };
+  if(await gravarAvulso(c) === false) return;
+  fecharFormAvulso();
+  renderContatosPagina();
+  avisar(antigo ? "Contato atualizado" : "Contato adicionado");
+}
+async function excluirAvulso(id){
+  if(!perm.excluir){ negar("excluir"); return; }
+  const c = avulsos.find(x => x.id === id); if(!c) return;
+  if(!confirm('Excluir o contato "'+(c.nome||"sem nome")+'"? Essa ação não pode ser desfeita.')) return;
+  if(await apagarAvulso(id) === false) return;
+  if(avulsoEditando === id) fecharFormAvulso();
+  renderContatosPagina();
+  avisar("Contato excluído");
+}
+// Downloads the contacts shown on screen (search and filter applied) as a CSV for Excel.
+function exportarContatos(){
+  const lista = contatosFiltrados();
+  if(!lista.length){ avisar("Não há contatos para exportar"); return; }
+  const cab = ["Nome","Quem é","Número","E-mail","Condomínio","Endereço do condomínio"];
+  const linhas = lista.map(c => [c.nome, c.tipo, c.telefone, c.email, c.leadId ? c.condominio : "Avulso", c.endereco]);
+  const csv = [cab, ...linhas].map(r => r.map(x => '"'+String(x ?? "").replace(/"/g,'""')+'"').join(";")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"}));
+  a.download = "contatos-"+new Date().toISOString().slice(0,10)+".csv";
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  avisar("Planilha de contatos gerada ("+lista.length+")");
+}
+
 /* ================= histórico ================= */
 // =============================================================================
 // HISTORY (change log)
@@ -1289,6 +1533,7 @@ function abrirPainel(id, faseInicial){
     $("#f_aptos").value=l.aptos??""; $("#f_fase").value=l.fase||"cadastro";
     $("#f_zona").value=l.zona||""; $("#f_importante").value=l.importante||"";
     contatosForm = migrarContatosAntigos(l);
+    tipoOutroAberto = null;
     renderContatos();
     $("#f_concorrente").value=l.concorrente||"";
     $("#f_fimContrato").value=l.fimContrato||""; $("#f_perfil").value=l.perfil||"";
@@ -1311,6 +1556,7 @@ function abrirPainel(id, faseInicial){
       .forEach(x => $("#"+x).value = "");
     $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML=""; delete $("#avisoNomeDuplicado").dataset.fechadoPara;
     contatosForm = [];
+    tipoOutroAberto = null;
     renderContatos();
     observacoesForm = [];
     obsEditandoIndex = null;
@@ -1591,6 +1837,7 @@ async function sair(){
 async function iniciarQuadro(){
   await carregarPendencias();
   await buscarTudo();
+  try{ await buscarAvulsos(); }catch(e){}       // standalone contacts (Contatos page)
   if(pendentes.size || paraExcluir.size){
     // havia coisas gravadas offline na última visita: sobem agora
     pendentes.forEach(l => {
@@ -1741,6 +1988,11 @@ $("#semaforo").addEventListener("change", marcarSemaforo);
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(menuAberto()){ fecharMenu(true); return; }
+    // Contacts page: Esc closes its form first, then the page (if no condo panel is open on top)
+    if(contatosAberto() && !$("#painel").classList.contains("aberto")){
+      if(!$("#ctForm").hidden) fecharFormAvulso(); else fecharContatos();
+      return;
+    }
     if(obsEditandoIndex !== null){ cancelarEdicaoObservacao(); }
     else if(!$("#painel").classList.contains("aberto") && !$("#painelEquipe").classList.contains("aberto") && lembretesAberto()) fecharLembretes();
     else fecharTudo();
@@ -1770,6 +2022,9 @@ document.addEventListener("click", e=>{
   if(cancelObs) cancelarEdicaoObservacao();
   const saveObs = e.target.closest("[data-salvar-obs]");
   if(saveObs) salvarEdicaoObservacao(parseInt(saveObs.dataset.salvarObs,10));
+  const tipoOk = e.target.closest("[data-tipo-ok]");
+  if(tipoOk) confirmarTipoOutro(parseInt(tipoOk.dataset.tipoOk,10));
+  if(e.target.closest("[data-tipo-cancelar]")) cancelarTipoOutro();
   const remContato = e.target.closest("[data-remover-contato]");
   if(remContato) removerContatoForm(parseInt(remContato.dataset.removerContato,10));
   const btnWhats = e.target.closest("[data-whats-contato]");
@@ -1787,9 +2042,28 @@ document.addEventListener("input", e=>{
   if(i===undefined) return;
   const idx = parseInt(i,10);
   if(!contatosForm[idx]) return;
-  if(e.target.classList.contains("contato-nome")) contatosForm[idx].nome = e.target.value;
+  if(e.target.classList.contains("contato-nome")){
+    contatosForm[idx].nome = e.target.value;
+    const tipo = document.querySelector('#contatosLista .contato-tipo[data-i="'+idx+'"]');
+    if(tipo) tipo.hidden = !e.target.value.trim();     // "Quem é" appears after the name is filled
+  }
   else if(e.target.classList.contains("contato-tel")) contatosForm[idx].telefone = e.target.value;
   else if(e.target.classList.contains("contato-email")) contatosForm[idx].email = e.target.value;
+});
+// "Quem é" dropdown: picking "Outro…" opens a text box to type a new type.
+document.addEventListener("change", e=>{
+  if(!e.target.classList.contains("contato-tipo-sel")) return;
+  const idx = parseInt(e.target.dataset.i,10);
+  if(!contatosForm[idx]) return;
+  if(e.target.value === "__outro"){ tipoOutroAberto = idx; renderContatos(); }
+  else contatosForm[idx].tipo = e.target.value;
+});
+// In the "Outro…" box: Enter = OK, Esc = cancel (without closing the whole panel).
+$("#contatosLista").addEventListener("keydown", e=>{
+  if(!e.target.classList.contains("tipo-outro-txt")) return;
+  const idx = parseInt(e.target.dataset.i,10);
+  if(e.key === "Enter"){ e.preventDefault(); confirmarTipoOutro(idx); }
+  if(e.key === "Escape"){ e.stopPropagation(); cancelarTipoOutro(); }
 });
 // Ctrl+Enter (Cmd+Enter on Mac) while editing a note saves it.
 document.addEventListener("keydown", e=>{
@@ -1859,6 +2133,28 @@ $("#obsTexto").addEventListener("keydown", e=>{
 $("#f_nome").addEventListener("input", verificarNomeDuplicado);
 // "Visitar" button in the panel (saves right away).
 $("#btnVisitarLead").addEventListener("click", alternarVisitar);
+// Contacts page.
+$("#btnContatos").addEventListener("click", abrirContatos);
+$("#btnFecharContatos").addEventListener("click", fecharContatos);
+$("#ctBusca").addEventListener("input", renderContatosPagina);
+$("#ctFiltroTipo").addEventListener("change", renderContatosPagina);
+$("#btnNovoContato").addEventListener("click", ()=>abrirFormAvulso(null));
+$("#btnExportarContatos").addEventListener("click", exportarContatos);
+$("#ctForm").addEventListener("submit", e=>{ e.preventDefault(); salvarAvulso(); });
+$("#ctCancelar").addEventListener("click", fecharFormAvulso);
+$("#ct_tipo").addEventListener("change", ()=>{
+  const outro = $("#ct_tipo").value === "__outro";
+  $("#ct_tipoOutro").hidden = !outro;
+  if(outro) $("#ct_tipoOutro").focus();
+});
+$("#ctCorpo").addEventListener("click", e=>{
+  const abrir = e.target.closest("[data-ct-abrir]");
+  if(abrir){ abrirPainel(abrir.dataset.ctAbrir); return; }   // the panel opens on top of the page
+  const ed = e.target.closest("[data-ct-editar]");
+  if(ed){ abrirFormAvulso(ed.dataset.ctEditar); return; }
+  const ex = e.target.closest("[data-ct-excluir]");
+  if(ex) excluirAvulso(ex.dataset.ctExcluir);
+});
 // SULTS toggle in the panel.
 $("#btnSults").addEventListener("click", ()=>{ sultsForm = !sultsForm; atualizarBotaoSults(); });
 // Visit route button in the panel; mapa.js fires "rota-mudou" whenever the route changes.

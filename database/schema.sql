@@ -58,6 +58,18 @@ create table if not exists public.equipe (
   criado_em timestamptz default now()
 );
 
+-- Contatos avulsos (página Contatos): contatos que não são de nenhum condomínio.
+-- Os contatos dos condomínios continuam dentro de condominios.contatos.
+create table if not exists public.contatos_avulsos (
+  id         uuid primary key default gen_random_uuid(),
+  nome       text not null,
+  telefone   text,
+  email      text,
+  tipo       text,                 -- "Quem é": Síndico, ADM, Zelador, Morador, Gerente predial ou outro
+  criado_por text,
+  criado_em  timestamptz default now()
+);
+
 -- ============================================================
 -- Segurança: só quem estiver logado enxerga e edita os dados
 -- ============================================================
@@ -67,6 +79,14 @@ alter table public.equipe      enable row level security;
 drop policy if exists "equipe logada usa condominios" on public.condominios;
 create policy "equipe logada usa condominios"
   on public.condominios for all
+  to authenticated
+  using (true) with check (true);
+
+alter table public.contatos_avulsos enable row level security;
+-- Toda a equipe logada vê e edita os contatos avulsos (como os condomínios neste arquivo).
+drop policy if exists "equipe logada usa contatos avulsos" on public.contatos_avulsos;
+create policy "equipe logada usa contatos avulsos"
+  on public.contatos_avulsos for all
   to authenticated
   using (true) with check (true);
 

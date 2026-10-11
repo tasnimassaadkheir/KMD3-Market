@@ -28,16 +28,16 @@ describe("Side menu (☰)", () => {
     await context.close();
   });
 
-  test("opens with the items in order: Mapa, Lembretes, Equipe (Administração only for admins)", async () => {
+  test("opens with the items in order: Mapa, Lembretes, Equipe, Contatos (Administração only for admins)", async () => {
     const { page, context } = await openApp(env);
     assert.equal(await page.getAttribute("#btnMenu", "aria-expanded"), "false");
     await abrir(page);
     assert.equal(await page.getAttribute("#btnMenu", "aria-expanded"), "true");
     const visiveis = await page.locator("#menuLateral .menu-item:visible .menu-rot").allTextContents();
-    assert.deepEqual(visiveis, ["Mapa", "Lembretes", "Equipe"]);
+    assert.deepEqual(visiveis, ["Mapa", "Lembretes", "Equipe", "Contatos"]);
     // order in the page, including the admin item that only admins see
     const todos = await page.locator("#menuLateral .menu-item .menu-rot").allTextContents();
-    assert.deepEqual(todos, ["Mapa", "Administração", "Lembretes", "Equipe"]);
+    assert.deepEqual(todos, ["Mapa", "Administração", "Lembretes", "Equipe", "Contatos"]);
     await context.close();
   });
 
@@ -46,7 +46,7 @@ describe("Side menu (☰)", () => {
     await page.evaluate(() => { document.querySelector("#btnAdmin").hidden = false; });   // what verificarAdmin() does
     await abrir(page);
     assert.deepEqual(await page.locator("#menuLateral .menu-item:visible .menu-rot").allTextContents(),
-      ["Mapa", "Administração", "Lembretes", "Equipe"]);
+      ["Mapa", "Administração", "Lembretes", "Equipe", "Contatos"]);
     await context.close();
   });
 

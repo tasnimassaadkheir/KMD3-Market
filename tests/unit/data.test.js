@@ -49,14 +49,14 @@ describe("paraBanco() / doBanco() — app format <-> database format", () => {
 
 describe("migrarContatosAntigos() — old síndico/administradora fields -> contacts list", () => {
   test("keeps the new contacts list when it exists", () => {
-    assert.deepEqual(app.json(`migrarContatosAntigos({contatos:[{nome:"Ana"}]})`),
-      [{ nome: "Ana", telefone: "", email: "" }]);
+    assert.deepEqual(app.json(`migrarContatosAntigos({contatos:[{nome:"Ana", tipo:"Zelador"}]})`),
+      [{ nome: "Ana", telefone: "", email: "", tipo: "Zelador" }]);
   });
-  test("converts the old fields into two contacts", () => {
+  test("converts the old fields into two contacts, already marked Síndico and ADM", () => {
     const c = app.json(`migrarContatosAntigos({sindico:"Paulo", sindicoTel:"119", admin:"Lello", adminContato:"Rita", adminEmail:"r@l.com"})`);
     assert.deepEqual(c, [
-      { nome: "Paulo", telefone: "119", email: "" },
-      { nome: "Lello – Rita", telefone: "", email: "r@l.com" },
+      { nome: "Paulo", telefone: "119", email: "", tipo: "Síndico" },
+      { nome: "Lello – Rita", telefone: "", email: "r@l.com", tipo: "ADM" },
     ]);
   });
   test("returns an empty list when there is nothing", () => {

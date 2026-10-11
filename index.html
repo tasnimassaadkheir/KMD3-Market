@@ -99,7 +99,7 @@
 </header>
 
 <!-- ==================== SIDE MENU (☰) ====================
-     Slides in from the left. 'inert' while closed, so Tab can't reach the hidden buttons.
+     Mapa, Administração, Lembretes, Equipe, Contatos. Slides in from the left. 'inert' while closed, so Tab can't reach the hidden buttons.
      The buttons keep their old ids (btnVista, btnAdmin...), so app.js and mapa.js work unchanged.
      Clicking any item closes the menu (app.js). -->
 <div class="menu-fundo" id="menuFundo" hidden></div>
@@ -115,6 +115,8 @@
   <!-- #lemBadge = number of reminders due today or overdue (red when something is overdue). -->
   <button type="button" class="menu-item" id="btnLembretes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="menu-rot">Lembretes</span><span class="lem-badge" id="lemBadge" hidden>0</span></button>
   <button type="button" class="menu-item" id="btnEquipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.2a3.2 3.2 0 010 5.6M18 14.3c1.8.8 3 2.6 3 4.7"/></svg><span class="menu-rot">Equipe</span></button>
+  <!-- Contacts page: every contact from the condos + standalone contacts. -->
+  <button type="button" class="menu-item" id="btnContatos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="15" height="18" rx="2"/><circle cx="11.5" cy="10" r="2.6"/><path d="M7.5 17c.6-2 2.2-3 4-3s3.4 1 4 3"/><path d="M19 7h2M19 11h2M19 15h2"/></svg><span class="menu-rot">Contatos</span></button>
 </nav>
 
 <!-- ==================== KANBAN BOARD ====================
@@ -343,6 +345,46 @@
 </section>
 
 <!-- painel da equipe -->
+<!-- ==================== CONTACTS PAGE ====================
+     Full-screen list of every contact: from the condos + standalone ("avulsos").
+     Columns: Nome, Número, E-mail, Condomínio. Built by renderContatosPagina() in app.js. -->
+<section class="tela-lem tela-contatos" id="telaContatos" aria-labelledby="tituloContatos">
+  <div class="tela-lem-topo">
+    <button type="button" class="btn-voltar" id="btnFecharContatos">← Voltar ao quadro</button>
+    <h2 id="tituloContatos">📇 Contatos</h2>
+    <div class="ct-ferr">
+      <input class="ct-busca" id="ctBusca" type="search" placeholder="Buscar nome, número, e-mail…" aria-label="Buscar contatos">
+      <select class="ct-filtro" id="ctFiltroTipo" aria-label="Filtrar por quem é"></select>
+      <button type="button" class="ct-prim" id="btnNovoContato">+ Novo contato</button>
+      <button type="button" class="ct-sec" id="btnExportarContatos">Exportar</button>
+    </div>
+  </div>
+  <div class="tela-lem-corpo">
+    <div class="tela-lem-in">
+      <!-- Form for a standalone contact (not linked to any condo). -->
+      <form class="ct-form" id="ctForm" hidden>
+        <h3 id="ctFormTitulo">Novo contato</h3>
+        <div class="ct-form-campos">
+          <label class="campo"><span>Nome</span><input class="txt" id="ct_nome" autocomplete="off"></label>
+          <label class="campo"><span>Número / WhatsApp</span><input class="txt" id="ct_tel" inputmode="tel"></label>
+          <label class="campo"><span>E-mail</span><input class="txt" id="ct_email" type="email"></label>
+          <label class="campo"><span>Quem é</span><select class="txt" id="ct_tipo"></select>
+            <input class="txt ct-tipo-outro" id="ct_tipoOutro" placeholder="Ex.: Porteiro" maxlength="40" hidden></label>
+        </div>
+        <div class="ct-form-botoes">
+          <button type="submit" class="btn-salvar">Salvar contato</button>
+          <button type="button" class="btn-neutro" id="ctCancelar">Cancelar</button>
+        </div>
+      </form>
+      <p class="ct-resumo" id="ctResumo"></p>
+      <table class="ct-tabela">
+        <thead><tr><th>Nome</th><th>Número</th><th>E-mail</th><th>Condomínio</th><th><span class="sr-only">Ações</span></th></tr></thead>
+        <tbody id="ctCorpo"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 <!-- ==================== TEAM PANEL ====================
      People who can be responsible for a lead. -->
 <aside class="painel" id="painelEquipe" role="dialog" aria-modal="true" aria-labelledby="tituloEquipe">
