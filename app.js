@@ -1145,9 +1145,12 @@ function verificarLembretes(semAviso){
   const atrasados = todos.filter(t=>t.c==="atrasado"), hoje = todos.filter(t=>t.c==="hoje");
   const badge = $("#lemBadge"); if(!badge) return;
   const n = atrasados.length + hoje.length;
-  badge.hidden = n === 0;
-  badge.textContent = n;
-  badge.classList.toggle("atraso", atrasados.length > 0);
+  // same number on the "Lembretes" menu item and on the ☰ button (visible with the menu closed)
+  [badge, $("#menuBadge")].forEach(b => {
+    b.hidden = n === 0;
+    b.textContent = n;
+    b.classList.toggle("atraso", atrasados.length > 0);
+  });
   if(semAviso) return;
   // First check after opening the app: one summary message instead of one per reminder.
   if(lemPrimeiraVez){
@@ -1645,11 +1648,42 @@ async function iniciar(){
   }
 }
 
+/* ================= menu lateral (☰) ================= */
+// SIDE MENU: Mapa, Administração, Lembretes, Equipe.
+// The menu buttons keep their old ids, so their own click handlers (here and in mapa.js) still run;
+// this code only opens/closes the drawer.
+// 'inert' on the closed menu keeps keyboard focus out of the hidden buttons.
+function menuAberto(){ return $("#menuLateral").classList.contains("aberto"); }
+function abrirMenu(){
+  const m = $("#menuLateral");
+  m.inert = false;
+  m.classList.add("aberto");
+  $("#menuFundo").hidden = false;
+  $("#btnMenu").setAttribute("aria-expanded", "true");
+  const primeiro = m.querySelector(".menu-item:not([hidden])");
+  if(primeiro) setTimeout(() => primeiro.focus(), 50);
+}
+// devolverFoco = put the keyboard focus back on ☰ (when closing with Esc or ✕)
+function fecharMenu(devolverFoco){
+  const m = $("#menuLateral");
+  m.classList.remove("aberto");
+  m.inert = true;
+  $("#menuFundo").hidden = true;
+  $("#btnMenu").setAttribute("aria-expanded", "false");
+  if(devolverFoco) $("#btnMenu").focus();
+}
+
 /* ================= eventos ================= */
 // =============================================================================
 // EVENTS: connect buttons/inputs to the functions above
 // addEventListener("click", fn) = "when this is clicked, run fn".
 // =============================================================================
+// Side menu: ☰ toggles it; ✕ or a click on the dark background closes it;
+// choosing an item closes it (the item's own action runs too).
+$("#btnMenu").addEventListener("click", ()=>{ menuAberto() ? fecharMenu() : abrirMenu(); });
+$("#btnFecharMenu").addEventListener("click", ()=>fecharMenu(true));
+$("#menuFundo").addEventListener("click", ()=>fecharMenu());
+$("#menuLateral").addEventListener("click", e=>{ if(e.target.closest(".menu-item")) fecharMenu(); });
 $("#btnNovo").addEventListener("click", ()=>abrirPainel(null));
 $("#btnFechar").addEventListener("click", fecharTudo);
 $("#btnFecharEquipe").addEventListener("click", fecharTudo);
@@ -1706,6 +1740,7 @@ $("#semaforo").addEventListener("change", marcarSemaforo);
 // Esc key: cancel note editing, or close the reminders page, or close the panels.
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
+    if(menuAberto()){ fecharMenu(true); return; }
     if(obsEditandoIndex !== null){ cancelarEdicaoObservacao(); }
     else if(!$("#painel").classList.contains("aberto") && !$("#painelEquipe").classList.contains("aberto") && lembretesAberto()) fecharLembretes();
     else fecharTudo();

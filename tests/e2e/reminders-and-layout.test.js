@@ -1,7 +1,7 @@
 // E2E tests: reminders (lembretes) and layout regressions (bugs that were fixed and must not return).
 const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
-const { setup, openApp, lead, localDateTime } = require("./helpers");
+const { setup, openApp, lead, localDateTime, irPeloMenu } = require("./helpers");
 
 let env;
 before(async () => { env = await setup(); });
@@ -19,6 +19,8 @@ describe("Reminders", () => {
     assert.equal(await page.locator(".cartao.lem-vencido h3").textContent(), "Atrasado");
     assert.equal(await page.locator(".cartao.lem-vencido").count(), 1, "the card with a future reminder stays normal");
     assert.equal((await page.textContent("#lemBadge")).trim(), "1");
+    assert.equal((await page.textContent("#menuBadge")).trim(), "1", "same count on the ☰ button");
+    assert.match(await page.getAttribute("#menuBadge", "class"), /atraso/, "red, because it's overdue");
     await context.close();
   });
 
@@ -26,7 +28,7 @@ describe("Reminders", () => {
     const { page, context } = await openApp(env, {
       leads: [lead({ nome: "Atrasado", lembretes: [{ id: "l1", quando: localDateTime(-1), texto: "Ligar para o síndico", feito: false }] })],
     });
-    await page.click("#btnLembretes");
+    await irPeloMenu(page, "#btnLembretes");
     await page.waitForSelector("#telaLembretes.aberta");
     assert.match(await page.textContent("#telaLembretes"), /Ligar para o síndico/);
 
@@ -40,17 +42,19 @@ describe("Reminders", () => {
 });
 
 describe("Layout regressions", () => {
-  test("the reminder badge stays INSIDE the bell button on a laptop screen", async () => {
-    // Bug fixed: below 1560px the button had a fixed width and the number spilled out.
+  test("the reminders count fits inside the 'Lembretes' menu item", async () => {
+    // (Before the side menu, a bug made this number spill out of the toolbar button on laptops.)
     const { page, context } = await openApp(env, {
       viewport: { width: 1400, height: 900 },
       leads: [lead({ lembretes: [{ id: "l1", quando: localDateTime(-1), texto: "x", feito: false }] })],
     });
-    await page.waitForSelector("#lemBadge:not([hidden])");
-    const btn = await page.locator("#btnLembretes").boundingBox();
+    await page.click("#btnMenu");
+    await page.waitForSelector("#menuLateral.aberto #lemBadge:not([hidden])");
+    await page.waitForTimeout(250);                       // let the slide-in animation finish
+    const item = await page.locator("#btnLembretes").boundingBox();
     const badge = await page.locator("#lemBadge").boundingBox();
-    assert.ok(badge.x >= btn.x && badge.x + badge.width <= btn.x + btn.width + 0.5,
-      `badge (${badge.x}-${badge.x + badge.width}) outside button (${btn.x}-${btn.x + btn.width})`);
+    assert.ok(badge.x >= item.x && badge.x + badge.width <= item.x + item.width + 0.5,
+      `badge (${badge.x}-${badge.x + badge.width}) outside the item (${item.x}-${item.x + item.width})`);
     await context.close();
   });
 
