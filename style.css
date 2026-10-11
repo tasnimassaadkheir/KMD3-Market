@@ -328,10 +328,10 @@
   /* ===== lembretes / próximos passos ===== */
   /* REMINDERS (lembretes)
      Number badge on the 'Lembretes' toolbar button (red when something is overdue). */
-  .btn .lem-badge,.menu-item .lem-badge,.btn-menu .lem-badge{min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--milho);color:#22180A;
+  .btn .lem-badge,.menu-item .lem-badge{min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--milho);color:#22180A;
     font-size:10.5px;font-weight:700;display:inline-grid;place-items:center;line-height:1}
-  .btn .lem-badge.atraso,.menu-item .lem-badge.atraso,.btn-menu .lem-badge.atraso{background:var(--perdido);color:#fff}
-  .btn .lem-badge[hidden],.menu-item .lem-badge[hidden],.btn-menu .lem-badge[hidden]{display:none}
+  .btn .lem-badge.atraso,.menu-item .lem-badge.atraso{background:var(--perdido);color:#fff}
+  .btn .lem-badge[hidden],.menu-item .lem-badge[hidden]{display:none}
   /* Reminder tag on cards: normal / due today (.hoje) / overdue (.atrasado). */
   .etiqueta.lem{background:#E8F1F4;color:#093E4F;font-weight:600}
   .etiqueta.lem.hoje{background:#FBEFD2;color:#6B4A0B}
@@ -612,12 +612,11 @@
 #btnAdmin[hidden],.adm-tela[hidden]{display:none}
 
 /* ===== menu lateral (☰) ===== */
-/* ☰ button at the left of the top bar. The reminders count sits on its top-right corner. */
+/* ☰ button at the left of the top bar. */
 .btn-menu{position:relative;flex:none;width:var(--h-ctrl);height:var(--h-ctrl);display:grid;place-items:center;padding:0;
   border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff}
 .btn-menu:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.26)}
 .btn-menu svg{width:18px;height:18px}
-.btn-menu .lem-badge{position:absolute;top:-6px;right:-7px;box-shadow:0 0 0 2px #093E4F}
 /* dark background behind the open menu (click = close) */
 .menu-fundo{position:fixed;inset:0;z-index:44;background:rgba(3,18,13,.5)}
 .menu-fundo[hidden]{display:none}

@@ -1270,12 +1270,10 @@ function verificarLembretes(semAviso){
   const atrasados = todos.filter(t=>t.c==="atrasado"), hoje = todos.filter(t=>t.c==="hoje");
   const badge = $("#lemBadge"); if(!badge) return;
   const n = atrasados.length + hoje.length;
-  // same number on the "Lembretes" menu item and on the ☰ button (visible with the menu closed)
-  [badge, $("#menuBadge")].forEach(b => {
-    b.hidden = n === 0;
-    b.textContent = n;
-    b.classList.toggle("atraso", atrasados.length > 0);
-  });
+  // number on the "Lembretes" item of the ☰ menu (red when something is overdue)
+  badge.hidden = n === 0;
+  badge.textContent = n;
+  badge.classList.toggle("atraso", atrasados.length > 0);
   if(semAviso) return;
   // First check after opening the app: one summary message instead of one per reminder.
   if(lemPrimeiraVez){

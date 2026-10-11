@@ -81,13 +81,14 @@ describe("Side menu (☰)", () => {
     await context.close();
   });
 
-  test("'Lembretes' opens the reminders page; the ☰ shows the count with the menu closed", async () => {
+  test("'Lembretes' shows the count inside the menu (not on ☰) and opens the reminders page", async () => {
     const { page, context } = await openApp(env, {
       leads: [lead({ lembretes: [{ id: "l1", quando: localDateTime(-1), texto: "Ligar", feito: false }] })],
     });
-    await page.waitForSelector("#menuBadge:not([hidden])");
-    assert.equal((await page.textContent("#menuBadge")).trim(), "1");
-    await abrir(page); await page.click("#btnLembretes");
+    assert.equal(await page.locator("#btnMenu .lem-badge").count(), 0, "the ☰ button has no number");
+    await abrir(page);
+    assert.equal((await page.textContent("#btnLembretes .lem-badge")).trim(), "1");
+    await page.click("#btnLembretes");
     await page.waitForSelector("#telaLembretes.aberta");
     assert.equal(await menuAberto(page), false);
     await context.close();
