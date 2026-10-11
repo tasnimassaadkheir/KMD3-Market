@@ -4,7 +4,7 @@
 const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const { setup, openApp, lead } = require("./helpers");
+const { setup, openApp, lead, irPeloMenu } = require("./helpers");
 
 let env;
 before(async () => { env = await setup(); });
@@ -37,7 +37,7 @@ async function abrirMapa(opts = {}) {
   const app = await openApp(env, { leads: condos(), geo, nominatim, fakeLeaflet: true, ...opts });
   if (opts.rota) await app.page.evaluate((r) => localStorage.setItem("quitandinha:rota", JSON.stringify(r)), opts.rota);
   if (opts.rota) { await app.page.reload(); await app.page.waitForSelector(".coluna"); }
-  await app.page.click("#btnVista");
+  await irPeloMenu(app.page, "#btnVista");
   await app.page.waitForSelector("body.vista-mapa");
   if (!(await app.page.locator("#mpRota.aberta").count())) await app.page.click("#mpRotaCab");
   return app;
@@ -82,7 +82,7 @@ describe("Adding a condo to the route from its panel", () => {
     await page.click('.cartao:has-text("Condomínio Meio")');
     await page.click("#btnRotaLead");
     await page.click("#btnFechar");
-    await page.click("#btnVista");
+    await irPeloMenu(page, "#btnVista");
     await page.waitForSelector("body.vista-mapa");
     assert.deepEqual(await page.locator("#mpRotaLista li b").allTextContents(), ["Condomínio Meio"]);
     assert.equal(await page.textContent("#mpRotaN"), "1");
@@ -159,7 +159,7 @@ describe("Typed addresses as stops", () => {
     await page.waitForFunction(() => document.querySelectorAll("#mpRotaLista li").length === 2);
 
     await page.reload(); await page.waitForSelector(".coluna");
-    await page.click("#btnVista"); await page.waitForSelector("body.vista-mapa");
+    await irPeloMenu(page, "#btnVista"); await page.waitForSelector("body.vista-mapa");
     assert.equal(await page.textContent("#mpPartidaNome"), "Rua Augusta, 100");
     assert.equal(await page.locator("#mpRotaLista li").count(), 2);
     await context.close();

@@ -328,10 +328,10 @@
   /* ===== lembretes / próximos passos ===== */
   /* REMINDERS (lembretes)
      Number badge on the 'Lembretes' toolbar button (red when something is overdue). */
-  .btn .lem-badge{min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--milho);color:#22180A;
+  .btn .lem-badge,.menu-item .lem-badge,.btn-menu .lem-badge{min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--milho);color:#22180A;
     font-size:10.5px;font-weight:700;display:inline-grid;place-items:center;line-height:1}
-  .btn .lem-badge.atraso{background:var(--perdido);color:#fff}
-  .btn .lem-badge[hidden]{display:none}
+  .btn .lem-badge.atraso,.menu-item .lem-badge.atraso,.btn-menu .lem-badge.atraso{background:var(--perdido);color:#fff}
+  .btn .lem-badge[hidden],.menu-item .lem-badge[hidden],.btn-menu .lem-badge[hidden]{display:none}
   /* Reminder tag on cards: normal / due today (.hoje) / overdue (.atrasado). */
   .etiqueta.lem{background:#E8F1F4;color:#093E4F;font-weight:600}
   .etiqueta.lem.hoje{background:#FBEFD2;color:#6B4A0B}
@@ -538,10 +538,6 @@
   @media (max-width:1560px){
     .btn .rot{display:none}          /* só ícone nos botões secundários */
     .btn:not(.btn-sync):not(.btn-destaque):not(.btn-sair){width:var(--h-ctrl);padding:0}
-    /* Exception: the Lembretes (reminders) button also holds the number badge,
-       so instead of a fixed square it grows to fit the bell + the number.
-       Without a badge it still looks like a square icon button (min-width). */
-    #btnLembretes{width:auto;min-width:var(--h-ctrl);padding:0 8px;gap:5px}
   }
   /* Below 1250px: hide the word 'condomínio' in the New button and shrink the date inputs. */
   @media (max-width:1250px){
@@ -590,6 +586,36 @@
 /* ADMIN SCREEN (only visible to admins)
    Full-screen page with organizations on the left and members table on the right. */
 #btnAdmin[hidden],.adm-tela[hidden]{display:none}
+
+/* ===== menu lateral (☰) ===== */
+/* ☰ button at the left of the top bar. The reminders count sits on its top-right corner. */
+.btn-menu{position:relative;flex:none;width:var(--h-ctrl);height:var(--h-ctrl);display:grid;place-items:center;padding:0;
+  border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff}
+.btn-menu:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.26)}
+.btn-menu svg{width:18px;height:18px}
+.btn-menu .lem-badge{position:absolute;top:-6px;right:-7px;box-shadow:0 0 0 2px #093E4F}
+/* dark background behind the open menu (click = close) */
+.menu-fundo{position:fixed;inset:0;z-index:44;background:rgba(3,18,13,.5)}
+.menu-fundo[hidden]{display:none}
+/* the drawer: off-screen to the left, slides in with .aberto */
+.menu-lateral{position:fixed;top:0;left:0;bottom:0;z-index:45;width:min(280px,85vw);display:flex;flex-direction:column;
+  gap:4px;padding:0 10px 16px;background:linear-gradient(180deg,#0B4658 0%,#062C38 100%);color:#fff;
+  box-shadow:6px 0 28px rgba(0,0,0,.35);transform:translateX(-105%);transition:transform .2s ease;overflow-y:auto}
+.menu-lateral.aberto{transform:none}
+@media (prefers-reduced-motion:reduce){.menu-lateral{transition:none}}
+.menu-cabeca{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 12px;margin-bottom:6px;
+  border-bottom:1px solid rgba(255,255,255,.12);font-family:"Bricolage Grotesque","Inter",sans-serif;font-weight:700;font-size:15px}
+.menu-fechar{width:30px;height:30px;border:0;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;font-size:14px}
+.menu-fechar:hover{background:rgba(255,255,255,.2)}
+/* one menu option: icon + text (+ reminders count) */
+.menu-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:0;border-radius:10px;
+  background:transparent;color:#fff;font-size:14px;font-weight:500;text-align:left}
+.menu-item[hidden]{display:none}
+.menu-item:hover{background:rgba(255,255,255,.09)}
+.menu-item:focus-visible{outline:2px solid var(--milho);outline-offset:-2px}
+.menu-item svg{width:19px;height:19px;flex:none;opacity:.9}
+.menu-item #icoVista{display:flex}
+.menu-item .menu-rot{flex:1}
 .adm-tela{position:fixed;inset:0;z-index:60;background:var(--creme);color:var(--tinta);overflow:auto}
 .adm-topo{background:#093E4F;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2}
 .adm-topo h2{margin:0;font-size:17px}

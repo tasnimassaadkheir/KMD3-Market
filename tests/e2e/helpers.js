@@ -100,6 +100,13 @@ async function openApp(env, opts = {}) {
   return { page, context, errors };
 }
 
+/** Opens the ☰ side menu and clicks one of its items (e.g. "#btnVista", "#btnLembretes"). */
+async function irPeloMenu(page, seletor) {
+  await page.click("#btnMenu");
+  await page.waitForSelector("#menuLateral.aberto");
+  await page.click(seletor);
+}
+
 /** Same as normalizarNome() in app.js: no accents, lowercase, single spaces. */
 function normalizar(s) {
   return String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/\s+/g, " ");
@@ -123,4 +130,4 @@ function localDateTime(days, hour = 10) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-module.exports = { setup, openApp, lead, localDateTime, normalizar };
+module.exports = { setup, openApp, lead, localDateTime, normalizar, irPeloMenu };
