@@ -37,7 +37,7 @@
 <!-- ==================== TOP BAR ====================
      Logo, search, filters and action buttons. -->
 <header class="topo">
-  <!-- ☰ Opens the side menu (Mapa, Administração, Lembretes, Equipe, Contatos). -->
+  <!-- ☰ Opens the side menu (Mapa, Administração, Lembretes, Equipe, Contatos, Templates). -->
   <button class="btn-menu" id="btnMenu" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="menuLateral">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
   </button>
@@ -97,7 +97,7 @@
 </header>
 
 <!-- ==================== SIDE MENU (☰) ====================
-     Mapa, Administração, Lembretes, Equipe, Contatos. Slides in from the left. 'inert' while closed, so Tab can't reach the hidden buttons.
+     Mapa, Administração, Lembretes, Equipe, Contatos, Templates. Slides in from the left. 'inert' while closed, so Tab can't reach the hidden buttons.
      The buttons keep their old ids (btnVista, btnAdmin...), so app.js and mapa.js work unchanged.
      Clicking any item closes the menu (app.js). -->
 <div class="menu-fundo" id="menuFundo" hidden></div>
@@ -115,6 +115,8 @@
   <button type="button" class="menu-item" id="btnEquipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.2a3.2 3.2 0 010 5.6M18 14.3c1.8.8 3 2.6 3 4.7"/></svg><span class="menu-rot">Equipe</span></button>
   <!-- Contacts page: every contact from the condos + standalone contacts. -->
   <button type="button" class="menu-item" id="btnContatos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="15" height="18" rx="2"/><circle cx="11.5" cy="10" r="2.6"/><path d="M7.5 17c.6-2 2.2-3 4-3s3.4 1 4 3"/><path d="M19 7h2M19 11h2M19 15h2"/></svg><span class="menu-rot">Contatos</span></button>
+  <!-- Templates page: ready-made texts with a "copy" button. -->
+  <button type="button" class="menu-item" id="btnTemplates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg><span class="menu-rot">Templates</span></button>
 </nav>
 
 <!-- ==================== KANBAN BOARD ====================
@@ -381,6 +383,35 @@
         <thead><tr><th>Nome</th><th>Número</th><th>E-mail</th><th>Condomínio</th><th><span class="sr-only">Ações</span></th></tr></thead>
         <tbody id="ctCorpo"></tbody>
       </table>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== TEMPLATES PAGE ====================
+     Ready-made texts as cards: title, text and a "Copiar" button. Built by renderTemplates() in app.js. -->
+<section class="tela-lem tela-templates" id="telaTemplates" aria-labelledby="tituloTemplates">
+  <div class="tela-lem-topo">
+    <button type="button" class="btn-voltar" id="btnFecharTemplates">← Voltar ao quadro</button>
+    <h2 id="tituloTemplates">📝 Templates</h2>
+    <div class="ct-ferr">
+      <input class="ct-busca" id="tpBusca" type="search" placeholder="Buscar título ou texto…" aria-label="Buscar templates">
+      <button type="button" class="ct-prim" id="btnNovoTemplate">+ Novo template</button>
+    </div>
+  </div>
+  <div class="tela-lem-corpo">
+    <div class="tela-lem-in">
+      <!-- Form to create or edit a template. -->
+      <form class="ct-form tp-form" id="tpForm" hidden>
+        <h3 id="tpFormTitulo">Novo template</h3>
+        <label class="campo"><span>Título</span><input class="txt" id="tp_titulo" maxlength="80" autocomplete="off" placeholder="Ex.: Apresentação no WhatsApp"></label>
+        <label class="campo"><span>Texto</span><textarea class="txt" id="tp_texto" rows="7" placeholder="Olá! Sou da KMD3 Market…"></textarea></label>
+        <div class="ct-form-botoes">
+          <button type="submit" class="btn-salvar">Salvar template</button>
+          <button type="button" class="btn-neutro" id="tpCancelar">Cancelar</button>
+        </div>
+      </form>
+      <p class="ct-resumo" id="tpResumo"></p>
+      <div class="tp-grade" id="tpGrade"></div>
     </div>
   </div>
 </section>

@@ -1305,10 +1305,11 @@ let SEM_TABELA_AVULSOS = false;
 let avulsoEditando = null;        // id of the standalone contact open in the form (null = new)
 
 // True when Supabase says the table doesn't exist (so we fall back to the browser).
-function tabelaNaoExiste(e){
+// 'tabela' = the table that was queried (contatos_avulsos or templates).
+function tabelaNaoExiste(e, tabela){
   const msg = (e && e.message) || "";
   return !!e && (e.code === "42P01" || e.code === "PGRST205" ||
-    (/contatos_avulsos/i.test(msg) && /(does not exist|could not find|schema cache)/i.test(msg)));
+    (new RegExp(tabela || "contatos_avulsos", "i").test(msg) && /(does not exist|could not find|schema cache)/i.test(msg)));
 }
 const avulsoDoBanco = r => ({id:r.id, nome:r.nome||"", telefone:r.telefone||"", email:r.email||"", tipo:r.tipo||"",
   criadoPor:r.criado_por||"", criadoEm:r.criado_em||""});
@@ -1470,6 +1471,161 @@ function exportarContatos(){
   a.download = "contatos-"+new Date().toISOString().slice(0,10)+".csv";
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   avisar("Planilha de contatos gerada ("+lista.length+")");
+}
+
+/* ================= página de templates ================= */
+// =============================================================================
+// TEMPLATES PAGE (☰ → Templates)
+// =============================================================================
+// Ready-made texts (WhatsApp messages, e-mails, scripts...) as cards with a title and a
+// "copy" button. Saved in the Supabase table "templates", seen by the whole team.
+// If that table doesn't exist yet, they are kept in this browser only and a warning
+// explains it (see database/schema.sql).
+const CHAVE_TEMPLATES = "quitandinha:templates";
+let templates = [];               // [{id, titulo, texto, criadoPor, criadoEm, atualizadoEm}]
+let SEM_TABELA_TEMPLATES = false;
+let templateEditando = null;      // id of the template open in the form (null = new)
+
+const templateDoBanco = r => ({id:r.id, titulo:r.titulo||"", texto:r.texto||"", criadoPor:r.criado_por||"",
+  criadoEm:r.criado_em||"", atualizadoEm:r.atualizado_em||""});
+const templateParaBanco = t => ({id:t.id, titulo:t.titulo, texto:t.texto, criado_por:t.criadoPor||null,
+  criado_em:t.criadoEm||agora(), atualizado_em:t.atualizadoEm||agora()});
+async function buscarTemplates(){
+  if(NUVEM && !SEM_TABELA_TEMPLATES){
+    const r = await sb.from("templates").select("*").order("titulo", {ascending:true});
+    if(!r.error){ templates = (r.data||[]).map(templateDoBanco); await localSet(CHAVE_TEMPLATES, templates); return; }
+    if(tabelaNaoExiste(r.error, "templates")) SEM_TABELA_TEMPLATES = true;
+  }
+  templates = await localGet(CHAVE_TEMPLATES, []);
+}
+// Creates or updates a template. Returns false if it couldn't be saved.
+async function gravarTemplate(t){
+  if(NUVEM && !SEM_TABELA_TEMPLATES){
+    const {error} = await sb.from("templates").upsert(templateParaBanco(t));
+    if(error){
+      if(tabelaNaoExiste(error, "templates")){
+        SEM_TABELA_TEMPLATES = true;
+        avisar("Os templates ficam só neste aparelho até criar a tabela no Supabase (veja database/schema.sql).", true);
+      }
+      else if(error.code === "42501" || /row-level security/i.test(error.message||"")){ avisar("Você não tem permissão para salvar templates.", true); return false; }
+      else { avisar("Sem conexão com o banco. O template não foi salvo; tente de novo.", true); return false; }
+    }
+  }
+  const i = templates.findIndex(x => x.id === t.id);
+  if(i >= 0) templates[i] = t; else templates.push(t);
+  await localSet(CHAVE_TEMPLATES, templates);
+  return true;
+}
+async function apagarTemplate(id){
+  if(NUVEM && !SEM_TABELA_TEMPLATES){
+    const {error} = await sb.from("templates").delete().eq("id", id);
+    if(error && !tabelaNaoExiste(error, "templates")){ avisar("Não foi possível excluir o template agora. Tente de novo.", true); return false; }
+  }
+  templates = templates.filter(x => x.id !== id);
+  await localSet(CHAVE_TEMPLATES, templates);
+  return true;
+}
+
+// Templates A→Z by title, filtered by the search box (title or text).
+function templatesFiltrados(){
+  const termo = normalizarNome($("#tpBusca").value);
+  return templates
+    .filter(t => !termo || normalizarNome(t.titulo+" "+t.texto).includes(termo))
+    .sort((a,b) => (a.titulo||"").localeCompare(b.titulo||"", "pt-BR"));
+}
+const ICONE_COPIAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+  '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+function renderTemplates(){
+  const lista = templatesFiltrados();
+  $("#tpResumo").textContent = templates.length
+    ? (lista.length === templates.length ? templates.length+" template(s)" : lista.length+" de "+templates.length+" template(s)")
+    : "";
+  $("#tpGrade").innerHTML = lista.map(t =>
+    '<article class="tp-cartao" data-tp="'+escapar(t.id)+'">'+
+      '<div class="tp-cabeca">'+
+        '<h3>'+escapar(t.titulo || "Sem título")+'</h3>'+
+        '<button type="button" class="tp-copiar" data-tp-copiar="'+escapar(t.id)+'" title="Copiar texto" aria-label="Copiar o texto de '+escapar(t.titulo||"template")+'">'+ICONE_COPIAR+'<span>Copiar</span></button>'+
+      '</div>'+
+      '<p class="tp-texto">'+escapar(t.texto)+'</p>'+
+      '<div class="tp-rodape">'+
+        '<span>'+(t.criadoPor ? "por "+escapar(t.criadoPor) : "")+'</span>'+
+        '<span class="tp-acoes">'+
+          '<button type="button" data-tp-editar="'+escapar(t.id)+'" title="Editar template" aria-label="Editar template">✎</button>'+
+          '<button type="button" data-tp-excluir="'+escapar(t.id)+'" title="Excluir template" aria-label="Excluir template">✕</button>'+
+        '</span>'+
+      '</div>'+
+    '</article>'
+  ).join("") || '<p class="tp-vazio">'+(templates.length
+    ? "Nenhum template encontrado com essa busca."
+    : 'Nenhum template ainda. Clique em "+ Novo template" para criar o primeiro (ex.: mensagem de apresentação no WhatsApp).')+'</p>';
+}
+function templatesAberto(){ return $("#telaTemplates").classList.contains("aberta"); }
+async function abrirTemplates(){
+  renderTemplates();
+  $("#telaTemplates").classList.add("aberta");
+  try{ await buscarTemplates(); }catch(e){}       // refresh from the database
+  renderTemplates();
+}
+function fecharTemplates(){ fecharFormTemplate(); $("#telaTemplates").classList.remove("aberta"); }
+
+// ---- form (new / edit) ----
+function abrirFormTemplate(id){
+  if(!perm.editar){ negar("editar"); return; }
+  const t = id ? templates.find(x => x.id === id) : null;
+  templateEditando = t ? t.id : null;
+  $("#tpFormTitulo").textContent = t ? "Editar template" : "Novo template";
+  $("#tp_titulo").value = t ? t.titulo : "";
+  $("#tp_texto").value = t ? t.texto : "";
+  $("#tpForm").hidden = false;
+  $("#tp_titulo").focus();
+}
+function fecharFormTemplate(){ $("#tpForm").hidden = true; templateEditando = null; }
+async function salvarTemplate(){
+  const titulo = $("#tp_titulo").value.trim(), texto = $("#tp_texto").value.replace(/\s+$/, "");
+  if(!titulo){ avisar("Dê um título ao template."); $("#tp_titulo").focus(); return; }
+  if(!texto.trim()){ avisar("Escreva o texto do template."); $("#tp_texto").focus(); return; }
+  const antigo = templateEditando ? templates.find(x => x.id === templateEditando) : null;
+  const t = {
+    id: antigo ? antigo.id : (NUVEM ? crypto.randomUUID() : gerarId()),
+    titulo, texto,
+    criadoPor: antigo ? antigo.criadoPor : (meuNome||""), criadoEm: antigo ? antigo.criadoEm : agora(),
+    atualizadoEm: agora()
+  };
+  if(await gravarTemplate(t) === false) return;
+  fecharFormTemplate();
+  renderTemplates();
+  avisar(antigo ? "Template atualizado" : "Template criado");
+}
+async function excluirTemplate(id){
+  if(!perm.excluir){ negar("excluir"); return; }
+  const t = templates.find(x => x.id === id); if(!t) return;
+  if(!confirm('Excluir o template "'+(t.titulo||"sem título")+'"? Essa ação não pode ser desfeita.')) return;
+  if(await apagarTemplate(id) === false) return;
+  if(templateEditando === id) fecharFormTemplate();
+  renderTemplates();
+  avisar("Template excluído");
+}
+// Copies the text exactly as written (line breaks included). Falls back to a hidden
+// textarea on browsers without the Clipboard API. The button shows "✓ Copiado" for 2 s.
+async function copiarTemplate(id, botao){
+  const t = templates.find(x => x.id === id); if(!t) return;
+  let ok = true;
+  try{ await navigator.clipboard.writeText(t.texto); }
+  catch(e){
+    const ta = document.createElement("textarea");
+    ta.value = t.texto; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try{ ok = document.execCommand("copy"); }catch(_){ ok = false; }
+    ta.remove();
+  }
+  if(!ok){ avisar("Não consegui copiar. Selecione o texto e copie manualmente.", true); return; }
+  avisar('Texto de "'+(t.titulo||"template")+'" copiado');
+  if(botao){
+    botao.classList.add("copiado");
+    botao.querySelector("span").textContent = "Copiado";
+    clearTimeout(botao._t);
+    botao._t = setTimeout(() => { botao.classList.remove("copiado"); botao.querySelector("span").textContent = "Copiar"; }, 2000);
+  }
 }
 
 /* ================= histórico ================= */
@@ -2052,6 +2208,10 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(menuAberto()){ fecharMenu(true); return; }
     // Contacts page: Esc closes its form first, then the page (if no condo panel is open on top)
+    if(templatesAberto()){
+      if(!$("#tpForm").hidden) fecharFormTemplate(); else fecharTemplates();
+      return;
+    }
     if(contatosAberto() && !$("#painel").classList.contains("aberto")){
       if(!$("#ctForm").hidden) fecharFormAvulso(); else fecharContatos();
       return;
@@ -2215,6 +2375,21 @@ $("#obsTexto").addEventListener("keydown", e=>{
 $("#f_nome").addEventListener("input", verificarNomeDuplicado);
 // "Visitar" button in the panel (saves right away).
 $("#btnVisitarLead").addEventListener("click", alternarVisitar);
+// Templates page.
+$("#btnTemplates").addEventListener("click", abrirTemplates);
+$("#btnFecharTemplates").addEventListener("click", fecharTemplates);
+$("#tpBusca").addEventListener("input", renderTemplates);
+$("#btnNovoTemplate").addEventListener("click", ()=>abrirFormTemplate(null));
+$("#tpForm").addEventListener("submit", e=>{ e.preventDefault(); salvarTemplate(); });
+$("#tpCancelar").addEventListener("click", fecharFormTemplate);
+$("#tpGrade").addEventListener("click", e=>{
+  const c = e.target.closest("[data-tp-copiar]");
+  if(c){ copiarTemplate(c.dataset.tpCopiar, c); return; }
+  const ed = e.target.closest("[data-tp-editar]");
+  if(ed){ abrirFormTemplate(ed.dataset.tpEditar); return; }
+  const ex = e.target.closest("[data-tp-excluir]");
+  if(ex) excluirTemplate(ex.dataset.tpExcluir);
+});
 // Contacts page.
 $("#btnContatos").addEventListener("click", abrirContatos);
 $("#btnFecharContatos").addEventListener("click", fecharContatos);
