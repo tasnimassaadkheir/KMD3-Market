@@ -687,6 +687,12 @@ body.vista-mapa #quadro{display:none}
 .mp-btn:hover,.mp-sel:hover{background:rgba(14,60,76,.95)}
 .mp-btn[aria-pressed="true"]{background:var(--milho);color:#22180A;border-color:transparent}
 .mp-btn svg{width:14px;height:14px;flex:none}
+/* "🚗 Visitar" filter: the number of condos marked to visit sits in a small pill */
+.mp-filtro-visitar #mpSoVisitarIco{display:flex}
+.mp-filtro-visitar svg{width:16px;height:16px}
+.mp-filtro-visitar b{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:rgba(255,255,255,.18);
+  font-size:11px;display:inline-grid;place-items:center}
+.mp-filtro-visitar[aria-pressed="true"] b{background:rgba(34,24,10,.15)}
 /* "Voltar ao quadro": the first button on the map, in gold so it's easy to find */
 .mp-voltar{background:var(--milho);color:#22180A;border-color:transparent;font-weight:600}
 .mp-voltar:hover{background:#DDB97C}

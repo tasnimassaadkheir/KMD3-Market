@@ -47,6 +47,8 @@
   let ativo = false, modoCor = "status", calorOn = false, ocultos = new Set();
   // True while the code itself moves the map (so we can tell it apart from the user moving it).
   let programatico = false;
+  // soVisitar = "🚗 Visitar" filter on: only condos marked "Visitar" (the car on the card) are shown.
+  let soVisitar = false;
   // rota = ids of condos in the route (in order), pontos = condos currently drawn (id -> position).
   // ajustado / movidoPeloUsuario control the automatic 'fit all points' zoom.
   let rota = [], pontos = new Map(), ajustado = false, movidoPeloUsuario = false, assinaturaLegenda = "";
@@ -247,9 +249,19 @@
   // Redraws all dots: filters the condos (same filters as the board), calculates positions,
   // counts categories for the legend, draws circle markers (dashed border = approximate position),
   // draws the heatmap if it's on, then updates the legend, the route and the status text.
+  // Condos the map should show: the board's filters, plus the "Visitar" filter when it's on.
+  function visiveisNoMapa(){
+    return filtrar().filter(l => !soVisitar || l.visitar);
+  }
+  // Updates the "🚗 Visitar N" button: N = how many condos (with the board's filters) are marked to visit.
+  function atualizarBotaoVisitar(){
+    $m("#mpSoVisitarN").textContent = filtrar().filter(l => l.visitar).length;
+    $m("#mpSoVisitar").setAttribute("aria-pressed", soVisitar ? "true" : "false");
+  }
   function desenharPontos(){
     if(!ativo || !mapa || !L) return;
-    const vis = filtrar();
+    atualizarBotaoVisitar();
+    const vis = visiveisNoMapa();
     const {res, semLocal} = calcularPosicoes(vis);
     pontos = new Map();
     const rank = modoCor === "conc" ? rankearConcorrentes(vis) : null;
@@ -310,7 +322,7 @@
     const el = $m("#mpStatus");
     if(rodando && fila.length){ el.textContent = "Localizando " + Math.min(feitos+1, totalFila) + " de " + totalFila + "…"; return; }
     if(falhaRede){ el.textContent = "Sem resposta do serviço de endereços"; return; }
-    el.textContent = pontos.size + " no mapa";
+    el.textContent = pontos.size + (soVisitar ? " para visitar" : " no mapa");
   }
   // Zooms/moves the map so that all visible points fit on screen.
   function enquadrar(){
@@ -711,6 +723,18 @@
   // Color mode changed: reset hidden categories and redraw.
   $m("#mpCor").addEventListener("change", e => { modoCor = e.target.value; ocultos.clear(); assinaturaLegenda = ""; desenharPontos(); });
   // Heatmap button on/off (aria-pressed tells screen readers if it's on).
+  // "🚗 Visitar": on/off. When on, only the condos with the car are shown and the map zooms to them.
+  $m("#mpSoVisitarIco").innerHTML = ICONE_CARRO;      // same car icon as on the cards (app.js)
+  $m("#mpSoVisitar").addEventListener("click", () => {
+    soVisitar = !soVisitar;
+    if(soVisitar && !filtrar().some(l => l.visitar)){
+      soVisitar = false;
+      avisar("Nenhum condomínio marcado para visitar. Abra um cartão e clique em \"Visitar\".");
+    }
+    ocultos.clear(); assinaturaLegenda = "";              // the legend is rebuilt for the new set of points
+    desenharPontos();
+    movidoPeloUsuario = false; enquadrar();
+  });
   $m("#mpCalor").addEventListener("click", e => {
     calorOn = !calorOn; e.currentTarget.setAttribute("aria-pressed", calorOn ? "true" : "false");
     if(calorOn && !(L && L.heatLayer)){ avisar("O mapa de calor não carregou. Verifique a conexão.", true); calorOn = false; e.currentTarget.setAttribute("aria-pressed","false"); return; }
