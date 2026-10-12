@@ -57,3 +57,11 @@ describe("tabelaNaoExiste() — falls back to the browser only when the table is
     assert.equal(app.run(`tabelaNaoExiste(null)`), false);
   });
 });
+
+describe("tabelaNaoExiste() for the templates table", () => {
+  test("recognizes the missing 'templates' table", () => {
+    assert.equal(app.run(`tabelaNaoExiste({code:"PGRST205", message:"Could not find the table 'public.templates' in the schema cache"}, "templates")`), true);
+    assert.equal(app.run(`tabelaNaoExiste({message:"relation \\"public.templates\\" does not exist"}, "templates")`), true);
+    assert.equal(app.run(`tabelaNaoExiste({message:"Failed to fetch"}, "templates")`), false);
+  });
+});

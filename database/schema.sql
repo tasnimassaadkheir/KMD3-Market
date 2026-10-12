@@ -70,6 +70,16 @@ create table if not exists public.contatos_avulsos (
   criado_em  timestamptz default now()
 );
 
+-- Templates (página Templates): textos prontos com título, para copiar.
+create table if not exists public.templates (
+  id            uuid primary key default gen_random_uuid(),
+  titulo        text not null,
+  texto         text not null,
+  criado_por    text,
+  criado_em     timestamptz default now(),
+  atualizado_em timestamptz default now()
+);
+
 -- ============================================================
 -- Segurança: só quem estiver logado enxerga e edita os dados
 -- ============================================================
@@ -87,6 +97,14 @@ alter table public.contatos_avulsos enable row level security;
 drop policy if exists "equipe logada usa contatos avulsos" on public.contatos_avulsos;
 create policy "equipe logada usa contatos avulsos"
   on public.contatos_avulsos for all
+  to authenticated
+  using (true) with check (true);
+
+alter table public.templates enable row level security;
+-- Toda a equipe logada vê e edita os templates.
+drop policy if exists "equipe logada usa templates" on public.templates;
+create policy "equipe logada usa templates"
+  on public.templates for all
   to authenticated
   using (true) with check (true);
 
