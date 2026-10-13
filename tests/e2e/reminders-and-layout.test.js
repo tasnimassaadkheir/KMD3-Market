@@ -74,6 +74,34 @@ describe("Layout regressions", () => {
     await context.close();
   });
 
+  test("on a phone the reminders page fits the screen: buttons wrap inside each card (also in edit mode)", async () => {
+    // Bug fixed: the row of buttons (Concluir, Adiar, Editar, Google Agenda, Cancelar) didn't wrap
+    // and stuck out of the card, making the whole page scroll sideways.
+    const { page, context } = await openApp(env, {
+      viewport: { width: 390, height: 844 },
+      leads: [lead({ nome: "Condominio Nova Conceição II", responsavel: "tasnimassaadkheir",
+        lembretes: [{ id: "l1", quando: localDateTime(1), texto: "Chamar para agendar nova visita", feito: false }] })],
+    });
+    await irPeloMenu(page, "#btnLembretes");
+    await page.waitForSelector("#telaLembretes.aberta");
+    const medir = () => page.evaluate(() => {
+      const corpo = document.querySelector("#telaLembretes .tela-lem-corpo");
+      const card = document.querySelector(".lemr").getBoundingClientRect();
+      const dentro = [...document.querySelectorAll(".lemr button, .lemr a, .lemr input")]
+        .every((b) => { const r = b.getBoundingClientRect(); return r.left >= card.left - 0.5 && r.right <= card.right + 0.5; });
+      return { sobra: corpo.scrollWidth - corpo.clientWidth, dentro };
+    });
+    let m = await medir();
+    assert.ok(m.sobra <= 1, `page scrolls ${m.sobra}px sideways`);
+    assert.equal(m.dentro, true, "every button inside the card");
+
+    await page.click('#lemPainelLista [data-lem-editar="0"]');
+    m = await medir();
+    assert.ok(m.sobra <= 1, `edit mode: page scrolls ${m.sobra}px sideways`);
+    assert.equal(m.dentro, true, "edit mode: every field and button inside the card");
+    await context.close();
+  });
+
   test("on a phone the page itself never scrolls sideways", async () => {
     const { page, context } = await openApp(env, { viewport: { width: 390, height: 844 } });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
