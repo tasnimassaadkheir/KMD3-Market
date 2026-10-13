@@ -432,7 +432,11 @@
     .lemr{flex-wrap:wrap;gap:8px}
     .lemr-data{width:auto;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
     .lemr-data em{margin-top:0}
-    .lemr .lem-acoes{max-width:none;justify-content:flex-start}
+    /* the buttons take the full width of the card and wrap onto new lines
+       (flex:none kept them on one line, wider than the phone screen) */
+    .lemr .lem-acoes{max-width:none;justify-content:flex-start;flex:1 1 100%;min-width:0}
+    .lemr-corpo{flex:1 1 100%;min-width:0}
+    .lemr-texto,.lem-lead{overflow-wrap:anywhere}
     .tela-lem-topo .lem-ferr{margin-left:0}
   }
   /* Tabs on the reminders page (Todos pendentes, Atrasados, Hoje...). .on = selected tab. */
