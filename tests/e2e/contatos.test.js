@@ -194,3 +194,36 @@ describe("Contacts page (☰ → Contatos)", () => {
     await context.close();
   });
 });
+
+describe("Contacts page: sticky header", () => {
+  test("the column headers stay visible at the top while scrolling down", async () => {
+    const muitos = Array.from({ length: 40 }, (_, i) =>
+      lead({ id: "c" + i, nome: "Condomínio " + i, ordem: i, contatos: [{ nome: "Contato " + String(i).padStart(2, "0"), telefone: "1137598100", email: "", tipo: "ADM" }] }));
+    const { page, context } = await openApp(env, { leads: muitos, viewport: { width: 1300, height: 700 } });
+    await irPeloMenu(page, "#btnContatos");
+    await page.waitForSelector("#telaContatos.aberta");
+    const corpo = page.locator("#telaContatos .tela-lem-corpo");
+    await corpo.evaluate((el) => { el.scrollTop = 900; });
+    await page.waitForTimeout(100);
+    const th = await page.locator(".ct-tabela thead th").first().boundingBox();
+    const area = await corpo.boundingBox();
+    assert.ok(th.y >= area.y - 1 && th.y <= area.y + 4, `header at ${th.y}, visible area starts at ${area.y}`);
+    // and it is the header that is on top there, not a contact row
+    const noTopo = await page.evaluate(([x, y]) => document.elementFromPoint(x, y).closest("th") !== null, [th.x + 20, th.y + th.height / 2]);
+    assert.equal(noTopo, true, "a row is covering the header");
+    await context.close();
+  });
+});
+
+describe("Contacts page: WhatsApp icon", () => {
+  test("uses the same WhatsApp logo as the condo panel", async () => {
+    const { page, context } = await openApp(env, { leads: [lead({ nome: "Aurora", contatos: [{ nome: "Adm", telefone: "1136072722", email: "", tipo: "ADM" }] })] });
+    await page.click(".cartao");
+    const doPainel = await page.locator(".btn-whats svg path").getAttribute("d");
+    await page.click("#btnFechar");
+    await irPeloMenu(page, "#btnContatos");
+    await page.waitForSelector("#telaContatos.aberta");
+    assert.equal(await page.locator(".ct-zap svg path").getAttribute("d"), doPainel);
+    await context.close();
+  });
+});
