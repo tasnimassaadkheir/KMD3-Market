@@ -1408,8 +1408,9 @@ function renderContatosPagina(){
     const wa = whatsappLink(c.telefone), tel = telLink(c.telefone);
     return '<tr>'+
       '<td data-label="Nome"><b>'+escapar(c.nome || "(sem nome)")+'</b>'+(c.tipo ? '<span class="ct-tipo">'+escapar(c.tipo)+'</span>' : '')+'</td>'+
-      '<td data-label="Número">'+(c.telefone ? escapar(c.telefone)+(wa ? ' <a class="ct-zap" href="'+escapar(wa)+'" target="_blank" rel="noopener" title="Abrir no WhatsApp" aria-label="Abrir no WhatsApp">'+zap+'</a>' : '')+
-        (tel ? '<a class="ct-ligar" href="'+escapar(tel)+'" title="Ligar" aria-label="Ligar para '+escapar(c.nome||"este contato")+'">'+ICONE_TELEFONE+'</a>' : '') : '<span class="ct-vazio">—</span>')+'</td>'+
+      // number + WhatsApp + call stay together on one line (.ct-numero = no wrapping)
+      '<td data-label="Número">'+(c.telefone ? '<span class="ct-numero">'+escapar(c.telefone)+(wa ? ' <a class="ct-zap" href="'+escapar(wa)+'" target="_blank" rel="noopener" title="Abrir no WhatsApp" aria-label="Abrir no WhatsApp">'+zap+'</a>' : '')+
+        (tel ? '<a class="ct-ligar" href="'+escapar(tel)+'" title="Ligar" aria-label="Ligar para '+escapar(c.nome||"este contato")+'">'+ICONE_TELEFONE+'</a>' : '')+'</span>' : '<span class="ct-vazio">—</span>')+'</td>'+
       '<td data-label="E-mail">'+(c.email ? '<a href="mailto:'+escapar(c.email)+'">'+escapar(c.email)+'</a>' : '<span class="ct-vazio">—</span>')+'</td>'+
       '<td data-label="Condomínio">'+(c.leadId
         ? '<button type="button" class="ct-condo" data-ct-abrir="'+escapar(c.leadId)+'" title="Abrir o condomínio">'+escapar(c.condominio)+'</button>'
