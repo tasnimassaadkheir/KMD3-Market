@@ -488,6 +488,14 @@
     width:38px;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .btn-whats:hover{background:#1EBE5A}
   .btn-whats:disabled{background:#C7CAC0;cursor:not-allowed}
+  /* "Ligar" button next to WhatsApp: opens the phone keypad (tel: link) */
+  .btn-ligar{flex:none;border:0;border-radius:8px;background:#0E627D;color:#fff;width:38px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .btn-ligar:hover{background:#093E4F}
+  /* phones: phone and e-mail one below the other, so the number isn't cut off */
+  @media (max-width:520px){
+    .contato-item .linha{flex-direction:column;gap:0}
+  }
   /* '+ Adicionar contato' button. */
   /* "Adicionar à rota" button under the address field in the condo panel.
    .na-rota = the condo is already in the route (green). */
@@ -861,6 +869,9 @@ body.vista-mapa #quadro{display:none}
 .ct-tipo{display:inline-block;margin-left:7px;font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:#E8F1F4;color:#0E4E64}
 .ct-zap{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:4px;border-radius:6px;background:#25D366;color:#fff;vertical-align:middle}
 .ct-zap:hover{background:#1EBE5A}
+.ct-ligar{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:4px;border-radius:6px;background:#0E627D;color:#fff;vertical-align:middle}
+.ct-ligar:hover{background:#093E4F}
+.ct-ligar svg{width:13px;height:13px}
 .ct-tabela a[href^="mailto"]{color:#0E627D}
 .ct-condo{border:0;background:none;padding:0;color:#0E627D;font-weight:600;text-align:left;text-decoration:underline;text-underline-offset:2px}
 .ct-condo:hover{color:#093E4F}
