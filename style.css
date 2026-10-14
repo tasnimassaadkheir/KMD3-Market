@@ -867,8 +867,17 @@ body.vista-mapa #quadro{display:none}
 .ct-form-botoes{display:flex;gap:8px}
 .ct-resumo{margin:0 0 8px;font-size:12px;color:var(--tinta-suave)}
 /* the table */
-.ct-tabela{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid #E1E4DA;border-radius:12px;overflow:hidden}
-.ct-tabela th{background:#F0F1EA;color:var(--tinta-suave);font-size:11.5px;font-weight:700;text-align:left;padding:9px 12px}
+/* no overflow:hidden here: it would stop the header from sticking; the round corners
+   are drawn on the corner cells instead */
+.ct-tabela{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid #E1E4DA;border-radius:12px}
+/* header row stays at the top of the page while scrolling down the list
+   (top:-18px = the page's top padding, so it sticks right under the dark bar) */
+.ct-tabela th{background:#F0F1EA;color:var(--tinta-suave);font-size:11.5px;font-weight:700;text-align:left;padding:9px 12px;
+  position:sticky;top:-18px;z-index:2;box-shadow:0 1px 0 #E1E4DA}
+.ct-tabela th:first-child{border-top-left-radius:11px}
+.ct-tabela th:last-child{border-top-right-radius:11px}
+.ct-tabela tbody tr:last-child td:first-child{border-bottom-left-radius:11px}
+.ct-tabela tbody tr:last-child td:last-child{border-bottom-right-radius:11px}
 .ct-tabela td{padding:10px 12px;border-top:1px solid #EEF0E8;font-size:13px;vertical-align:middle;word-break:break-word}
 .ct-tabela tbody tr:hover td{background:#FAFBF7}
 .ct-tabela td b{font-weight:600;color:#093E4F}
