@@ -214,3 +214,16 @@ describe("Contacts page: sticky header", () => {
     await context.close();
   });
 });
+
+describe("Contacts page: WhatsApp icon", () => {
+  test("uses the same WhatsApp logo as the condo panel", async () => {
+    const { page, context } = await openApp(env, { leads: [lead({ nome: "Aurora", contatos: [{ nome: "Adm", telefone: "1136072722", email: "", tipo: "ADM" }] })] });
+    await page.click(".cartao");
+    const doPainel = await page.locator(".btn-whats svg path").getAttribute("d");
+    await page.click("#btnFechar");
+    await irPeloMenu(page, "#btnContatos");
+    await page.waitForSelector("#telaContatos.aberta");
+    assert.equal(await page.locator(".ct-zap svg path").getAttribute("d"), doPainel);
+    await context.close();
+  });
+});
