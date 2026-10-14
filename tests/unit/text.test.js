@@ -63,3 +63,16 @@ describe("whatsappLink() — builds wa.me links from Brazilian phone numbers", (
     assert.equal(app.run(`whatsappLink("")`), null);
   });
 });
+
+describe("telLink() — 'Ligar' button (opens the phone keypad)", () => {
+  test("keeps only the digits of a Brazilian number", () => {
+    assert.equal(app.run(`telLink("(11) 99999-0000")`), "tel:11999990000");
+  });
+  test("keeps the + of an international number", () => {
+    assert.equal(app.run(`telLink("+55 11 3333-4444")`), "tel:+551133334444");
+  });
+  test("returns null for numbers that are too short or empty", () => {
+    assert.equal(app.run(`telLink("1234")`), null);
+    assert.equal(app.run(`telLink("")`), null);
+  });
+});

@@ -737,6 +737,19 @@ function opcoesTipo(atual){
 // Contact type as a short label for cards and lists ("" when not set).
 const textoTipo = c => (c && c.tipo) ? String(c.tipo) : "";
 
+// Builds a "tel:" link that opens the phone's keypad with the number typed, ready to call.
+// Keeps digits (and a leading +). Returns null if there aren't enough digits for a phone number.
+function telLink(telefone){
+  const t = String(telefone||"").trim();
+  const digitos = t.replace(/\D/g,"");
+  if(digitos.length < 8) return null;
+  return "tel:" + (t.startsWith("+") ? "+" : "") + digitos;
+}
+// Opens the tel: link: on a phone this shows the keypad with the number, ready to call.
+// (On a computer, it opens whatever app handles calls, e.g. FaceTime or Teams, if any.)
+function ligarPara(link){ window.location.href = link; }
+// Phone icon for the "Ligar" buttons.
+const ICONE_TELEFONE = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>';
 // Builds a WhatsApp link (https://wa.me/55...) from a phone number.
 // Keeps digits only; Brazilian numbers with 10/11 digits get the country code 55 added.
 function whatsappLink(telefone){
@@ -775,6 +788,8 @@ function renderContatos(){
             '<button type="button" class="btn-whats" data-whats-contato="'+i+'" title="Abrir no WhatsApp" aria-label="Abrir no WhatsApp">'+
               '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2m0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24m4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.81-.78.97-.15.17-.29.19-.54.06-.25-.12-1.04-.38-1.99-1.22-.73-.66-1.23-1.46-1.37-1.71-.15-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.16-.25.24-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.4-.42-.56-.42-.14-.01-.31-.01-.47-.01a.9.9 0 0 0-.65.3c-.23.24-.86.84-.86 2.05s.88 2.38 1 2.55c.13.17 1.73 2.64 4.2 3.7.59.25 1.04.4 1.4.52.59.19 1.12.16 1.55.1.47-.07 1.47-.6 1.68-1.18.2-.58.2-1.08.14-1.18-.06-.1-.22-.16-.47-.28"/></svg>'+
             '</button>'+
+            // "Ligar": opens the phone keypad with this number (tel: link)
+            '<button type="button" class="btn-ligar" data-ligar-contato="'+i+'" title="Ligar" aria-label="Ligar para este número">'+ICONE_TELEFONE+'</button>'+
           '</span>'+
         '</label>'+
         '<label class="campo"><span>E-mail</span><input class="txt contato-email" type="email" data-i="'+i+'" value="'+escapar(c.email||"")+'"></label>'+
@@ -1390,10 +1405,11 @@ function renderContatosPagina(){
     : lista.length+" de "+todos.length+" contato(s)";
   const zap = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>';
   $("#ctCorpo").innerHTML = lista.map(c => {
-    const wa = whatsappLink(c.telefone);
+    const wa = whatsappLink(c.telefone), tel = telLink(c.telefone);
     return '<tr>'+
       '<td data-label="Nome"><b>'+escapar(c.nome || "(sem nome)")+'</b>'+(c.tipo ? '<span class="ct-tipo">'+escapar(c.tipo)+'</span>' : '')+'</td>'+
-      '<td data-label="Número">'+(c.telefone ? escapar(c.telefone)+(wa ? ' <a class="ct-zap" href="'+escapar(wa)+'" target="_blank" rel="noopener" title="Abrir no WhatsApp" aria-label="Abrir no WhatsApp">'+zap+'</a>' : '') : '<span class="ct-vazio">—</span>')+'</td>'+
+      '<td data-label="Número">'+(c.telefone ? escapar(c.telefone)+(wa ? ' <a class="ct-zap" href="'+escapar(wa)+'" target="_blank" rel="noopener" title="Abrir no WhatsApp" aria-label="Abrir no WhatsApp">'+zap+'</a>' : '')+
+        (tel ? '<a class="ct-ligar" href="'+escapar(tel)+'" title="Ligar" aria-label="Ligar para '+escapar(c.nome||"este contato")+'">'+ICONE_TELEFONE+'</a>' : '') : '<span class="ct-vazio">—</span>')+'</td>'+
       '<td data-label="E-mail">'+(c.email ? '<a href="mailto:'+escapar(c.email)+'">'+escapar(c.email)+'</a>' : '<span class="ct-vazio">—</span>')+'</td>'+
       '<td data-label="Condomínio">'+(c.leadId
         ? '<button type="button" class="ct-condo" data-ct-abrir="'+escapar(c.leadId)+'" title="Abrir o condomínio">'+escapar(c.condominio)+'</button>'
@@ -2257,6 +2273,14 @@ document.addEventListener("click", e=>{
     const link = whatsappLink(tel);
     if(link) window.open(link, "_blank");
     else avisar("Telefone inválido para abrir o WhatsApp");
+  }
+  // "Ligar": reads the number typed right now and opens the phone's keypad.
+  const btnLigar = e.target.closest("[data-ligar-contato]");
+  if(btnLigar){
+    const item = btnLigar.closest(".contato-item");
+    const link = telLink(item ? item.querySelector(".contato-tel").value : "");
+    if(link) ligarPara(link);
+    else avisar("Telefone inválido para ligar");
   }
 });
 // Typing in a contact field updates the matching entry in contatosForm (data-i = contact index).

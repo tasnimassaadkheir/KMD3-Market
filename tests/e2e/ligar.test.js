@@ -1,0 +1,60 @@
+// E2E tests: the "Ligar" button (tel: link) next to WhatsApp, in the condo panel and on the Contacts page.
+const { test, describe, before, after } = require("node:test");
+const assert = require("node:assert/strict");
+const { setup, openApp, lead, irPeloMenu } = require("./helpers");
+
+let env;
+before(async () => { env = await setup(); });
+after(async () => { await env.close(); });
+
+const dados = () => [lead({ id: "c1", nome: "Aurora", contatos: [{ nome: "Paulo", telefone: "(11) 99999-0000", email: "", tipo: "Síndico" }] })];
+
+describe("Ligar (call) button", () => {
+  test("in the condo panel it sits next to WhatsApp and opens tel: with the typed number", async () => {
+    const { page, context, errors } = await openApp(env, { leads: dados() });
+    await page.click(".cartao");
+    await page.waitForTimeout(300);                           // panel slide-in animation
+    const ligar = page.locator('[data-ligar-contato="0"]');
+    const zap = await page.locator('[data-whats-contato="0"]').boundingBox();
+    const b = await ligar.boundingBox();
+    assert.ok(Math.abs(b.y - zap.y) < 4 && b.x > zap.x, "same row, right of WhatsApp");
+
+    // capture the call instead of really opening the keypad
+    await page.evaluate(() => { window.__tel = null; window.ligarPara = (l) => { window.__tel = l; }; });
+    await page.fill(".contato-tel", "11 3333-4444");          // uses what is typed right now
+    await ligar.click();
+    const tel = await page.evaluate(() => window.__tel);
+    assert.equal(tel, "tel:1133334444");
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+
+  test("an invalid number shows a message instead of calling", async () => {
+    const { page, context } = await openApp(env, { leads: dados() });
+    await page.click(".cartao");
+    await page.fill(".contato-tel", "123");
+    await page.click('[data-ligar-contato="0"]');
+    assert.match(await page.textContent("#aviso"), /Telefone inválido para ligar/);
+    await context.close();
+  });
+
+  test("on a phone, the number field is wide enough (phone and e-mail stack)", async () => {
+    const { page, context } = await openApp(env, { leads: dados(), viewport: { width: 390, height: 844 } });
+    await page.click(".cartao");
+    await page.waitForTimeout(300);
+    const campo = await page.locator(".contato-tel").boundingBox();
+    assert.ok(campo.width >= 150, `number field only ${campo.width}px wide`);
+    const lig = await page.locator('[data-ligar-contato="0"]').boundingBox();
+    const item = await page.locator(".contato-item").boundingBox();
+    assert.ok(lig.x + lig.width <= item.x + item.width + 0.5, "call button inside the contact box");
+    await context.close();
+  });
+
+  test("on the Contacts page each number has a call link", async () => {
+    const { page, context } = await openApp(env, { leads: dados() });
+    await irPeloMenu(page, "#btnContatos");
+    await page.waitForSelector("#telaContatos.aberta");
+    assert.equal(await page.getAttribute('#ctCorpo tr:has-text("Paulo") .ct-ligar', "href"), "tel:11999990000");
+    await context.close();
+  });
+});
