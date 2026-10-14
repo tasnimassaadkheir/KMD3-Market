@@ -875,6 +875,10 @@ body.vista-mapa #quadro{display:none}
 .ct-tipo{display:inline-block;margin-left:7px;font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:#E8F1F4;color:#0E4E64}
 .ct-zap{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:4px;border-radius:6px;background:#25D366;color:#fff;vertical-align:middle}
 .ct-zap:hover{background:#1EBE5A}
+/* number and its two buttons never split across lines */
+.ct-numero{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.ct-numero .ct-zap,.ct-numero .ct-ligar{margin-left:0;flex:none}
+.ct-numero .ct-zap:first-of-type{margin-left:2px}
 .ct-ligar{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:4px;border-radius:6px;background:#0E627D;color:#fff;vertical-align:middle}
 .ct-ligar:hover{background:#093E4F}
 .ct-ligar svg{width:13px;height:13px}

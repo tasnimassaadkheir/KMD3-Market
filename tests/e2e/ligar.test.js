@@ -77,3 +77,25 @@ describe("Contact header on phones", () => {
     await context.close();
   });
 });
+
+describe("Contacts page: number line", () => {
+  for (const w of [1300, 1024, 390]) {
+    test(`number, WhatsApp and call stay on one line (${w}px wide)`, async () => {
+      // Bug fixed: with a 10-digit number the call icon dropped to the line below.
+      const { page, context } = await openApp(env, { viewport: { width: w, height: 800 },
+        leads: [lead({ nome: "Residencial com um nome bem comprido para apertar a tabela",
+          contatos: [{ nome: "Adm", telefone: "1137598100", email: "administracao.condominio@exemplo.com.br", tipo: "ADM" }] })] });
+      await irPeloMenu(page, "#btnContatos");
+      await page.waitForSelector("#telaContatos.aberta");
+      const ys = await page.locator('#ctCorpo tr:has-text("Adm") .ct-numero').evaluate((el) =>
+        [el.firstChild, el.querySelector(".ct-zap"), el.querySelector(".ct-ligar")].map((n) => {
+          const r = n.nodeType === 3 ? (() => { const g = document.createRange(); g.selectNode(n); return g.getBoundingClientRect(); })() : n.getBoundingClientRect();
+          return r.top + r.height / 2;
+        }));
+      assert.ok(Math.max(...ys) - Math.min(...ys) < 6, `not on one line: ${ys.map(Math.round)}`);
+      const sobra = await page.locator("#telaContatos .tela-lem-corpo").evaluate((el) => el.scrollWidth - el.clientWidth);
+      assert.ok(sobra <= 1, `page scrolls ${sobra}px sideways`);
+      await context.close();
+    });
+  }
+});
