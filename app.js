@@ -552,6 +552,7 @@ function desenhar(){
   if(window.__atualizarMapa) window.__atualizarMapa();
   if(typeof verificarLembretes === "function") verificarLembretes(true);
   if(contatosAberto()) renderContatosPagina();
+  if(dashboardAberto()) renderDashboard();
 }
 
 // Builds ONE card element for a condo.
@@ -2132,8 +2133,205 @@ async function iniciar(){
   }
 }
 
+/* ================= dashboard ================= */
+// =============================================================================
+// DASHBOARD PAGE (☰ → Dashboard): numbers of the whole funnel.
+// calcularDashboard() only counts (easy to test); renderDashboard() draws it.
+// It always uses ALL condos — the board filters (search, situation…) do not apply here.
+// =============================================================================
+// Size by number of apartments. 200–249 has no band in the original rule
+// (P < 200, M = 250–300, G > 300), so it counts as M: M = 200 to 300.
+const FAIXAS_TAMANHO = [
+  {id:"P",   nome:"P", desc:"menos de 200 aptos"},
+  {id:"M",   nome:"M", desc:"200 a 300 aptos"},
+  {id:"G",   nome:"G", desc:"mais de 300 aptos"},
+  {id:"sem", nome:"?", desc:"sem nº de aptos"}
+];
+const DIAS_PARADO = 30;          // "parado" = no change for this many days (open deals only)
+const DIAS_FIM_CONTRATO = 90;    // competitor contracts ending within this many days
+// Number of apartments, or null when empty / not a positive number.
+function numAptos(l){
+  if(l.aptos === "" || l.aptos == null) return null;
+  const n = Number(l.aptos);
+  return isFinite(n) && n > 0 ? n : null;
+}
+// "P", "M", "G" or "sem".
+function faixaTamanho(l){
+  const n = numAptos(l);
+  if(n == null) return "sem";
+  return n < 200 ? "P" : n <= 300 ? "M" : "G";
+}
+// Has a way to reach someone: at least one contact with a phone or an e-mail.
+function temContato(l){
+  return migrarContatosAntigos(l).some(c => String(c.telefone||"").trim() || String(c.email||"").trim());
+}
+// Nothing besides name/address/zone: no contact at all, no apartments, no competitor,
+// no profile, notes, important info or observations.
+function semInformacao(l){
+  return !migrarContatosAntigos(l).some(c => String(c.nome||"").trim() || String(c.telefone||"").trim() || String(c.email||"").trim())
+    && numAptos(l) == null && !String(l.concorrente||"").trim() && !String(l.perfil||"").trim()
+    && !String(l.notas||"").trim() && !String(l.importante||"").trim() && !(l.observacoes||[]).length;
+}
+// Days until a date (negative = already passed), same rule as the card's competitor tag.
+function diasAte(iso){ return Math.ceil((new Date(iso) - Date.now())/86400000); }
+
+// Counts everything shown on the page.
+function calcularDashboard(lista){
+  const r = {
+    total: lista.length, fases: {}, status: {verde:0, amarelo:0, vermelho:0, nenhum:0},
+    tamanho: {P:0, M:0, G:0, sem:0}, comContato: 0, semContato: 0, semInfo: [],
+    concorrentes: [], semConcorrente: 0, vencendo: [], aptosTotal: 0, aptosFechados: 0,
+    lembretesVencidos: 0, visitar: 0, sults: 0, parados: [], responsaveis: [], conversao: null
+  };
+  FASES.forEach(f => r.fases[f.id] = 0);
+  const conc = new Map(), resp = new Map();
+  const limiteParado = Date.now() - DIAS_PARADO*86400000;
+  lista.forEach(l => {
+    r.fases[r.fases[l.fase] != null ? l.fase : "cadastro"]++;
+    const st = r.status[l.status] != null ? l.status : "nenhum";
+    r.status[st]++;
+    r.tamanho[faixaTamanho(l)]++;
+    const n = numAptos(l) || 0;
+    r.aptosTotal += n;
+    if(st === "verde") r.aptosFechados += n;
+    if(temContato(l)) r.comContato++; else r.semContato++;
+    if(semInformacao(l)) r.semInfo.push(l);
+    // competitor minimarket, grouped ignoring accents/case (keeps the first spelling seen)
+    const nomeConc = String(l.concorrente||"").trim();
+    if(nomeConc){
+      const k = normalizarNome(nomeConc);
+      if(!conc.has(k)) conc.set(k, {nome: nomeConc, n: 0});
+      conc.get(k).n++;
+      if(l.fimContrato && diasAte(l.fimContrato) <= DIAS_FIM_CONTRATO) r.vencendo.push(l);
+    } else r.semConcorrente++;
+    const nomeResp = String(l.responsavel||"").trim();
+    if(!resp.has(nomeResp)) resp.set(nomeResp, 0);
+    resp.set(nomeResp, resp.get(nomeResp) + 1);
+    if(lembreteVencido(l)) r.lembretesVencidos++;
+    if(l.visitar) r.visitar++;
+    if(l.sults) r.sults++;
+    const t = new Date(l.atualizadoEm || l.criadoEm || 0).getTime();
+    if(st !== "verde" && st !== "vermelho" && t && t < limiteParado) r.parados.push(l);
+  });
+  r.concorrentes = [...conc.values()].sort((a,b) => b.n - a.n || a.nome.localeCompare(b.nome, "pt-BR"));
+  r.responsaveis = [...resp.entries()].map(([nome, n]) => ({nome, n}))
+    .sort((a,b) => (a.nome ? 0 : 1) - (b.nome ? 0 : 1) || b.n - a.n || a.nome.localeCompare(b.nome, "pt-BR"));
+  r.vencendo.sort((a,b) => new Date(a.fimContrato) - new Date(b.fimContrato));
+  r.parados.sort((a,b) => new Date(a.atualizadoEm || a.criadoEm) - new Date(b.atualizadoEm || b.criadoEm));
+  r.semInfo.sort((a,b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+  const decididos = r.status.verde + r.status.vermelho;
+  r.conversao = decididos ? Math.round(r.status.verde / decididos * 100) : null;
+  return r;
+}
+
+// ---- drawing ----
+const pctDb = (n, total) => total ? Math.round(n / total * 100) : 0;
+const numBR = n => Number(n).toLocaleString("pt-BR");
+// One row with label, count, % and a bar. 'attrs' makes it a button (click = filter the board).
+function barraDb(rotulo, n, total, attrs, cls){
+  const pct = pctDb(n, total);
+  const tag = attrs ? "button" : "div";
+  return '<'+tag+(attrs ? ' type="button" '+attrs : '')+' class="db-barra'+(cls ? " "+cls : "")+'">'+
+    '<span class="db-rot">'+rotulo+'</span>'+
+    '<span class="db-num">'+n+' <small>'+pct+'%</small></span>'+
+    '<span class="db-trilha"><i style="width:'+pct+'%"></i></span></'+tag+'>';
+}
+// List of condo names (click = open the condo). 'extra' adds a small text on the right.
+function listaDb(arr, extra, vazio){
+  if(!arr.length) return '<p class="db-vazio">'+vazio+'</p>';
+  return '<ul class="db-lista">'+arr.map(l =>
+    '<li><button type="button" data-db-lead="'+escapar(l.id)+'">'+escapar(l.nome || "Sem nome")+'</button>'+
+    (extra ? '<span>'+extra(l)+'</span>' : '')+'</li>').join("")+'</ul>';
+}
+function kpiDb(valor, rotulo, sub, cls){
+  return '<div class="db-kpi'+(cls ? " "+cls : "")+'"><b>'+valor+'</b><span>'+rotulo+'</span>'+(sub ? '<small>'+sub+'</small>' : '')+'</div>';
+}
+function cartaoDb(titulo, corpo, cls){
+  return '<section class="db-cartao'+(cls ? " "+cls : "")+'"><h3>'+titulo+'</h3>'+corpo+'</section>';
+}
+function renderDashboard(){
+  const r = calcularDashboard(leads), T = r.total;
+  if(!T){
+    $("#dbConteudo").innerHTML = '<p class="db-vazio db-vazio-grande">Nenhum condomínio cadastrado ainda. Quando você cadastrar, os números aparecem aqui.</p>';
+    return;
+  }
+  const html = [];
+  html.push('<p class="ct-resumo">Todos os '+T+' condomínios do funil — os filtros do quadro não se aplicam aqui. Clique numa linha para filtrar o quadro ou num nome para abrir o condomínio.</p>');
+  // big numbers
+  html.push('<div class="db-kpis">'+
+    kpiDb(T, "condomínios", "", "destaque")+
+    kpiDb(numBR(r.aptosTotal), "apartamentos no funil", r.aptosFechados ? numBR(r.aptosFechados)+" em condomínios fechados" : "")+
+    kpiDb(r.comContato, "com contato", pctDb(r.comContato, T)+"% têm telefone ou e-mail", "ok")+
+    kpiDb(r.semInfo.length, "sem nenhuma informação", "só nome/endereço", r.semInfo.length ? "alerta" : "")+
+    kpiDb(r.status.verde, "fechados", r.conversao == null ? "nenhum fechado/perdido ainda" : r.conversao+"% de conversão (fechados ÷ fechados + perdidos)", "ok")+
+    kpiDb(r.lembretesVencidos, "com lembrete vencido", "", r.lembretesVencidos ? "perigo" : "")+
+  '</div>');
+  const cartoes = [];
+  // stages
+  cartoes.push(cartaoDb("Por fase", FASES.map(f =>
+    barraDb(escapar(f.nome), r.fases[f.id], T, 'data-db-fase="'+f.id+'" title="Ver a coluna no quadro"')).join(""), "largo"));
+  // size
+  cartoes.push(cartaoDb("Tamanho", '<div class="db-tamanhos">'+FAIXAS_TAMANHO.map(f =>
+    '<div class="db-tam'+(f.id === "sem" ? " sem" : "")+'"><b>'+f.nome+'</b><strong>'+r.tamanho[f.id]+'</strong>'+
+    '<span>'+f.desc+'</span><small>'+pctDb(r.tamanho[f.id], T)+'%</small></div>').join("")+'</div>'));
+  // contacts / information
+  cartoes.push(cartaoDb("Contato e informação",
+    barraDb("Com contato (telefone ou e-mail)", r.comContato, T, "", "ok")+
+    barraDb("Sem contato", r.semContato, T, "", "alerta")+
+    barraDb("Sem nenhuma informação", r.semInfo.length, T, "", "perigo")+
+    '<h4>Sem nenhuma informação</h4>'+
+    listaDb(r.semInfo, null, "Todos têm alguma informação. 👏")));
+  // competitor minimarket
+  cartoes.push(cartaoDb("Minimercado concorrente",
+    r.concorrentes.map(c => barraDb(escapar(c.nome), c.n, T, 'data-db-busca="'+escapar(c.nome)+'" title="Filtrar o quadro por este concorrente"', "alerta")).join("")+
+    barraDb("Sem concorrente", r.semConcorrente, T, "", "ok")+
+    '<h4>Contrato do concorrente vencendo (até '+DIAS_FIM_CONTRATO+' dias)</h4>'+
+    listaDb(r.vencendo, l => {
+      const d = diasAte(l.fimContrato);
+      return escapar(l.concorrente)+' · '+(d < 0 ? "vencido" : d === 0 ? "vence hoje" : "vence em "+d+"d");
+    }, "Nenhum contrato vencendo nos próximos "+DIAS_FIM_CONTRATO+" dias.")));
+  // situation
+  cartoes.push(cartaoDb("Situação", ["verde","amarelo","vermelho","nenhum"].map(s =>
+    barraDb(escapar(ROTULO_STATUS[s]), r.status[s], T, 'data-db-status="'+s+'" title="Filtrar o quadro"', "st-"+s)).join("")));
+  // people
+  cartoes.push(cartaoDb("Por responsável", r.responsaveis.map(p => p.nome
+    ? barraDb(escapar(p.nome), p.n, T, 'data-db-resp="'+escapar(p.nome)+'" title="Filtrar o quadro"')
+    : barraDb("Sem responsável", p.n, T, "", "alerta")).join("")));
+  // follow-up
+  cartoes.push(cartaoDb("Acompanhamento",
+    '<div class="db-mini">'+
+      '<span><b>'+r.visitar+'</b> para visitar</span>'+
+      '<span><b>'+r.sults+'</b> no SULTS</span>'+
+      '<span><b>'+r.parados.length+'</b> parados há '+DIAS_PARADO+'+ dias</span>'+
+    '</div>'+
+    '<h4>Parados há mais de '+DIAS_PARADO+' dias (em aberto)</h4>'+
+    listaDb(r.parados, l => "desde "+dataBR(l.atualizadoEm || l.criadoEm), "Nenhum condomínio parado. 👍")));
+  html.push('<div class="db-grade">'+cartoes.join("")+'</div>');
+  $("#dbConteudo").innerHTML = html.join("");
+}
+function dashboardAberto(){ return $("#telaDashboard").classList.contains("aberta"); }
+function abrirDashboard(){ renderDashboard(); $("#telaDashboard").classList.add("aberta"); $("#telaDashboard .tela-lem-corpo").scrollTop = 0; }
+function fecharDashboard(){ $("#telaDashboard").classList.remove("aberta"); }
+// Clicks inside the dashboard: open a condo, or close the page and filter the board.
+function cliqueDashboard(e){
+  const b = e.target.closest("[data-db-lead],[data-db-fase],[data-db-status],[data-db-resp],[data-db-busca]");
+  if(!b) return;
+  if(b.dataset.dbLead){ abrirPainel(b.dataset.dbLead); return; }   // the panel opens on top of the page
+  fecharDashboard();
+  if(b.dataset.dbStatus){ $("#filtroStatus").value = b.dataset.dbStatus; desenhar(); }
+  else if(b.dataset.dbResp){ $("#filtroResp").value = b.dataset.dbResp; desenhar(); }
+  else if(b.dataset.dbBusca){ $("#busca").value = b.dataset.dbBusca; desenhar(); }
+  else if(b.dataset.dbFase){
+    const col = document.querySelector('.coluna[data-fase="'+b.dataset.dbFase+'"]');
+    if(col){
+      col.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
+      col.classList.add("piscar"); setTimeout(() => col.classList.remove("piscar"), 1600);
+    }
+  }
+}
+
 /* ================= menu lateral (☰) ================= */
-// SIDE MENU: Mapa, Administração, Lembretes, Equipe.
+// SIDE MENU: Dashboard, Mapa, Administração, Lembretes, Equipe, Contatos, Templates.
 // The menu buttons keep their old ids, so their own click handlers (here and in mapa.js) still run;
 // this code only opens/closes the drawer.
 // 'inert' on the closed menu keeps keyboard focus out of the hidden buttons.
@@ -2226,6 +2424,7 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(menuAberto()){ fecharMenu(true); return; }
     // Contacts page: Esc closes its form first, then the page (if no condo panel is open on top)
+    if(dashboardAberto() && !$("#painel").classList.contains("aberto")){ fecharDashboard(); return; }
     if(templatesAberto()){
       if(!$("#tpForm").hidden) fecharFormTemplate(); else fecharTemplates();
       return;
@@ -2401,6 +2600,10 @@ $("#obsTexto").addEventListener("keydown", e=>{
 $("#f_nome").addEventListener("input", verificarNomeDuplicado);
 // "Visitar" button in the panel (saves right away).
 $("#btnVisitarLead").addEventListener("click", alternarVisitar);
+// Dashboard page.
+$("#btnDashboard").addEventListener("click", abrirDashboard);
+$("#btnFecharDashboard").addEventListener("click", fecharDashboard);
+$("#dbConteudo").addEventListener("click", cliqueDashboard);
 // Templates page.
 $("#btnTemplates").addEventListener("click", abrirTemplates);
 $("#btnFecharTemplates").addEventListener("click", fecharTemplates);
