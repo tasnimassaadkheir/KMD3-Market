@@ -42,10 +42,51 @@ describe("Dashboard page", () => {
     await context.close();
   });
 
-  test("clicking a situation, a person or a competitor closes the page and filters the board", async () => {
+  test("clicking any number opens the list of the condos behind it", async () => {
+    const { page, context, errors } = await openApp(env, { leads: LEADS() });
+    await abrir(page);
+    const lista = async (alvo) => {
+      await alvo.click();
+      await page.waitForSelector("#dbDetalhe:not([hidden])");
+      const r = { titulo: await page.textContent("#dbDetTitulo"), resumo: await page.textContent("#dbDetResumo"),
+        nomes: await page.locator("#dbDetLista .db-det-item > button").allTextContents(),
+        quadro: await page.locator("#dbDetQuadro").isVisible() };
+      await page.click("#dbDetFechar");
+      assert.equal(await page.locator("#dbDetalhe").isHidden(), true);
+      return r;
+    };
+    let r = await lista(page.locator(".db-kpi").first());
+    assert.equal(r.titulo, "Todos os condomínios");
+    assert.equal(r.resumo, "4 condomínios");
+    assert.deepEqual(r.nomes, ["Aurora", "Jardins", "Mirante", "Sem Nada"]);
+    r = await lista(linha(page, "Sem contato"));
+    assert.deepEqual(r.nomes, ["Jardins", "Mirante", "Sem Nada"], "only Aurora has a phone/e-mail");
+    r = await lista(page.locator(".db-tam", { hasText: "200 a 300" }));
+    assert.deepEqual(r.nomes, ["Mirante"]);
+    assert.equal(r.quadro, false, "no board filter for a size");
+    r = await lista(linha(page, "Market4u"));
+    assert.deepEqual(r.nomes, ["Aurora", "Mirante"]);
+    assert.equal(r.quadro, true);
+    r = await lista(linha(page, "Reunião"));
+    assert.deepEqual(r.nomes, ["Mirante"]);
+    r = await lista(page.locator(".db-kpi", { hasText: "sem nenhuma informação" }));
+    assert.deepEqual(r.nomes, ["Sem Nada"]);
+    // each line says what we know about the condo
+    await linha(page, "Com contato").click();
+    const info = await page.locator("#dbDetLista .db-det-item").first().innerText();
+    assert.match(info, /Aurora/);
+    assert.match(info, /Contato Realizado · Em andamento · 150 aptos · Tasnim/);
+    assert.match(info, /Paulo · 11999990000/);
+    assert.match(info, /Market4u · vence em 40d/);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+
+  test("'Ver no quadro' closes the dashboard and filters the board", async () => {
     const { page, context } = await openApp(env, { leads: LEADS() });
     await abrir(page);
     await linha(page, "Em andamento").click();
+    await page.click("#dbDetQuadro");
     assert.equal(await page.locator("#telaDashboard.aberta").count(), 0);
     assert.equal(await page.inputValue("#filtroStatus"), "amarelo");
     assert.equal(await page.locator(".cartao").count(), 2);
@@ -53,14 +94,39 @@ describe("Dashboard page", () => {
     await page.selectOption("#filtroStatus", "");
     await abrir(page);
     await linha(page, "Karen").click();
+    await page.click("#dbDetQuadro");
     assert.equal(await page.inputValue("#filtroResp"), "Karen");
     assert.equal(await page.locator(".cartao").count(), 1);
 
     await page.selectOption("#filtroResp", "");
     await abrir(page);
     await linha(page, "Market4u").click();
+    await page.click("#dbDetQuadro");
     assert.equal(await page.inputValue("#busca"), "Market4u");
     assert.equal(await page.locator(".cartao").count(), 2);
+    await context.close();
+  });
+
+  test("a condo in the list opens on top; Esc closes the panel, then the list, then the page", async () => {
+    const { page, context } = await openApp(env, { leads: LEADS() });
+    await abrir(page);
+    await linha(page, "Sem concorrente").click();
+    await page.click('#dbDetLista button:has-text("Jardins")');
+    await page.waitForSelector("#painel.aberto");
+    assert.equal(await page.inputValue("#f_nome"), "Jardins");
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator("#painel.aberto").count(), 0);
+    assert.equal(await page.locator("#dbDetalhe").isVisible(), true, "list still open");
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator("#dbDetalhe").isHidden(), true);
+    assert.equal(await page.locator("#telaDashboard.aberta").count(), 1);
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator("#telaDashboard.aberta").count(), 0);
+    // a click on the dark background also closes the list
+    await abrir(page);
+    await linha(page, "Sem concorrente").click();
+    await page.mouse.click(5, 300);
+    assert.equal(await page.locator("#dbDetalhe").isHidden(), true);
     await context.close();
   });
 

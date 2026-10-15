@@ -2224,17 +2224,73 @@ function calcularDashboard(lista){
   return r;
 }
 
+// ---- groups: which condos are behind each number ----
+// Every clickable number has a key (e.g. "fase:reuniao", "tam:M", "conc:market4u").
+// grupoDashboard(key) returns the title, the condos in it, and (when it makes sense)
+// a board filter for the "Ver no quadro" button.
+function grupoDashboard(chave, lista){
+  lista = lista || leads;
+  const [tipo, ...resto] = String(chave).split(":");
+  const val = resto.join(":");
+  const st = l => ROTULO_STATUS[l.status] ? l.status : "nenhum";
+  const porNome = arr => arr.slice().sort((a,b) => String(a.nome||"").localeCompare(String(b.nome||""), "pt-BR"));
+  const g = (titulo, filtro, quadro, ordenar) => {
+    const arr = lista.filter(filtro);
+    return {titulo, lista: ordenar ? ordenar(arr) : porNome(arr), quadro: quadro || null};
+  };
+  const limiteParado = Date.now() - DIAS_PARADO*86400000;
+  switch(tipo){
+    case "todos":    return g("Todos os condomínios", () => true);
+    case "aptos":    return g("Condomínios com nº de apartamentos", l => numAptos(l) != null, null,
+                         arr => arr.sort((a,b) => numAptos(b) - numAptos(a)));
+    case "fase": {
+      const f = FASES.find(x => x.id === val);
+      return g("Fase: "+(f ? f.nome : val), l => (FASES.some(x => x.id === l.fase) ? l.fase : "cadastro") === val, {fase: val});
+    }
+    case "status":   return g("Situação: "+(ROTULO_STATUS[val] || val), l => st(l) === val, {status: val});
+    case "tam": {
+      const f = FAIXAS_TAMANHO.find(x => x.id === val);
+      return g("Tamanho "+(f ? f.nome+" — "+f.desc : val), l => faixaTamanho(l) === val, null,
+        arr => arr.sort((a,b) => (numAptos(b)||0) - (numAptos(a)||0) || String(a.nome||"").localeCompare(String(b.nome||""), "pt-BR")));
+    }
+    case "contato":  return val === "com"
+      ? g("Com contato (telefone ou e-mail)", temContato)
+      : g("Sem contato (sem telefone nem e-mail)", l => !temContato(l));
+    case "seminfo":  return g("Sem nenhuma informação", semInformacao);
+    case "conc": {
+      if(!val) return g("Sem concorrente", l => !String(l.concorrente||"").trim());
+      const um = lista.find(l => normalizarNome(l.concorrente) === val);
+      const nome = um ? String(um.concorrente).trim() : val;
+      return g("Concorrente: "+nome, l => normalizarNome(l.concorrente) === val, {busca: nome});
+    }
+    case "vencendo": return g("Contrato do concorrente vencendo (até "+DIAS_FIM_CONTRATO+" dias)",
+                         l => String(l.concorrente||"").trim() && l.fimContrato && diasAte(l.fimContrato) <= DIAS_FIM_CONTRATO, null,
+                         arr => arr.sort((a,b) => new Date(a.fimContrato) - new Date(b.fimContrato)));
+    case "resp":     return val
+      ? g("Responsável: "+val, l => String(l.responsavel||"").trim() === val, {resp: val})
+      : g("Sem responsável", l => !String(l.responsavel||"").trim());
+    case "lembrete": return g("Com lembrete vencido", lembreteVencido);
+    case "visitar":  return g("Para visitar", l => !!l.visitar);
+    case "sults":    return g("No SULTS", l => !!l.sults);
+    case "parados":  return g("Parados há mais de "+DIAS_PARADO+" dias (em aberto)", l => {
+                         const t = new Date(l.atualizadoEm || l.criadoEm || 0).getTime();
+                         return st(l) !== "verde" && st(l) !== "vermelho" && t && t < limiteParado;
+                       }, null, arr => arr.sort((a,b) => new Date(a.atualizadoEm || a.criadoEm) - new Date(b.atualizadoEm || b.criadoEm)));
+  }
+  return {titulo: "", lista: [], quadro: null};
+}
+
 // ---- drawing ----
 const pctDb = (n, total) => total ? Math.round(n / total * 100) : 0;
 const numBR = n => Number(n).toLocaleString("pt-BR");
-// One row with label, count, % and a bar. 'attrs' makes it a button (click = filter the board).
-function barraDb(rotulo, n, total, attrs, cls){
+const attrGrupo = chave => 'data-db-grupo="'+escapar(chave)+'" title="Ver quais condomínios"';
+// One row with label, count, % and a bar. Click = list of those condos.
+function barraDb(rotulo, n, total, chave, cls){
   const pct = pctDb(n, total);
-  const tag = attrs ? "button" : "div";
-  return '<'+tag+(attrs ? ' type="button" '+attrs : '')+' class="db-barra'+(cls ? " "+cls : "")+'">'+
+  return '<button type="button" '+attrGrupo(chave)+' class="db-barra'+(cls ? " "+cls : "")+'">'+
     '<span class="db-rot">'+rotulo+'</span>'+
     '<span class="db-num">'+n+' <small>'+pct+'%</small></span>'+
-    '<span class="db-trilha"><i style="width:'+pct+'%"></i></span></'+tag+'>';
+    '<span class="db-trilha"><i style="width:'+pct+'%"></i></span></button>';
 }
 // List of condo names (click = open the condo). 'extra' adds a small text on the right.
 function listaDb(arr, extra, vazio){
@@ -2243,91 +2299,146 @@ function listaDb(arr, extra, vazio){
     '<li><button type="button" data-db-lead="'+escapar(l.id)+'">'+escapar(l.nome || "Sem nome")+'</button>'+
     (extra ? '<span>'+extra(l)+'</span>' : '')+'</li>').join("")+'</ul>';
 }
-function kpiDb(valor, rotulo, sub, cls){
-  return '<div class="db-kpi'+(cls ? " "+cls : "")+'"><b>'+valor+'</b><span>'+rotulo+'</span>'+(sub ? '<small>'+sub+'</small>' : '')+'</div>';
+function kpiDb(valor, rotulo, sub, cls, chave){
+  return '<button type="button" '+attrGrupo(chave)+' class="db-kpi'+(cls ? " "+cls : "")+'"><b>'+valor+'</b><span>'+rotulo+'</span>'+(sub ? '<small>'+sub+'</small>' : '')+'</button>';
 }
 function cartaoDb(titulo, corpo, cls){
   return '<section class="db-cartao'+(cls ? " "+cls : "")+'"><h3>'+titulo+'</h3>'+corpo+'</section>';
+}
+function textoVencimento(l){
+  const d = diasAte(l.fimContrato);
+  return d < 0 ? "vencido" : d === 0 ? "vence hoje" : "vence em "+d+"d";
 }
 function renderDashboard(){
   const r = calcularDashboard(leads), T = r.total;
   if(!T){
     $("#dbConteudo").innerHTML = '<p class="db-vazio db-vazio-grande">Nenhum condomínio cadastrado ainda. Quando você cadastrar, os números aparecem aqui.</p>';
+    if(dashDetalhe) fecharDetalheDashboard();
     return;
   }
   const html = [];
-  html.push('<p class="ct-resumo">Todos os '+T+' condomínios do funil — os filtros do quadro não se aplicam aqui. Clique numa linha para filtrar o quadro ou num nome para abrir o condomínio.</p>');
+  html.push('<p class="ct-resumo">Todos os '+T+' condomínios do funil — os filtros do quadro não se aplicam aqui. Toque em qualquer número para ver quais condomínios estão nele.</p>');
   // big numbers
   html.push('<div class="db-kpis">'+
-    kpiDb(T, "condomínios", "", "destaque")+
-    kpiDb(numBR(r.aptosTotal), "apartamentos no funil", r.aptosFechados ? numBR(r.aptosFechados)+" em condomínios fechados" : "")+
-    kpiDb(r.comContato, "com contato", pctDb(r.comContato, T)+"% têm telefone ou e-mail", "ok")+
-    kpiDb(r.semInfo.length, "sem nenhuma informação", "só nome/endereço", r.semInfo.length ? "alerta" : "")+
-    kpiDb(r.status.verde, "fechados", r.conversao == null ? "nenhum fechado/perdido ainda" : r.conversao+"% de conversão (fechados ÷ fechados + perdidos)", "ok")+
-    kpiDb(r.lembretesVencidos, "com lembrete vencido", "", r.lembretesVencidos ? "perigo" : "")+
+    kpiDb(T, "condomínios", "", "destaque", "todos")+
+    kpiDb(numBR(r.aptosTotal), "apartamentos no funil", r.aptosFechados ? numBR(r.aptosFechados)+" em condomínios fechados" : "", "", "aptos")+
+    kpiDb(r.comContato, "com contato", pctDb(r.comContato, T)+"% têm telefone ou e-mail", "ok", "contato:com")+
+    kpiDb(r.semInfo.length, "sem nenhuma informação", "só nome/endereço", r.semInfo.length ? "alerta" : "", "seminfo")+
+    kpiDb(r.status.verde, "fechados", r.conversao == null ? "nenhum fechado/perdido ainda" : r.conversao+"% de conversão (fechados ÷ fechados + perdidos)", "ok", "status:verde")+
+    kpiDb(r.lembretesVencidos, "com lembrete vencido", "", r.lembretesVencidos ? "perigo" : "", "lembrete")+
   '</div>');
   const cartoes = [];
   // stages
   cartoes.push(cartaoDb("Por fase", FASES.map(f =>
-    barraDb(escapar(f.nome), r.fases[f.id], T, 'data-db-fase="'+f.id+'" title="Ver a coluna no quadro"')).join(""), "largo"));
+    barraDb(escapar(f.nome), r.fases[f.id], T, "fase:"+f.id)).join("")));
   // size
   cartoes.push(cartaoDb("Tamanho", '<div class="db-tamanhos">'+FAIXAS_TAMANHO.map(f =>
-    '<div class="db-tam'+(f.id === "sem" ? " sem" : "")+'"><b>'+f.nome+'</b><strong>'+r.tamanho[f.id]+'</strong>'+
-    '<span>'+f.desc+'</span><small>'+pctDb(r.tamanho[f.id], T)+'%</small></div>').join("")+'</div>'));
+    '<button type="button" '+attrGrupo("tam:"+f.id)+' class="db-tam'+(f.id === "sem" ? " sem" : "")+'"><b>'+f.nome+'</b><strong>'+r.tamanho[f.id]+'</strong>'+
+    '<span>'+f.desc+'</span><small>'+pctDb(r.tamanho[f.id], T)+'%</small></button>').join("")+'</div>'));
   // contacts / information
   cartoes.push(cartaoDb("Contato e informação",
-    barraDb("Com contato (telefone ou e-mail)", r.comContato, T, "", "ok")+
-    barraDb("Sem contato", r.semContato, T, "", "alerta")+
-    barraDb("Sem nenhuma informação", r.semInfo.length, T, "", "perigo")+
+    barraDb("Com contato (telefone ou e-mail)", r.comContato, T, "contato:com", "ok")+
+    barraDb("Sem contato", r.semContato, T, "contato:sem", "alerta")+
+    barraDb("Sem nenhuma informação", r.semInfo.length, T, "seminfo", "perigo")+
     '<h4>Sem nenhuma informação</h4>'+
     listaDb(r.semInfo, null, "Todos têm alguma informação. 👏")));
   // competitor minimarket
   cartoes.push(cartaoDb("Minimercado concorrente",
-    r.concorrentes.map(c => barraDb(escapar(c.nome), c.n, T, 'data-db-busca="'+escapar(c.nome)+'" title="Filtrar o quadro por este concorrente"', "alerta")).join("")+
-    barraDb("Sem concorrente", r.semConcorrente, T, "", "ok")+
+    r.concorrentes.map(c => barraDb(escapar(c.nome), c.n, T, "conc:"+normalizarNome(c.nome), "alerta")).join("")+
+    barraDb("Sem concorrente", r.semConcorrente, T, "conc:", "ok")+
     '<h4>Contrato do concorrente vencendo (até '+DIAS_FIM_CONTRATO+' dias)</h4>'+
-    listaDb(r.vencendo, l => {
-      const d = diasAte(l.fimContrato);
-      return escapar(l.concorrente)+' · '+(d < 0 ? "vencido" : d === 0 ? "vence hoje" : "vence em "+d+"d");
-    }, "Nenhum contrato vencendo nos próximos "+DIAS_FIM_CONTRATO+" dias.")));
+    listaDb(r.vencendo, l => escapar(l.concorrente)+' · '+textoVencimento(l),
+      "Nenhum contrato vencendo nos próximos "+DIAS_FIM_CONTRATO+" dias.")));
   // situation
   cartoes.push(cartaoDb("Situação", ["verde","amarelo","vermelho","nenhum"].map(s =>
-    barraDb(escapar(ROTULO_STATUS[s]), r.status[s], T, 'data-db-status="'+s+'" title="Filtrar o quadro"', "st-"+s)).join("")));
+    barraDb(escapar(ROTULO_STATUS[s]), r.status[s], T, "status:"+s, "st-"+s)).join("")));
   // people
   cartoes.push(cartaoDb("Por responsável", r.responsaveis.map(p => p.nome
-    ? barraDb(escapar(p.nome), p.n, T, 'data-db-resp="'+escapar(p.nome)+'" title="Filtrar o quadro"')
-    : barraDb("Sem responsável", p.n, T, "", "alerta")).join("")));
+    ? barraDb(escapar(p.nome), p.n, T, "resp:"+p.nome)
+    : barraDb("Sem responsável", p.n, T, "resp:", "alerta")).join("")));
   // follow-up
   cartoes.push(cartaoDb("Acompanhamento",
     '<div class="db-mini">'+
-      '<span><b>'+r.visitar+'</b> para visitar</span>'+
-      '<span><b>'+r.sults+'</b> no SULTS</span>'+
-      '<span><b>'+r.parados.length+'</b> parados há '+DIAS_PARADO+'+ dias</span>'+
+      '<button type="button" '+attrGrupo("visitar")+'><b>'+r.visitar+'</b> para visitar</button>'+
+      '<button type="button" '+attrGrupo("sults")+'><b>'+r.sults+'</b> no SULTS</button>'+
+      '<button type="button" '+attrGrupo("parados")+'><b>'+r.parados.length+'</b> parados há '+DIAS_PARADO+'+ dias</button>'+
     '</div>'+
     '<h4>Parados há mais de '+DIAS_PARADO+' dias (em aberto)</h4>'+
     listaDb(r.parados, l => "desde "+dataBR(l.atualizadoEm || l.criadoEm), "Nenhum condomínio parado. 👍")));
   html.push('<div class="db-grade">'+cartoes.join("")+'</div>');
   $("#dbConteudo").innerHTML = html.join("");
+  if(dashDetalhe) renderDetalheDashboard();   // keep the open list up to date
 }
-function dashboardAberto(){ return $("#telaDashboard").classList.contains("aberta"); }
-function abrirDashboard(){ renderDashboard(); $("#telaDashboard").classList.add("aberta"); $("#telaDashboard .tela-lem-corpo").scrollTop = 0; }
-function fecharDashboard(){ $("#telaDashboard").classList.remove("aberta"); }
-// Clicks inside the dashboard: open a condo, or close the page and filter the board.
-function cliqueDashboard(e){
-  const b = e.target.closest("[data-db-lead],[data-db-fase],[data-db-status],[data-db-resp],[data-db-busca]");
-  if(!b) return;
-  if(b.dataset.dbLead){ abrirPainel(b.dataset.dbLead); return; }   // the panel opens on top of the page
+
+// ---- the list window ("which condos?") ----
+let dashDetalhe = null;   // key of the group being shown, or null
+// One line per condo: name (opens it) and a summary of what we know.
+function linhaDetalheDb(l, chave){
+  const fase = (FASES.find(f => f.id === l.fase) || FASES.find(f => f.id === "cadastro")).nome;
+  const st = ROTULO_STATUS[l.status] ? l.status : "nenhum";
+  const contatos = migrarContatosAntigos(l);
+  const c = contatos.find(x => String(x.telefone||"").trim() || String(x.email||"").trim());
+  const info = [escapar(fase), escapar(ROTULO_STATUS[st])];
+  info.push(numAptos(l) != null ? numAptos(l)+" aptos" : "sem nº de aptos");
+  if(l.responsavel) info.push(escapar(l.responsavel));
+  if(l.zona) info.push(escapar(l.zona));
+  const linha2 = [];
+  if(c) linha2.push("📞 "+escapar([c.nome, c.telefone || c.email].filter(Boolean).join(" · ")));
+  else if(contatos.some(x => x.nome)) linha2.push("👤 "+escapar(contatos.find(x => x.nome).nome)+" (sem telefone/e-mail)");
+  if(l.concorrente) linha2.push("🏪 "+escapar(l.concorrente)+(l.fimContrato ? " · "+textoVencimento(l)+" ("+dataBR(l.fimContrato)+")" : ""));
+  if(chave === "parados") linha2.push("⏸ sem mudanças desde "+dataBR(l.atualizadoEm || l.criadoEm));
+  const lem = proximoLembrete(l);
+  if(lem && (chave === "lembrete" || lembreteVencido(l))) linha2.push("🔔 "+escapar(lem.texto || "Lembrete")+" · "+dataBR(dtLembrete(lem)));
+  return '<li class="db-det-item st-'+st+'">'+
+    '<button type="button" data-db-lead="'+escapar(l.id)+'">'+escapar(l.nome || "Sem nome")+'</button>'+
+    '<span class="db-det-info">'+info.join(" · ")+'</span>'+
+    (linha2.length ? '<span class="db-det-extra">'+linha2.join("<br>")+'</span>' : '')+
+  '</li>';
+}
+function renderDetalheDashboard(){
+  const grp = grupoDashboard(dashDetalhe);
+  $("#dbDetTitulo").textContent = grp.titulo;
+  $("#dbDetResumo").textContent = grp.lista.length === 1 ? "1 condomínio" : grp.lista.length+" condomínios";
+  $("#dbDetQuadro").hidden = $("#dbDetRodape").hidden = !grp.quadro;
+  $("#dbDetLista").innerHTML = grp.lista.length
+    ? grp.lista.map(l => linhaDetalheDb(l, dashDetalhe.split(":")[0])).join("")
+    : '<li class="db-vazio">Nenhum condomínio aqui.</li>';
+}
+function abrirDetalheDashboard(chave){
+  dashDetalhe = chave;
+  renderDetalheDashboard();
+  $("#dbDetalhe").hidden = false;
+  $("#dbDetLista").scrollTop = 0;
+  $("#dbDetFechar").focus();
+}
+function fecharDetalheDashboard(){ dashDetalhe = null; $("#dbDetalhe").hidden = true; }
+function detalheDashboardAberto(){ return !$("#dbDetalhe").hidden; }
+// "Ver no quadro": close everything and apply that filter on the board.
+function verGrupoNoQuadro(){
+  const q = (grupoDashboard(dashDetalhe).quadro) || {};
+  fecharDetalheDashboard();
   fecharDashboard();
-  if(b.dataset.dbStatus){ $("#filtroStatus").value = b.dataset.dbStatus; desenhar(); }
-  else if(b.dataset.dbResp){ $("#filtroResp").value = b.dataset.dbResp; desenhar(); }
-  else if(b.dataset.dbBusca){ $("#busca").value = b.dataset.dbBusca; desenhar(); }
-  else if(b.dataset.dbFase){
-    const col = document.querySelector('.coluna[data-fase="'+b.dataset.dbFase+'"]');
+  if(q.status){ $("#filtroStatus").value = q.status; desenhar(); }
+  else if(q.resp){ $("#filtroResp").value = q.resp; desenhar(); }
+  else if(q.busca){ $("#busca").value = q.busca; desenhar(); }
+  else if(q.fase){
+    const col = document.querySelector('.coluna[data-fase="'+q.fase+'"]');
     if(col){
       col.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
       col.classList.add("piscar"); setTimeout(() => col.classList.remove("piscar"), 1600);
     }
   }
+}
+
+function dashboardAberto(){ return $("#telaDashboard").classList.contains("aberta"); }
+function abrirDashboard(){ fecharDetalheDashboard(); renderDashboard(); $("#telaDashboard").classList.add("aberta"); $("#telaDashboard .tela-lem-corpo").scrollTop = 0; }
+function fecharDashboard(){ fecharDetalheDashboard(); $("#telaDashboard").classList.remove("aberta"); }
+// Clicks inside the dashboard: a condo name opens the condo; any number opens its list.
+function cliqueDashboard(e){
+  const lead = e.target.closest("[data-db-lead]");
+  if(lead){ abrirPainel(lead.dataset.dbLead); return; }   // the panel opens on top of the page
+  const grp = e.target.closest("[data-db-grupo]");
+  if(grp) abrirDetalheDashboard(grp.dataset.dbGrupo);
 }
 
 /* ================= menu lateral (☰) ================= */
@@ -2424,7 +2535,10 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(menuAberto()){ fecharMenu(true); return; }
     // Contacts page: Esc closes its form first, then the page (if no condo panel is open on top)
-    if(dashboardAberto() && !$("#painel").classList.contains("aberto")){ fecharDashboard(); return; }
+    if(dashboardAberto() && !$("#painel").classList.contains("aberto")){
+      if(detalheDashboardAberto()) fecharDetalheDashboard(); else fecharDashboard();
+      return;
+    }
     if(templatesAberto()){
       if(!$("#tpForm").hidden) fecharFormTemplate(); else fecharTemplates();
       return;
@@ -2604,6 +2718,11 @@ $("#btnVisitarLead").addEventListener("click", alternarVisitar);
 $("#btnDashboard").addEventListener("click", abrirDashboard);
 $("#btnFecharDashboard").addEventListener("click", fecharDashboard);
 $("#dbConteudo").addEventListener("click", cliqueDashboard);
+$("#dbDetalhe").addEventListener("click", e=>{
+  if(e.target.id === "dbDetalhe" || e.target.closest("#dbDetFechar")){ fecharDetalheDashboard(); return; }   // background or ✕
+  if(e.target.closest("#dbDetQuadro")){ verGrupoNoQuadro(); return; }
+  cliqueDashboard(e);
+});
 // Templates page.
 $("#btnTemplates").addEventListener("click", abrirTemplates);
 $("#btnFecharTemplates").addEventListener("click", fecharTemplates);
