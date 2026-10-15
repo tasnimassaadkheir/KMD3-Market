@@ -271,8 +271,9 @@
   .dica button{border:0;background:none;color:#093E4F;font-weight:600;padding:0;text-decoration:underline}
   /* 'Traffic light' status picker: 4 radio buttons (closed / in progress / lost / undefined).
      label.on = the selected option. .bolinha = colored dot. */
-  .semaforo{display:flex;gap:8px;flex-wrap:wrap}
-  .semaforo label{flex:1;min-width:110px;display:flex;align-items:center;gap:8px;padding:9px 10px;
+  /* 2 columns (2 options per row), so long labels like "Em andamento" fit inside the box */
+  .semaforo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .semaforo label{min-width:0;white-space:nowrap;display:flex;align-items:center;gap:8px;padding:9px 10px;
     border-radius:8px;border:1px solid #D6D9D0;background:#fff;font-size:13px;cursor:pointer}
   .semaforo input{accent-color:#093E4F;margin:0}
   .semaforo label.on{border-color:#093E4F;background:#F0F6F1;font-weight:500}
