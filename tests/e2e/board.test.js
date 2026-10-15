@@ -151,3 +151,19 @@ describe("CSV export", () => {
     await context.close();
   });
 });
+
+describe("Status picker layout", () => {
+  for (const w of [1300, 390]) {
+    test(`every status label fits inside its box (${w}px wide)`, async () => {
+      // Bug fixed: "Em andamento" stuck out of its box.
+      const { page, context } = await openApp(env, { viewport: { width: w, height: 900 }, leads: [lead({ nome: "Aurora" })] });
+      await page.click(".cartao");
+      await page.waitForTimeout(300);
+      const fora = await page.locator("#semaforo label").evaluateAll((ls) => ls.filter((l) => l.scrollWidth > l.clientWidth + 1).map((l) => l.textContent.trim()));
+      assert.deepEqual(fora, [], `text sticking out: ${fora.join(", ")}`);
+      const linhas = await page.locator("#semaforo label").evaluateAll((ls) => new Set(ls.map((l) => Math.round(l.getBoundingClientRect().top))).size);
+      assert.equal(linhas, 2, "2 rows of 2 options");
+      await context.close();
+    });
+  }
+});
