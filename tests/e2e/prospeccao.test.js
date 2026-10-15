@@ -139,6 +139,64 @@ describe("Prospecção page", () => {
     await context.close();
   });
 
+  test("'+ Rota' puts a building in the visit route without creating a card; clicking again takes it out", async () => {
+    const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
+    await abrir(page);
+    await importar(page);
+    await page.waitForSelector(".pr-item .pr-loc");
+    await page.waitForFunction(() => document.querySelector(".pr-loc").textContent.includes("📍"), null, { timeout: 10000 });
+    const rota = () => page.evaluate(() => ({ ids: JSON.parse(localStorage.getItem("quitandinha:rota") || "[]"),
+      extras: JSON.parse(localStorage.getItem("quitandinha:rotaExtras") || "{}") }));
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota.na-rota");
+    assert.equal((await page.textContent(".pr-item .pr-rota")).trim(), "✓ Rota (1)");
+    assert.match(await page.textContent("#aviso"), /Adicionado à rota \(parada 1\)/);
+    let r = await rota();
+    assert.deepEqual(r.ids, ["x_009012-013"]);
+    assert.deepEqual(r.extras["x_009012-013"], { id: "x_009012-013", nome: "Rua Doutor Neto de Araujo, 320",
+      endereco: "Rua Doutor Neto de Araujo, 320 - Vila Mariana - São Paulo - SP - 04111-000",
+      lat: -23.589, lng: -46.634, detalhe: "🔎 Prospecção · 250 aptos · Vila Mariana" });
+    assert.equal(await page.locator(".cartao").count(), 0, "no card was created");
+    // the route panel of the main map lists it
+    assert.match(await page.textContent("#mpRotaLista"), /Rua Doutor Neto de Araujo, 320.*Prospecção · 250 aptos/s);
+    // the button in the map pop-up shows it too
+    assert.match((await circulos(page))[0].popup, /✓ Rota \(1\)/);
+    // click again: out of the route
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota:not(.na-rota)");
+    r = await rota();
+    assert.deepEqual(r.ids, []);
+    assert.deepEqual(r.extras, {});
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+
+  test("a building in the route that becomes a card keeps its place in the route, now as the card", async () => {
+    const { page, context } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
+    await abrir(page);
+    await importar(page);
+    await page.waitForSelector(".pr-item .pr-loc");
+    await page.waitForFunction(() => document.querySelector(".pr-loc").textContent.includes("📍"), null, { timeout: 10000 });
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota.na-rota");
+    await page.click(".pr-item .pr-add");
+    await page.waitForSelector(".pr-item .pr-no-funil");
+    const { ids, extras } = await page.evaluate(() => ({ ids: JSON.parse(localStorage.getItem("quitandinha:rota")),
+      extras: JSON.parse(localStorage.getItem("quitandinha:rotaExtras")) }));
+    const card = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios")).find((l) => /Neto de Araujo/.test(l.nome)).id);
+    assert.deepEqual(ids, [card]);
+    assert.deepEqual(extras, {});
+    assert.equal((await page.textContent(".pr-item .pr-rota")).trim(), "✓ Rota (1)", "still shown as in the route");
+    // and for a card, "+ Rota" / "✓ Rota" toggles the card itself
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota:not(.na-rota)");
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:rota"))), []);
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota.na-rota");
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:rota"))), [card]);
+    await context.close();
+  });
+
   test("'Só nesta área do mapa' lists only buildings already placed inside the visible area", async () => {
     const { page, context } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);

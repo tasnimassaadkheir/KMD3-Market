@@ -401,6 +401,7 @@
       const el = e.popup.getElement && e.popup.getElement(); if(!el) return;
       el.querySelectorAll("[data-pr-add]").forEach(b => b.onclick = () => { mapa.closePopup(); adicionarAoFunil(b.dataset.prAdd); });
       el.querySelectorAll("[data-pr-abrir]").forEach(b => b.onclick = () => { mapa.closePopup(); abrirPainel(b.dataset.prAbrir); });
+      el.querySelectorAll("[data-pr-rota]").forEach(b => b.onclick = () => { mapa.closePopup(); alternarRota(b.dataset.prRota); });
     });
     return true;
   }
@@ -418,6 +419,7 @@
       '<div class="pr-pop-acoes">'+
         (ja ? '<button type="button" class="pr-no-funil" data-pr-abrir="'+escapar(ja.id)+'">✓ No funil — abrir</button>'
             : '<button type="button" class="pr-add" data-pr-add="'+escapar(l.id)+'">+ Adicionar ao funil</button>')+
+        botaoRota(l)+
         '<a href="'+escapar(linkGoogle(l))+'" target="_blank" rel="noopener">Google Maps</a>'+
       '</div></div>';
   }
@@ -459,8 +461,43 @@
   // Phones: the list and the map share the screen through two tabs.
   function mostrarAba(qual){
     $p("#prSplit").dataset.aba = qual;
-    document.querySelectorAll("[data-pr-aba]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.prAba === qual)));
+    // The route changed somewhere else (e.g. a stop removed in ☰ → Mapa): refresh the "✓ Rota" marks.
+  document.addEventListener("rota-mudou", () => { if(aberto()) renderResultados(); });
+  document.querySelectorAll("[data-pr-aba]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.prAba === qual)));
     if(qual === "mapa" && mapa) setTimeout(() => mapa.invalidateSize(), 50);
+  }
+
+  /* ---------- visit route ---------- */
+  // "+ Rota": the building becomes a stop in the visit route (☰ → Mapa → Rota) without
+  // becoming a card. If it's already a card, the card itself goes in the route.
+  const naRota = l => {
+    if(!window.__rota) return 0;
+    const ja = leadDoFunil(l);
+    if(ja && window.__rota.tem(ja.id)) return window.__rota.posicao(ja.id);
+    return window.__rota.posicaoEndereco(l.id);
+  };
+  function botaoRota(l){
+    const n = naRota(l);
+    return n ? '<button type="button" class="pr-rota na-rota" data-pr-rota="'+escapar(l.id)+'" title="Tirar da rota de visitas">✓ Rota ('+n+')</button>'
+             : '<button type="button" class="pr-rota" data-pr-rota="'+escapar(l.id)+'" title="Adicionar à rota de visitas">+ Rota</button>';
+  }
+  function alternarRota(id){
+    if(!window.__rota){ avisar("A rota não está disponível agora.", true); return; }
+    const l = resultados.find(x => x.id === id); if(!l) return;
+    const ja = leadDoFunil(l);
+    let dentro;
+    if(ja && !window.__rota.temEndereco(l.id)) dentro = window.__rota.alternar(ja.id);
+    else {
+      if(!window.__rota.temEndereco(l.id) && l.lat == null && !l.geo_em){
+        localizar([l]);
+        avisar("Ainda estou localizando este endereço no mapa. Tente de novo em alguns segundos.");
+        return;
+      }
+      dentro = window.__rota.alternarEndereco({id:l.id, nome:nomeRua(l), endereco:enderecoCompleto(l), lat:l.lat, lng:l.lng,
+        detalhe:"🔎 Prospecção · " + num(l.apartamentos) + " aptos" + (l.bairro ? " · " + l.bairro : "")});
+    }
+    renderResultados();
+    avisar(dentro ? "Adicionado à rota (parada " + naRota(l) + "). Veja em ☰ → Mapa → Rota." : "Tirado da rota.");
   }
 
   /* ---------- funnel ---------- */
@@ -508,6 +545,7 @@
     try{ localStorage.setItem(CHAVE_ADICIONADOS, JSON.stringify(adicionados)); }catch(e){}
     if(l.lat != null && window.__geo) window.__geo.guardar(novo.endereco, l.lat, l.lng);   // the main map won't look it up again
     const ok = await gravarLead(novo);
+    if(window.__rota) window.__rota.trocarEndereco(l.id, novo.id);   // a route stop for this building now points to the card
     desenhar();
     renderResultados();
     if(ok !== false) avisar(novo.nome + " entrou no funil (Futura Prospecção)");
@@ -535,7 +573,7 @@
         escapar(nomeRua(l))+'</button>'+
         '<span class="pr-aptos"><strong>'+num(l.apartamentos)+'</strong> aptos</span></div>'+
       (info ? '<div class="pr-item-info">'+info+'</div>' : '')+
-      '<div class="pr-item-acoes"><span class="pr-loc">'+loc+'</span>'+
+      '<div class="pr-item-acoes"><span class="pr-loc">'+loc+'</span>'+botaoRota(l)+
         (ja ? '<button type="button" class="pr-no-funil" data-pr-abrir="'+escapar(ja.id)+'" title="Abrir o cartão">✓ No funil</button>'
             : '<button type="button" class="pr-add" data-pr-add="'+escapar(l.id)+'">+ Funil</button>')+
       '</div></li>';
@@ -647,6 +685,8 @@
     if(add){ adicionarAoFunil(add.dataset.prAdd); return; }
     const ab = e.target.closest("[data-pr-abrir]");
     if(ab){ abrirPainel(ab.dataset.prAbrir); return; }
+    const rt = e.target.closest("[data-pr-rota]");
+    if(rt){ alternarRota(rt.dataset.prRota); return; }
     const ver = e.target.closest("[data-pr-ver]");
     if(ver) verNoMapa(ver.dataset.prVer);
   });
