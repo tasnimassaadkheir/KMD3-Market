@@ -19,7 +19,7 @@
     return {
       setView() { return this; }, invalidateSize() {}, fitBounds() {}, closePopup() {}, removeLayer() {},
       on(ev, fn) { handlers[ev] = fn; return this; }, once() { return this; },
-      getBounds() { return { contains: () => true }; },
+      getBounds() { return { contains: () => true, ...(rec.bounds || { getSouth: () => -90, getNorth: () => 90, getWest: () => -180, getEast: () => 180 }) }; },
     };
   }
   window.L = {
@@ -27,7 +27,8 @@
     layerGroup,
     control: { zoom: () => chain({}) },
     tileLayer: () => chain({}),
-    circleMarker: (latlng, o) => chain({ type: "circle", latlng, o, bindPopup() { return this; } }),
+    circleMarker: (latlng, o) => chain({ type: "circle", latlng, o,
+      bindPopup(html) { this.popup = html; return this; }, openPopup() { rec.opened.push(this); return this; } }),
     polyline: (latlngs, o) => chain({ type: "polyline", latlngs, o }),
     marker: (latlng, o) => chain({ type: "marker", latlng, o }),
     divIcon: (o) => o,

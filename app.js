@@ -553,6 +553,7 @@ function desenhar(){
   if(typeof verificarLembretes === "function") verificarLembretes(true);
   if(contatosAberto()) renderContatosPagina();
   if(dashboardAberto()) renderDashboard();
+  if(window.Prospeccao) Prospeccao.atualizar();   // "✓ No funil" marks on the Prospecção page
 }
 
 // Builds ONE card element for a condo.
@@ -2442,7 +2443,7 @@ function cliqueDashboard(e){
 }
 
 /* ================= menu lateral (☰) ================= */
-// SIDE MENU: Dashboard, Mapa, Administração, Lembretes, Equipe, Contatos, Templates.
+// SIDE MENU: Dashboard, Mapa, Prospecção, Administração, Lembretes, Equipe, Contatos, Templates.
 // The menu buttons keep their old ids, so their own click handlers (here and in mapa.js) still run;
 // this code only opens/closes the drawer.
 // 'inert' on the closed menu keeps keyboard focus out of the hidden buttons.
@@ -2535,6 +2536,7 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(menuAberto()){ fecharMenu(true); return; }
     // Contacts page: Esc closes its form first, then the page (if no condo panel is open on top)
+    if(window.Prospeccao && Prospeccao.aberto() && !$("#painel").classList.contains("aberto")){ Prospeccao.fechar(); return; }
     if(dashboardAberto() && !$("#painel").classList.contains("aberto")){
       if(detalheDashboardAberto()) fecharDetalheDashboard(); else fecharDashboard();
       return;
