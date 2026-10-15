@@ -110,3 +110,50 @@ describe("calcularDashboard()", () => {
     assert.equal(r.comContato, 0);
   });
 });
+
+describe("grupoDashboard() — which condos are behind each number", () => {
+  const LISTA = [
+    { id: "1", nome: "Bravo", fase: "reuniao", status: "amarelo", aptos: 220, concorrente: "Market4u", responsavel: "Karen",
+      contatos: [{ nome: "Ana", telefone: "11" }] },
+    { id: "2", nome: "alfa", fase: "nada", status: "", aptos: "", concorrente: " MARKET4U ", responsavel: "" },
+    { id: "3", nome: "Charlie", fase: "reuniao", status: "verde", aptos: 400, concorrente: "", responsavel: "Karen", visitar: true },
+  ];
+  beforeEach(() => app.run(`leads = ${JSON.stringify(LISTA)};`));
+  const grp = (k) => app.json(`(g => ({titulo: g.titulo, ids: g.lista.map(l => l.id), quadro: g.quadro}))(grupoDashboard(${JSON.stringify(k)}))`);
+
+  test("every key gives the right condos, A→Z ignoring case", () => {
+    assert.deepEqual(grp("todos").ids, ["2", "1", "3"]);
+    assert.deepEqual(grp("fase:reuniao").ids, ["1", "3"]);
+    assert.deepEqual(grp("fase:cadastro").ids, ["2"], "unknown stage = Cadastro, like on the board");
+    assert.deepEqual(grp("status:nenhum").ids, ["2"]);
+    assert.deepEqual(grp("tam:M").ids, ["1"]);
+    assert.deepEqual(grp("tam:sem").ids, ["2"]);
+    assert.deepEqual(grp("contato:com").ids, ["1"]);
+    assert.deepEqual(grp("contato:sem").ids, ["2", "3"]);
+    assert.deepEqual(grp("conc:market4u").ids, ["2", "1"], "spellings grouped");
+    assert.deepEqual(grp("conc:").ids, ["3"]);
+    assert.deepEqual(grp("resp:Karen").ids, ["1", "3"]);
+    assert.deepEqual(grp("resp:").ids, ["2"]);
+    assert.deepEqual(grp("visitar").ids, ["3"]);
+    assert.deepEqual(grp("aptos").ids, ["3", "1"], "biggest first");
+  });
+
+  test("the counts on the page match the lists", () => {
+    const r = app.json(`calcularDashboard(leads)`);
+    assert.equal(grp("contato:com").ids.length, r.comContato);
+    assert.equal(grp("contato:sem").ids.length, r.semContato);
+    assert.equal(grp("conc:").ids.length, r.semConcorrente);
+    for (const f of ["P", "M", "G", "sem"]) assert.equal(grp("tam:" + f).ids.length, r.tamanho[f], f);
+  });
+
+  test("titles, and a board filter only where the board has one", () => {
+    assert.deepEqual(grp("fase:reuniao").quadro, { fase: "reuniao" });
+    assert.equal(grp("fase:reuniao").titulo, "Fase: Reunião");
+    assert.deepEqual(grp("status:verde").quadro, { status: "verde" });
+    assert.deepEqual(grp("resp:Karen").quadro, { resp: "Karen" });
+    assert.deepEqual(grp("conc:market4u").quadro, { busca: "Market4u" });
+    assert.equal(grp("conc:market4u").titulo, "Concorrente: Market4u");
+    assert.equal(grp("tam:M").quadro, null);
+    assert.equal(grp("tam:M").titulo, "Tamanho M — 200 a 300 aptos");
+  });
+});

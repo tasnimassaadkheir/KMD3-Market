@@ -999,6 +999,43 @@ button.db-barra:hover{background:#F1F3EC}
 .db-mini{display:flex;flex-wrap:wrap;gap:8px}
 .db-mini span{background:#F1F3EC;border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--tinta)}
 .db-mini b{color:#093E4F;font-size:15px}
+/* every number is a button that opens the list of its condos */
+button.db-kpi,button.db-tam{font:inherit;text-align:left;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+button.db-tam{text-align:center;background:#fff}
+button.db-kpi:hover,button.db-tam:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(9,62,79,.12)}
+.db-mini button{border:0;background:#F1F3EC;border-radius:8px;padding:6px 10px;font:inherit;font-size:12.5px;color:var(--tinta);cursor:pointer}
+.db-mini button:hover{background:#E2E5DB}
+button.db-kpi:focus-visible,button.db-tam:focus-visible,.db-mini button:focus-visible,button.db-barra:focus-visible{outline:2px solid var(--milho);outline-offset:2px}
+/* "which condos?" window */
+.db-detalhe{position:fixed;inset:0;z-index:38;background:rgba(3,18,13,.5);display:flex;align-items:center;justify-content:center;padding:20px}
+.db-detalhe[hidden]{display:none}
+.db-det-caixa{background:var(--creme);border-radius:14px;width:min(640px,100%);max-height:min(720px,100%);display:flex;flex-direction:column;
+  box-shadow:0 18px 50px rgba(3,18,13,.35);overflow:hidden}
+.db-det-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;background:#093E4F;color:#fff}
+.db-det-topo h3{margin:0;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:16px}
+.db-det-topo p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.75)}
+.db-det-fechar{flex-shrink:0;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);
+  color:#fff;font-size:14px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+.db-det-fechar:hover{background:rgba(255,255,255,.2)}
+.db-det-lista{list-style:none;margin:0;padding:8px 12px;overflow:auto;flex:1}
+.db-det-item{background:#fff;border:1px solid #E1E4DA;border-left:4px solid #AEB5A8;border-radius:10px;padding:9px 12px;margin-bottom:7px;
+  display:flex;flex-direction:column;gap:2px;min-width:0}
+.db-det-item.st-verde{border-left-color:var(--ok)}
+.db-det-item.st-amarelo{border-left-color:var(--milho)}
+.db-det-item.st-vermelho{border-left-color:var(--perdido)}
+.db-det-item button{border:0;background:none;padding:0;font:inherit;font-size:14px;font-weight:700;color:#0E627D;text-align:left;cursor:pointer;
+  overflow-wrap:anywhere}
+.db-det-item button:hover{text-decoration:underline}
+.db-det-info{font-size:12px;color:var(--tinta)}
+.db-det-extra{font-size:11.5px;color:var(--tinta-suave);overflow-wrap:anywhere}
+.db-det-lista .db-vazio{padding:16px 4px;text-align:center}
+.db-det-rodape{padding:10px 16px;border-top:1px solid #E1E4DA;display:flex;justify-content:flex-end}
+.db-det-rodape[hidden]{display:none}
+.db-det-rodape .ct-prim{border:0}
+@media (max-width:640px){
+  .db-detalhe{padding:0;align-items:flex-end}
+  .db-det-caixa{width:100%;max-height:88vh;border-radius:14px 14px 0 0}
+}
 /* the column chosen in "Por fase" blinks on the board */
 .coluna.piscar{animation:dbPiscar 1.6s ease}
 @keyframes dbPiscar{0%,60%{box-shadow:0 0 0 3px var(--milho)}100%{box-shadow:0 0 0 0 transparent}}

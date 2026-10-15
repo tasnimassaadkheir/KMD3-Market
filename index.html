@@ -420,7 +420,7 @@
 
 <!-- ==================== DASHBOARD PAGE ====================
      Numbers of the whole funnel. Built by renderDashboard() in app.js (it ignores the board filters).
-     Clicking a stage, situation, person or competitor applies that filter on the board;
+     Clicking any number opens a list of the condos behind it (#dbDetalhe);
      clicking a condo name opens its panel. -->
 <section class="tela-lem tela-dashboard" id="telaDashboard" aria-labelledby="tituloDashboard">
   <div class="tela-lem-topo">
@@ -429,6 +429,19 @@
   </div>
   <div class="tela-lem-corpo">
     <div class="tela-lem-in db-in" id="dbConteudo"></div>
+  </div>
+  <!-- "Which condos?" window: opens when a number is clicked. Built by renderDetalheDashboard(). -->
+  <div class="db-detalhe" id="dbDetalhe" hidden>
+    <div class="db-det-caixa" role="dialog" aria-modal="true" aria-labelledby="dbDetTitulo">
+      <div class="db-det-topo">
+        <div><h3 id="dbDetTitulo"></h3><p id="dbDetResumo"></p></div>
+        <button type="button" class="db-det-fechar" id="dbDetFechar" aria-label="Fechar lista">✕</button>
+      </div>
+      <ul class="db-det-lista" id="dbDetLista"></ul>
+      <div class="db-det-rodape" id="dbDetRodape">
+        <button type="button" class="ct-prim" id="dbDetQuadro" hidden>Ver no quadro</button>
+      </div>
+    </div>
   </div>
 </section>
 
