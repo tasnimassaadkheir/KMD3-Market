@@ -108,7 +108,20 @@
   // Cache key for a condo = its normalized search text.
   const chave = l => { const c = consulta(l); return c ? normalizarNome(c) : null; };
   // Asks Nominatim for the coordinates of an address. Returns {lat, lng} or null if not found.
-  async function nominatim(q){
+  // Every lookup in the app (this map AND the Prospecção page) goes through here, one at a time,
+  // at least 1.1 s apart — Nominatim's rule is at most 1 request per second.
+  let filaNominatim = Promise.resolve(), ultimaConsulta = 0;
+  function nominatim(q){
+    const vez = filaNominatim.then(async () => {
+      const falta = ultimaConsulta + 1100 - Date.now();
+      if(falta > 0) await esperar(falta);
+      ultimaConsulta = Date.now();
+      return consultarNominatim(q);
+    });
+    filaNominatim = vez.catch(() => {});
+    return vez;
+  }
+  async function consultarNominatim(q){
     const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&q="+encodeURIComponent(q));
     if(!r.ok) throw new Error("http "+r.status);
     const j = await r.json();
@@ -822,6 +835,29 @@
 
   // Function exposed to app.js: desenhar() calls it after every change,
   // so the map stays in sync with the board (only does work while the map is open).
+  // Address lookup shared with prospeccao.js (same 1-per-second line), and a way to
+  // save a known position in this map's cache (so a condo added from Prospecção
+  // shows up on the map without being looked up again).
+  window.__geo = {
+    buscar: q => nominatim(q),
+    // Loads Leaflet (if needed) and returns it, for the Prospecção map.
+    async leaflet(){ await garantirLeaflet(); return L; },
+    // Same background map as this view (CARTO, or OpenStreetMap without a key).
+    fundo(m, div){
+      if(CARTO_KEY){
+        L.tileLayer("https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key="+encodeURIComponent(CARTO_KEY),
+          {maxZoom:19, attribution:"© OpenStreetMap contributors © CARTO"}).addTo(m);
+      } else {
+        if(div) div.classList.add("mp-osm");
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, attribution:"© OpenStreetMap contributors"}).addTo(m);
+      }
+    },
+    guardar(endereco, lat, lng){
+      const k = chave({endereco}); if(!k || lat == null || lng == null) return;
+      geo[k] = {lat:+lat, lng:+lng, t:Date.now()};
+      salvarGeo();
+    }
+  };
   window.__atualizarMapa = function(){
     if(!ativo) return;
     enfileirar(filtrar());

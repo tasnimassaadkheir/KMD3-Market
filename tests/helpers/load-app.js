@@ -64,6 +64,7 @@ function frozenDate(nowISO) {
  * Loads app.js in a sandbox and returns a helper to call its code.
  * @param {object} [opts]
  * @param {string} [opts.now] frozen "now" (local time), e.g. "2026-10-05T12:00:00"
+ * @param {string[]} [opts.extra] other scripts to load after app.js, e.g. ["prospeccao.js"]
  * @returns {{ run: (code:string)=>any, json: (code:string)=>any, ctx: object }}
  *   run("escapar('<b>')") evaluates code inside the app's global scope.
  */
@@ -106,6 +107,8 @@ function loadApp(opts = {}) {
   ctx.addEventListener = () => {};
   vm.createContext(ctx);
   vm.runInContext(APP_CODE, ctx, { filename: "app.js" });
+  // Extra scripts that load after app.js (e.g. ["prospeccao.js"]).
+  for (const f of opts.extra || []) vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
   const run = (code) => vm.runInContext(code, ctx);
   return {
     ctx,
