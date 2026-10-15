@@ -942,3 +942,69 @@ body.vista-mapa #quadro{display:none}
 .tp-acoes button:hover{background:#E2E5DB;color:#093E4F}
 .tp-acoes button[data-tp-excluir]:hover{color:#963029}
 .tp-vazio{grid-column:1/-1;text-align:center;color:var(--tinta-suave);background:#fff;border:1px dashed #D6D9D0;border-radius:12px;padding:26px 16px;margin:0}
+
+/* ==================== DASHBOARD PAGE ==================== */
+.tela-dashboard .db-in{max-width:1120px}
+/* big numbers on top */
+.db-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+.db-kpi{background:#fff;border:1px solid #E1E4DA;border-left:4px solid #C9CEC2;border-radius:12px;padding:12px 14px;
+  display:flex;flex-direction:column;gap:2px;min-width:0}
+.db-kpi b{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:28px;line-height:1.1;color:#093E4F}
+.db-kpi span{font-size:13px;font-weight:600;color:var(--tinta)}
+.db-kpi small{font-size:11.5px;color:var(--tinta-suave)}
+.db-kpi.destaque{background:#093E4F;border-color:#093E4F}
+.db-kpi.destaque b,.db-kpi.destaque span{color:#fff}
+.db-kpi.ok{border-left-color:var(--ok)}
+.db-kpi.alerta{border-left-color:var(--milho)}
+.db-kpi.perigo{border-left-color:var(--perdido)}
+.db-kpi.perigo b{color:#B23A32}
+/* cards */
+.db-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;align-items:start}
+.db-cartao{background:#fff;border:1px solid #E1E4DA;border-radius:12px;padding:14px 16px;min-width:0}
+.db-cartao h3{margin:0 0 10px;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:15px;color:#093E4F}
+.db-cartao h4{margin:14px 0 6px;font-size:12px;font-weight:700;color:var(--tinta-suave);text-transform:uppercase;letter-spacing:.03em}
+/* one row with a bar */
+.db-barra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:center;width:100%;
+  padding:6px 8px;margin:0 0 2px;border:0;border-radius:8px;background:none;text-align:left;font:inherit;color:var(--tinta)}
+button.db-barra{cursor:pointer}
+button.db-barra:hover{background:#F1F3EC}
+.db-rot{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-num{font-size:13px;font-weight:700;color:#093E4F;white-space:nowrap}
+.db-num small{font-weight:500;color:var(--tinta-suave);margin-left:2px}
+.db-trilha{grid-column:1/-1;height:6px;border-radius:99px;background:#EDEFE8;overflow:hidden}
+.db-trilha i{display:block;height:100%;border-radius:99px;background:#0E627D}
+.db-barra.ok .db-trilha i,.db-barra.st-verde .db-trilha i{background:var(--ok)}
+.db-barra.alerta .db-trilha i,.db-barra.st-amarelo .db-trilha i{background:var(--milho)}
+.db-barra.perigo .db-trilha i,.db-barra.st-vermelho .db-trilha i{background:var(--perdido)}
+.db-barra.st-nenhum .db-trilha i{background:#AEB5A8}
+/* size P / M / G / ? */
+.db-tamanhos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.db-tam{border:1px solid #E1E4DA;border-radius:10px;padding:10px 6px;text-align:center;display:flex;flex-direction:column;gap:2px;min-width:0}
+.db-tam b{width:30px;height:30px;margin:0 auto 2px;border-radius:50%;display:grid;place-items:center;
+  background:#093E4F;color:#fff;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:15px}
+.db-tam.sem b{background:#AEB5A8}
+.db-tam strong{font-size:22px;color:#093E4F;line-height:1.1}
+.db-tam span{font-size:11px;color:var(--tinta-suave);line-height:1.25}
+.db-tam small{font-size:11px;font-weight:600;color:var(--tinta)}
+/* lists of condos */
+.db-lista{list-style:none;margin:0;padding:0;max-height:220px;overflow:auto;border:1px solid #EDEFE8;border-radius:8px}
+.db-lista li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid #EDEFE8;font-size:12.5px}
+.db-lista li:last-child{border-bottom:0}
+.db-lista button{border:0;background:none;padding:0;font:inherit;font-weight:600;color:#0E627D;text-align:left;cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.db-lista button:hover{text-decoration:underline}
+.db-lista span{flex-shrink:0;font-size:11.5px;color:var(--tinta-suave)}
+.db-vazio{margin:0;font-size:12.5px;color:var(--tinta-suave)}
+.db-vazio-grande{text-align:center;background:#fff;border:1px dashed #D6D9D0;border-radius:12px;padding:30px 16px}
+.db-mini{display:flex;flex-wrap:wrap;gap:8px}
+.db-mini span{background:#F1F3EC;border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--tinta)}
+.db-mini b{color:#093E4F;font-size:15px}
+/* the column chosen in "Por fase" blinks on the board */
+.coluna.piscar{animation:dbPiscar 1.6s ease}
+@keyframes dbPiscar{0%,60%{box-shadow:0 0 0 3px var(--milho)}100%{box-shadow:0 0 0 0 transparent}}
+@media (max-width:640px){
+  .db-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .db-kpi b{font-size:24px}
+  .db-grade{grid-template-columns:minmax(0,1fr)}
+  .db-tamanhos{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

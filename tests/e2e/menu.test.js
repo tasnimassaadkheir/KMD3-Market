@@ -28,16 +28,16 @@ describe("Side menu (☰)", () => {
     await context.close();
   });
 
-  test("opens with the items in order: Mapa, Lembretes, Equipe, Contatos, Templates (Administração only for admins)", async () => {
+  test("opens with the items in order: Dashboard, Mapa, Lembretes, Equipe, Contatos, Templates (Administração only for admins)", async () => {
     const { page, context } = await openApp(env);
     assert.equal(await page.getAttribute("#btnMenu", "aria-expanded"), "false");
     await abrir(page);
     assert.equal(await page.getAttribute("#btnMenu", "aria-expanded"), "true");
     const visiveis = await page.locator("#menuLateral .menu-item:visible .menu-rot").allTextContents();
-    assert.deepEqual(visiveis, ["Mapa", "Lembretes", "Equipe", "Contatos", "Templates"]);
+    assert.deepEqual(visiveis, ["Dashboard", "Mapa", "Lembretes", "Equipe", "Contatos", "Templates"]);
     // order in the page, including the admin item that only admins see
     const todos = await page.locator("#menuLateral .menu-item .menu-rot").allTextContents();
-    assert.deepEqual(todos, ["Mapa", "Administração", "Lembretes", "Equipe", "Contatos", "Templates"]);
+    assert.deepEqual(todos, ["Dashboard", "Mapa", "Administração", "Lembretes", "Equipe", "Contatos", "Templates"]);
     await context.close();
   });
 
@@ -46,7 +46,7 @@ describe("Side menu (☰)", () => {
     await page.evaluate(() => { document.querySelector("#btnAdmin").hidden = false; });   // what verificarAdmin() does
     await abrir(page);
     assert.deepEqual(await page.locator("#menuLateral .menu-item:visible .menu-rot").allTextContents(),
-      ["Mapa", "Administração", "Lembretes", "Equipe", "Contatos", "Templates"]);
+      ["Dashboard", "Mapa", "Administração", "Lembretes", "Equipe", "Contatos", "Templates"]);
     await context.close();
   });
 
@@ -69,7 +69,7 @@ describe("Side menu (☰)", () => {
     assert.equal(await page.locator("#menuLateral").evaluate((m) => m.inert), true);
     await abrir(page);
     assert.equal(await page.locator("#menuLateral").evaluate((m) => m.inert), false);
-    assert.equal(await page.evaluate(() => document.activeElement.id), "btnVista", "focus moves into the menu");
+    assert.equal(await page.evaluate(() => document.activeElement.id), "btnDashboard", "focus moves into the menu (first item)");
     await context.close();
   });
 
