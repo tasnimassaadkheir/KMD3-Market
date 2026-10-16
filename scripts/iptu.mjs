@@ -200,15 +200,14 @@ if(process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){
   } else if(cmd === "baixar"){
     const cookie = await sessao();
     const r = await fetch(urlArquivo(a), {headers:{cookie}});
-    console.error("GET", urlArquivo(a), "->", r.status, r.headers.get("content-type"), r.headers.get("content-length"), r.headers.get("content-disposition"));
     if(!r.ok) throw new Error("download falhou: HTTP " + r.status);
-    if(/text\/html/i.test(r.headers.get("content-type") || "")){
-      console.error((await r.text()).slice(0, 3000));
-      throw new Error("o GeoSampa devolveu uma página em vez do arquivo");
-    }
+    // GeoSampa labels the zip as "text/html"; what tells it's the file is the "attachment" header.
+    if(!/attachment/i.test(r.headers.get("content-disposition") || "")) throw new Error("o GeoSampa devolveu uma página em vez do arquivo");
     const { Readable } = await import("node:stream");
     const { pipeline } = await import("node:stream/promises");
     await pipeline(Readable.fromWeb(r.body), fs.createWriteStream(b));
+    const inicio = fs.readFileSync(b).subarray(0, 2).toString("latin1");
+    if(inicio !== "PK") throw new Error("o arquivo baixado não é um .zip");
     console.error("baixado:", b, fs.statSync(b).size, "bytes");
   } else if(cmd === "resumir"){
     const r = await resumirStream(process.stdin, a ? +a : MIN_APTOS);
