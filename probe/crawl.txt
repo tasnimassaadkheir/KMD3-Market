@@ -1,5 +1,4 @@
-pesquisaPastas "12_Cadastro\\" => |IPTU_INTER:0|IPTU_INTRA:0|Lotes:0
-pesquisaPastas "12_Cadastro" => undefined
-pesquisaSubPastas "12_Cadastro" => |IPTU_INTER:0|IPTU_INTRA:0|Lotes:0
-pesquisaArquivosTemas "12_Cadastro" => 
-pesquisaPastas "TEMAS\\12_Cadastro\\" => undefined
+SUB IPTU_INTER => |XLS_CSV:32
+ARQ XLS_CSV => IPTU_1995.zip|IPTU_1996.zip|IPTU_1997.zip|IPTU_1998.zip|IPTU_1999.zip|IPTU_2000.zip|IPTU_2001.zip|IPTU_2002.zip|IPTU_2003.zip|IPTU_2004.zip|IPTU_2005.zip|IPTU_2006.zip|IPTU_2007.zip|IPTU_2008.zip|IPTU_2009.zip|IPTU_2010.zip|IPTU_2011.zip|IPTU_2012.zip|IPTU_2013.zip|IPTU_2014.zip|IPTU_2015.zip|IPTU_2016.zip|IPTU_2017.zip|IPTU_2018.zip|IPTU_2019.zip|IPTU_2020.zip|IPTU_2021.zip|IPTU_2022.zip|IPTU_2023.zip|IPTU_2024.zip|IPTU_2025.zip|IPTU_2026.zip
+GET https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/downloadIfr.aspx?orig=DownloadCamadas&arq=12_Cadastro%5C%5CIPTU_INTER%5C%5CXLS_CSV%5C%5CIPTU_2026&arqTipo=XLS_CSV => 200 text/html; charset=utf-8 836  first bytes: <iframe src="downloadArquivo.aspx?orig=DownloadCamadas&arq=12_Cadastro%5C%5CIPTU_INTER%5C%5CXLS_CSV%5C%5CIPTU_2026&arqTi
+GET https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/downloadIfr.aspx?orig=DownloadCamadas&arq=12_Cadastro%5CIPTU_INTER%5CXLS_CSV%5CIPTU_2026&arqTipo=XLS_CSV => 200 text/html; charset=utf-8 818  first bytes: <iframe src="downloadArquivo.aspx?orig=DownloadCamadas&arq=12_Cadastro%5CIPTU_INTER%5CXLS_CSV%5CIPTU_2026&arqTipo=XLS_CS
