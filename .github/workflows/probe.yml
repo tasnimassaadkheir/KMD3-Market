@@ -24,5 +24,6 @@ jobs:
           unzip -p osasco.zip | iconv -f latin1 -t utf-8 2>/dev/null | head -60 > out/amostra.csv
           unzip -p osasco.zip | wc -l >> out/info.txt
           curl -sSL "$B/Dicionario_CNEFE_Censo_2022.xls" -o out/dicionario.xls
+          python3 probe/analise.py || echo "analise falhou" >> out/info.txt
           git config user.name probe; git config user.email probe@example.com
           git add out; git commit -m "probe results"; git push
