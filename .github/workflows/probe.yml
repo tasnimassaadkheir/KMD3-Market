@@ -1,0 +1,28 @@
+name: Probe CNEFE
+on:
+  push:
+    branches: [probe/cnefe]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        run: |
+          set +e
+          mkdir -p out
+          B=https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV
+          curl -sSL "$B/Municipio/35_SP/" | grep -o 'href="[^"]*\.zip"' | sed 's/href="//;s/"$//' > out/lista_sp.txt
+          grep -i osasco out/lista_sp.txt > out/osasco_nome.txt
+          f=$(head -1 out/osasco_nome.txt)
+          curl -sSL "$B/Municipio/35_SP/$f" -o osasco.zip
+          ls -l osasco.zip > out/info.txt
+          unzip -l osasco.zip >> out/info.txt
+          unzip -p osasco.zip | head -c 300 | od -c | head -5 >> out/info.txt
+          unzip -p osasco.zip | iconv -f latin1 -t utf-8 2>/dev/null | head -60 > out/amostra.csv
+          unzip -p osasco.zip | wc -l >> out/info.txt
+          curl -sSL "$B/Dicionario_CNEFE_Censo_2022.xls" -o out/dicionario.xls
+          git config user.name probe; git config user.email probe@example.com
+          git add out; git commit -m "probe results"; git push
