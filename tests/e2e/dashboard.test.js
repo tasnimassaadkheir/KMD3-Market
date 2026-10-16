@@ -29,14 +29,14 @@ describe("Dashboard page", () => {
     assert.match(kpis[0], /^4\s+condomínios/);
     assert.match(kpis[1], /790\s+apartamentos no funil/);
     assert.ok(kpis.some((k) => /^1\s+com contato/.test(k)), "only Aurora has a phone/e-mail");
-    assert.ok(kpis.some((k) => /^1\s+sem nenhuma informação/.test(k)));
+    assert.ok(kpis.some((k) => /^1\s+sem informação/.test(k)));
     assert.match(await linha(page, "Contato Realizado").innerText(), /1\s+25%/);
     assert.match(await linha(page, "Assembleia").innerText(), /0\s+0%/);
     const tam = await page.locator(".db-tam strong").allTextContents();
     assert.deepEqual(tam, ["1", "1", "1", "1"], "P, M (220 counts as M), G, sem nº");
     assert.match(await linha(page, "Market4u").innerText(), /2\s+50%/, "grouped ignoring case");
     assert.match(await linha(page, "Sem concorrente").innerText(), /2\s+50%/);
-    assert.match(await page.locator(".db-lista", { hasText: "Aurora" }).innerText(), /Market4u · vence em 40d/);
+    assert.match(await page.locator(".db-lista", { hasText: "Aurora" }).innerText(), /Market4u, vence em 40 dias/);
     assert.match(await page.locator(".db-lista", { hasText: "Sem Nada" }).innerText(), /Sem Nada/);
     assert.deepEqual(errors, []);
     await context.close();
@@ -69,15 +69,15 @@ describe("Dashboard page", () => {
     assert.equal(r.quadro, true);
     r = await lista(linha(page, "Reunião"));
     assert.deepEqual(r.nomes, ["Mirante"]);
-    r = await lista(page.locator(".db-kpi", { hasText: "sem nenhuma informação" }));
+    r = await lista(page.locator(".db-kpi", { hasText: "sem informação" }));
     assert.deepEqual(r.nomes, ["Sem Nada"]);
     // each line says what we know about the condo
     await linha(page, "Com contato").click();
     const info = await page.locator("#dbDetLista .db-det-item").first().innerText();
     assert.match(info, /Aurora/);
-    assert.match(info, /Contato Realizado · Em andamento · 150 aptos · Tasnim/);
-    assert.match(info, /Paulo · 11999990000/);
-    assert.match(info, /Market4u · vence em 40d/);
+    assert.match(info, /Contato Realizado, Em andamento, 150 aptos, Tasnim/);
+    assert.match(info, /Contato: Paulo, 11999990000/);
+    assert.match(info, /Concorrente: Market4u, contrato vence em 40 dias/);
     assert.deepEqual(errors, []);
     await context.close();
   });

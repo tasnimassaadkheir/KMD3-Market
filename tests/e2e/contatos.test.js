@@ -28,7 +28,7 @@ describe("'Quem é' on a condo's contacts", () => {
     await page.click("#btnSalvar");
     await page.waitForFunction(() => (JSON.parse(localStorage.getItem("quitandinha:condominios"))[0].contatos || []).length === 1);
     assert.deepEqual((await salvos(page))[0].contatos, [{ nome: "Paulo", telefone: "", email: "", tipo: "Síndico" }]);
-    assert.match(await page.textContent(".cartao .etiquetas"), /Paulo · Síndico/, "the card shows who it is");
+    assert.match(await page.textContent(".cartao"), /Paulo \(Síndico\)/, "the card shows who it is");
     assert.deepEqual(errors, []);
     await context.close();
   });
@@ -88,7 +88,7 @@ describe("Contacts page (☰ → Contatos)", () => {
       ["PauloSíndico", "(11) 99999-0000", "paulo@aurora.com", "Aurora"],
     ]);
     assert.equal(await page.getAttribute('#ctCorpo tr:has-text("Paulo") .ct-zap', "href"), "https://wa.me/5511999990000");
-    assert.match(await page.textContent("#ctResumo"), /3 contato\(s\) · 3 de condomínios · 0 avulso/);
+    assert.match(await page.textContent("#ctResumo"), /3 contatos: 3 de condomínios e 0 avulsos/);
     assert.deepEqual(errors, []);
     await context.close();
   });

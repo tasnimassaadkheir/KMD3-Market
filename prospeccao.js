@@ -143,7 +143,7 @@
   // Region dropdown with how many buildings each region has, e.g. "Zona Sul (7.394)".
   function preencherRegioes(){
     const n = {}; todos.forEach(l => { if(l.regiao) n[l.regiao] = (n[l.regiao] || 0) + 1; });
-    $p("#prRegiao").innerHTML = '<option value="">' + (meta.cidades.length > 1 ? "São Paulo: todas as regiões" : "Toda a cidade") + '</option>' +
+    $p("#prRegiao").innerHTML = '<option value="">' + (meta.cidades.length > 1 ? "Todas as regiões" : "Toda a cidade") + '</option>' +
       REGIOES.map(r => '<option value="'+r.id+'">'+r.nome+' ('+(n[r.id] || 0).toLocaleString("pt-BR")+')</option>').join("");
   }
 
@@ -258,11 +258,11 @@
   }
   function renderGeoStatus(){
     const el = $p("#prGeoStatus"); if(!el) return;
-    if(geoRodando && geoTotal) el.textContent = "📍 Localizando no mapa… " + geoFeitos + " de " + geoTotal + " (1 por segundo; fica salvo para a próxima vez)";
-    else if(geoFalhaRede) el.textContent = "⚠️ Não consegui localizar no mapa agora (sem internet?).";
+    if(geoRodando && geoTotal) el.textContent = "Localizando no mapa: " + geoFeitos + " de " + geoTotal;
+    else if(geoFalhaRede) el.textContent = "Sem conexão para localizar no mapa.";
     else {
       const sem = resultados.filter(l => l.geo_em && l.lat == null).length;
-      el.textContent = sem ? sem + " endereço(s) não encontrado(s) no mapa — use o link do Google Maps." : "";
+      el.textContent = sem ? (sem === 1 ? "1 endereço não encontrado no mapa." : sem + " endereços não encontrados no mapa.") : "";
     }
   }
 
@@ -292,14 +292,14 @@
   function popupHtml(l){
     const ja = leadDoFunil(l);
     const info = [l.cidade !== "São Paulo" ? l.cidade : "", l.bairro, l.pavimentos ? l.pavimentos + " andares" : "", l.ano_construcao ? "construído em " + l.ano_construcao : "", l.padrao, l.fonte]
-      .filter(Boolean).map(escapar).join(" · ");
+      .filter(Boolean).map(escapar).join(", ");
     return '<div class="pr-pop">'+
       '<b>'+escapar(nomeRua(l))+'</b>'+
       '<span class="pr-pop-aptos">'+num(l.apartamentos)+' apartamentos</span>'+
       (info ? '<span>'+info+'</span>' : '')+
       (l.geo_precisao === "rua" ? '<span class="pr-pop-aprox">Posição aproximada (só a rua foi encontrada)</span>' : '')+
       '<div class="pr-pop-acoes">'+
-        (ja ? '<button type="button" class="pr-no-funil" data-pr-abrir="'+escapar(ja.id)+'">✓ No funil — abrir</button>'
+        (ja ? '<button type="button" class="pr-no-funil" data-pr-abrir="'+escapar(ja.id)+'">Abrir no funil</button>'
             : '<button type="button" class="pr-add" data-pr-add="'+escapar(l.id)+'">+ Adicionar ao funil</button>')+
         botaoRota(l)+
         '<a href="'+escapar(linkGoogle(l))+'" target="_blank" rel="noopener">Google Maps</a>'+
@@ -360,7 +360,7 @@
   };
   function botaoRota(l){
     const n = naRota(l);
-    return n ? '<button type="button" class="pr-rota na-rota" data-pr-rota="'+escapar(l.id)+'" title="Tirar da rota de visitas">✓ Rota ('+n+')</button>'
+    return n ? '<button type="button" class="pr-rota na-rota" data-pr-rota="'+escapar(l.id)+'" title="Tirar da rota de visitas">Na rota ('+n+')</button>'
              : '<button type="button" class="pr-rota" data-pr-rota="'+escapar(l.id)+'" title="Adicionar à rota de visitas">+ Rota</button>';
   }
   function alternarRota(id){
@@ -376,10 +376,10 @@
         return;
       }
       dentro = window.__rota.alternarEndereco({id:l.id, nome:nomeRua(l), endereco:enderecoCompleto(l), lat:l.lat, lng:l.lng,
-        detalhe:"🔎 Prospecção · " + num(l.apartamentos) + " aptos" + (l.bairro ? " · " + l.bairro : "")});
+        detalhe:"Prospecção: " + num(l.apartamentos) + " aptos" + (l.bairro ? ", " + l.bairro : "")});
     }
     renderResultados();
-    avisar(dentro ? "Adicionado à rota (parada " + naRota(l) + "). Veja em ☰ → Mapa → Rota." : "Tirado da rota.");
+    avisar(dentro ? "Adicionado à rota como parada " + naRota(l) + "." : "Tirado da rota.");
   }
 
   /* ---------- funnel ---------- */
@@ -440,33 +440,39 @@
     const info = $p("#prInfo");
     if(!meta || !meta.total){ info.textContent = ""; return; }
     const quando = meta.geradoEm ? new Date(meta.geradoEm).toLocaleDateString("pt-BR") : "";
-    // e.g. "24.542 condomínios em São Paulo (IPTU 2026) + 706 em Osasco (Censo 2022), com 10+ apartamentos"
+    // e.g. "24.542 condomínios em São Paulo (IPTU 2026) e 687 em Osasco (Censo 2022). Atualizado em 16/10/2026."
     const partes = meta.cidades.map((c, i) => num(c.total) + (i === 0 ? " condomínios" : "") + " em " + c.nome + " (" + c.fonte + ")");
-    info.textContent = partes.join(" + ") + ", com " + (meta.minimo || 10) + "+ apartamentos" +
-      (quando ? " · lista atualizada em " + quando : "") + (usarNuvem() ? "" : " · posições no mapa salvas só neste navegador");
+    const lista = partes.length > 1 ? partes.slice(0, -1).join(", ") + " e " + partes[partes.length - 1] : partes[0];
+    info.textContent = lista + "." + (quando ? " Atualizado em " + quando + "." : "");
   }
   function itemHtml(l){
     const ja = leadDoFunil(l);
     const info = [l.cidade !== "São Paulo" ? l.cidade : "", l.bairro, l.cep, l.pavimentos ? l.pavimentos + " andares" : "", l.ano_construcao ? "de " + l.ano_construcao : "", l.padrao]
-      .filter(Boolean).map(escapar).join(" · ");
-    const loc = l.lat != null ? (l.geo_precisao === "rua" ? "📍 no mapa (aproximado)" : "📍 no mapa")
-      : l.geo_em ? '<a href="'+escapar(linkGoogle(l))+'" target="_blank" rel="noopener" title="Não achei no mapa; abrir no Google Maps">Google Maps</a>'
+      .filter(Boolean).map(escapar).join(", ");
+    // Map status only when it's not the normal case (placed exactly): approximate, waiting, not found.
+    const loc = l.lat != null ? (l.geo_precisao === "rua" ? "Posição aproximada" : "")
+      : l.geo_em ? '<a href="'+escapar(linkGoogle(l))+'" target="_blank" rel="noopener" title="Não achei no mapa; abrir no Google Maps">Ver no Google Maps</a>'
       : geoFalhaRede ? '<span class="pr-loc-esperando">sem mapa agora</span>'
       : '<span class="pr-loc-esperando">localizando…</span>';
+    const estadoLoc = l.lat != null ? "ok" : l.geo_em ? "nao-achado" : "esperando";
     return '<li class="pr-item'+(ja ? " no-funil" : "")+'" data-pr-id="'+escapar(l.id)+'">'+
       '<div class="pr-item-topo"><button type="button" class="pr-end" data-pr-ver="'+escapar(l.id)+'" title="Ver no mapa">'+
         escapar(nomeRua(l))+'</button>'+
         '<span class="pr-aptos"><strong>'+num(l.apartamentos)+'</strong> aptos</span></div>'+
       (info ? '<div class="pr-item-info">'+info+'</div>' : '')+
-      '<div class="pr-item-acoes"><span class="pr-loc">'+loc+'</span>'+botaoRota(l)+
-        (ja ? '<button type="button" class="pr-no-funil" data-pr-abrir="'+escapar(ja.id)+'" title="Abrir o cartão">✓ No funil</button>'
+      '<div class="pr-item-acoes"><span class="pr-loc" data-loc="'+estadoLoc+'">'+loc+'</span>'+botaoRota(l)+
+        (ja ? '<button type="button" class="pr-no-funil" data-pr-abrir="'+escapar(ja.id)+'" title="Abrir o cartão">No funil</button>'
             : '<button type="button" class="pr-add" data-pr-add="'+escapar(l.id)+'">+ Funil</button>')+
       '</div></li>';
   }
-  // Redraws one list item (when its map position arrives).
+  // Updates one list item when its map position arrives.
   function atualizarItem(l){
     const el = document.querySelector('.pr-item[data-pr-id="'+(window.CSS && CSS.escape ? CSS.escape(l.id) : l.id)+'"]');
-    if(el) el.outerHTML = itemHtml(l);
+    if(!el) return;
+    // Only the map-status part changes; the buttons stay put, so a click in progress isn't lost.
+    const novo = document.createElement("div"); novo.innerHTML = itemHtml(l);
+    const loc = el.querySelector(".pr-loc"), locNovo = novo.querySelector(".pr-loc");
+    if(loc && locNovo) loc.replaceWith(locNovo); else el.outerHTML = itemHtml(l);
   }
   function renderResultados(){
     const vazio = !meta || !meta.total;
@@ -478,10 +484,10 @@
     const reg = REGIOES.find(r => r.id === $p("#prRegiao").value) ||
       ($p("#prCidade").value ? {em: "em " + $p("#prCidade").value, de: "de " + $p("#prCidade").value} : null);
     $p("#prResumo").textContent = totalFiltrado > resultados.length
-      ? "Mostrando os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (reg ? " " + reg.de : "") + (area ? " nesta área" : "") + ". Refine a busca para ver outros."
-      : num(totalFiltrado) + " condomínio(s)" + (reg ? " " + reg.em : "") + (area ? " já localizados nesta área do mapa" : "");
+      ? "Os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (reg ? " " + reg.de : "") + (area ? " nesta área" : "")
+      : plural(totalFiltrado, "condomínio", "condomínios") + (reg ? " " + reg.em : "") + (area ? " já localizados nesta área do mapa" : "");
     $p("#prLista").innerHTML = resultados.map(itemHtml).join("") ||
-      '<li class="pr-nada">'+(area ? "Nenhum condomínio já localizado nesta área. Busque uma rua ou bairro (sem “Só nesta área”) para localizar novos."
+      '<li class="pr-nada">'+(area ? "Nenhum condomínio localizado nesta área ainda."
                                     : "Nenhum condomínio encontrado. Tente outro bairro, rua ou CEP.")+'</li>';
     desenharMarcadores();
     renderGeoStatus();

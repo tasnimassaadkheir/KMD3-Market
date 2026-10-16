@@ -26,7 +26,7 @@ describe("SULTS", () => {
     assert.equal(await btn.getAttribute("aria-pressed"), "false");
     await btn.click();
     assert.equal(await btn.getAttribute("aria-pressed"), "true");
-    assert.equal(await btn.textContent(), "✓ SULTS");
+    assert.equal(await btn.textContent(), "SULTS", "the label stays; the pressed state shows it");
     await page.click("#btnSalvar");
 
     const quem = page.locator(".cartao .meta-cartao .quem");

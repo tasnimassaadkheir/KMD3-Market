@@ -114,6 +114,11 @@ const $ = s => document.querySelector(s);
 // agora() = 'now' as an ISO text, e.g. "2026-10-05T14:30:00.000Z".
 const agora = () => new Date().toISOString();
 // Creates a unique-enough id like "c_lq3k9a8xyz" (time + random letters).
+// "1 lembrete" / "3 lembretes": real singular and plural instead of "lembrete(s)".
+const plural = (n, um, varios) => Number(n).toLocaleString("pt-BR") + " " + (Number(n) === 1 ? um : varios);
+// Small line icons (same style as the side menu), used inside text.
+const ICONE_SINO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>';
+const ICONE_PIN = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
 const gerarId = () => "c_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 
 // Formats a date the Brazilian way: 05/10/2026. Returns "—" if empty/invalid.
@@ -498,7 +503,6 @@ function filtrar(){
 function desenhar(){
   atualizarFiltroResp();
   const visiveis = filtrar();
-  const total = visiveis.length || 1;
   const quadro = $("#quadro");
 
   /* guarda a posição de rolagem atual antes de reconstruir o quadro,
@@ -527,14 +531,13 @@ function desenhar(){
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v11M3 10l4 4 4-4"/><path d="M17 21V10M13 14l4 4 4-4"/></svg>'+
       '</button>'+
       '<span class="contagem">'+daFase.length+'</span></div>'+
-      '<div class="trilha"><i style="width:'+Math.round(daFase.length/total*100)+'%"></i></div>'+
       '<div class="lista" data-fase="'+fase.id+'"></div>'+
       '<div class="rodape-coluna"><button class="add-coluna" data-add="'+fase.id+'">+ Adicionar condomínio</button></div>';
     const lista = col.querySelector(".lista");
     if(!daFase.length){
       const v = document.createElement("p");
       v.className = "vazio";
-      v.textContent = "Nenhum condomínio aqui. Arraste um cartão ou cadastre um novo.";
+      v.textContent = "Nenhum condomínio nesta fase.";
       lista.appendChild(v);
     } else daFase.forEach(l => lista.appendChild(montarCartao(l)));
     quadro.appendChild(col);
@@ -567,31 +570,34 @@ function montarCartao(l){
   el.className = "cartao st-" + (l.status||"nenhum");
   el.draggable = true; el.dataset.id = l.id; el.tabIndex = 0;
 
-  // Build the list of tags shown on the card.
+  // Plain lines of information under the name; color (tags) only for what needs attention.
+  const info = [];
+  const zonaAptos = [l.zona, (l.aptos !== "" && l.aptos != null) ? l.aptos+" aptos" : ""].filter(Boolean).join(", ");
+  if(zonaAptos) info.push(escapar(zonaAptos));
+  if(l.contatos && l.contatos.length){
+    const c0 = l.contatos[0];
+    info.push(escapar(c0.nome||"Contato")+(textoTipo(c0) ? " ("+escapar(textoTipo(c0))+")" : "")+
+      (l.contatos.length>1 ? ' <span class="mais">+'+(l.contatos.length-1)+'</span>' : ''));
+  }
   const etiquetas = [];
-  if(l.zona) etiquetas.push('<span class="etiqueta zona">'+escapar(l.zona)+'</span>');
-  if(l.aptos !== "" && l.aptos != null) etiquetas.push('<span class="etiqueta">'+escapar(l.aptos)+' aptos</span>');
-  if(l.contatos && l.contatos.length) etiquetas.push('<span class="etiqueta">'+escapar(l.contatos[0].nome||("Contato"))+
-    (textoTipo(l.contatos[0]) ? ' · '+escapar(textoTipo(l.contatos[0])) : '')+(l.contatos.length>1?' +'+(l.contatos.length-1):'')+'</span>');
-  // Competitor tag. If the competitor's contract ends in 90 days or less (or already ended),
-  // the tag turns red ('perigo'), because that's a sales opportunity.
+  // Competitor: plain text, unless its contract ends in 90 days or less (or already ended):
+  // then it's a red tag, because that's a sales opportunity.
   if(l.concorrente){
     const d = l.fimContrato ? Math.ceil((new Date(l.fimContrato)-Date.now())/86400000) : null;
-    let cls="alerta", txt=escapar(l.concorrente);
-    if(d !== null){
-      if(d < 0){ cls="perigo"; txt += " · contrato vencido"; }
-      else if(d <= 90){ cls="perigo"; txt += " · vence em "+d+"d"; }
-      else txt += " · até "+dataBR(l.fimContrato);
+    if(d !== null && d <= 90){
+      etiquetas.push('<span class="etiqueta perigo">'+escapar(l.concorrente)+': '+
+        (d < 0 ? "contrato vencido" : d === 0 ? "contrato vence hoje" : "contrato vence em "+plural(d, "dia", "dias"))+'</span>');
+    } else {
+      info.push("Concorrente: "+escapar(l.concorrente)+(d !== null ? ", até "+dataBR(l.fimContrato) : ""));
     }
-    etiquetas.push('<span class="etiqueta '+cls+'">'+txt+'</span>');
   }
   // Reminder tag (bell). If a reminder is overdue, the whole card gets the red 'lem-vencido' style.
   const proxLem = proximoLembrete(l);
   if(lembreteVencido(l)) el.classList.add("lem-vencido");
   if(proxLem){
     const c = classeLembrete(proxLem);
-    etiquetas.unshift('<span class="etiqueta lem '+c+'" title="'+escapar(proxLem.texto||"Próximo passo")+'">🔔 '+
-      (c==="atrasado"?"Atrasado · ":"")+escapar(quandoCurto(proxLem))+'</span>');
+    etiquetas.unshift('<span class="etiqueta lem '+c+'" title="'+escapar(proxLem.texto||"Próximo passo")+'">'+ICONE_SINO+' '+
+      (c==="atrasado"?"Atrasado, ":"")+escapar(quandoCurto(proxLem))+'</span>');
   }
   // Footer: 'Atualizado <date> por <name>' with a round avatar.
   // If the condo is marked SULTS, a green "S" badge goes right after the name of who edited last
@@ -611,7 +617,8 @@ function montarCartao(l){
   el.innerHTML =
     seloVisitar+
     "<h3>"+escapar(l.nome||"Condomínio sem nome")+"</h3>"+
-    (l.importante?'<p class="aviso-importante">⚠️ '+escapar(l.importante)+"</p>":"")+
+    (l.importante?'<p class="aviso-importante">'+escapar(l.importante)+"</p>":"")+
+    info.map(t => '<p class="cartao-info">'+t+'</p>').join("")+
     (etiquetas.length?'<div class="etiquetas">'+etiquetas.join("")+"</div>":"")+
     metaCartao;
   // Clicking the card (or pressing Enter on it) opens the edit panel.
@@ -765,7 +772,7 @@ function whatsappLink(telefone){
 function renderContatos(){
   const el = $("#contatosLista");
   if(!contatosForm.length){
-    el.innerHTML = '<p class="contato-vazio">Nenhum contato adicionado. Clique em "Adicionar contato" abaixo.</p>';
+    el.innerHTML = '<p class="contato-vazio">Nenhum contato.</p>';
     return;
   }
   // "Quem é" appears once the name has text. 'tipoOutroAberto' = the contact where the
@@ -1003,7 +1010,7 @@ function linkGoogleAgenda(l, lem){
   const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || "America/Sao_Paulo";
   const p = new URLSearchParams({
     action:"TEMPLATE",
-    text:"🔔 "+(l.nome||"Condomínio")+" — "+(lem.texto||"Retomar contato"),
+    text:(l.nome||"Condomínio")+": "+(lem.texto||"Retomar contato"),
     dates:fmtAgenda(ini)+"/"+fmtAgenda(fim),
     details:detalhesLembrete(l,lem),
     ctz:tz
@@ -1024,7 +1031,7 @@ function baixarICS(l, lem){
     "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//KMD3 Market//Funil//PT-BR","CALSCALE:GREGORIAN","BEGIN:VEVENT",
     "UID:"+lem.id+"@kmd3market","DTSTAMP:"+carimbo,
     "DTSTART:"+fmtAgenda(ini),"DTEND:"+fmtAgenda(fim),
-    "SUMMARY:"+escICS("🔔 "+(l.nome||"Condomínio")+" — "+(lem.texto||"Retomar contato")),
+    "SUMMARY:"+escICS((l.nome||"Condomínio")+": "+(lem.texto||"Retomar contato")),
     "DESCRIPTION:"+escICS(detalhesLembrete(l,lem)),
     l.endereco ? "LOCATION:"+escICS(l.endereco) : null,
     "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+escICS(l.nome||"Lembrete"),"TRIGGER:-PT10M","END:VALARM",
@@ -1095,16 +1102,16 @@ function itemLembreteHTML(l, lem, idx, doForm){
   const gcal = linkGoogleAgenda(l, lem);
   return '<div class="lem-item '+c+'">'+
     (doForm ? "" : '<button type="button" class="lem-lead" data-abrir-lead="'+escapar(l.id)+'">'+escapar(l.nome||"Condomínio sem nome")+'</button>')+
-    '<span class="lem-quando">'+(c==="atrasado"?"⚠️ Atrasado · ":c==="hoje"?"📌 Hoje · ":c==="feito"?"✓ Concluído · ":"")+escapar(quandoLongo(lem))+'</span>'+
+    '<span class="lem-quando">'+(c==="atrasado"?"Atrasado, ":c==="hoje"?"Hoje, ":c==="feito"?"Concluído, ":"")+escapar(quandoLongo(lem))+'</span>'+
     '<span class="lem-texto">'+escapar(lem.texto||"Retomar contato")+'</span>'+
     (!doForm && l.responsavel ? '<span class="lem-resp">Responsável: '+escapar(l.responsavel)+'</span>' : '')+
     '<div class="lem-acoes">'+
       (lem.feito
         ? '<button type="button" data-lem-reabrir="'+idx+'" data-lid="'+escapar(l.id)+'">Reabrir</button>'
-        : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">✓ Concluir</button>'+
+        : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">Concluir</button>'+
           '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>')+
-      '<button type="button" data-lem-editar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Mudar data, horário ou texto">✎ Editar</button>'+
-      '<a class="lem-gcal" href="'+escapar(gcal)+'" target="_blank" rel="noopener">📅 Google Agenda</a>'+
+      '<button type="button" data-lem-editar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Mudar data, horário ou texto">Editar</button>'+
+      '<a class="lem-gcal" href="'+escapar(gcal)+'" target="_blank" rel="noopener">Google Agenda</a>'+
       '<button type="button" data-lem-ics="'+idx+'" data-lid="'+escapar(l.id)+'" title="Arquivo para Apple/Outlook, com alarme 10 min antes">.ics</button>'+
     '</div>'+
     '<button type="button" class="lem-x" data-lem-remover="'+idx+'" data-lid="'+escapar(l.id)+'" aria-label="Excluir lembrete" title="Excluir lembrete">✕</button>'+
@@ -1222,11 +1229,11 @@ function linhaLembreteHTML(t){
   const dia = isNaN(d) ? "—" : d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"});
   const acoes = (lem.feito
       ? '<button type="button" data-lem-reabrir="'+idx+'" data-lid="'+escapar(l.id)+'">Reabrir</button>'
-      : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">✓ Concluir</button>'+
+      : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">Concluir</button>'+
         '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>')+
-    '<button type="button" data-lem-editar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Mudar data, horário ou texto">✎ Editar</button>'+
-    '<a class="lem-gcal" href="'+escapar(linkGoogleAgenda(l, lem))+'" target="_blank" rel="noopener">📅 Google Agenda</a>'+
-    '<button type="button" data-lem-remover="'+idx+'" data-lid="'+escapar(l.id)+'" title="Excluir lembrete">✕ Cancelar</button>';
+    '<button type="button" data-lem-editar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Mudar data, horário ou texto">Editar</button>'+
+    '<a class="lem-gcal" href="'+escapar(linkGoogleAgenda(l, lem))+'" target="_blank" rel="noopener">Google Agenda</a>'+
+    '<button type="button" data-lem-remover="'+idx+'" data-lid="'+escapar(l.id)+'" title="Excluir lembrete">Excluir</button>';
   return '<div class="lemr '+c+'">'+
     '<div class="lemr-data"><b>'+escapar(dia.charAt(0).toUpperCase()+dia.slice(1))+'</b><span>'+(isNaN(d)?"":horaCurta(d))+'</span><em>'+escapar(relativoLembrete(lem))+'</em></div>'+
     '<div class="lemr-corpo"><button type="button" class="lem-lead" data-abrir-lead="'+escapar(l.id)+'">'+escapar(l.nome||"Condomínio sem nome")+'</button>'+
@@ -1248,7 +1255,7 @@ function renderPainelLembretes(){
   const abas = [["pendentes","Todos pendentes"],["atrasado","Atrasados"],["hoje","Hoje"],["proximo","Próximos"],["feito","Concluídos"]];
   $("#lemAbas").innerHTML = abas.map(([k,n]) =>
     '<button type="button" class="lem-aba'+(k==="atrasado"?" atraso":"")+(lemAba===k?" on":"")+'" data-lem-aba="'+k+'">'+n+'<span class="n">'+por[k].length+'</span></button>').join("");
-  const msgVazia = {pendentes:"Nenhum lembrete pendente. Abra um lead e adicione um lembrete.", atrasado:"Nada atrasado. 👏", hoje:"Nenhum lembrete para hoje.", proximo:"Nenhum lembrete futuro.", feito:"Nenhum lembrete concluído ainda."};
+  const msgVazia = {pendentes:"Nenhum lembrete pendente.", atrasado:"Nada atrasado.", hoje:"Nenhum lembrete para hoje.", proximo:"Nenhum lembrete futuro.", feito:"Nenhum lembrete concluído ainda."};
   const itens = por[lemAba] || [];
   $("#lemPainelLista").innerHTML = itens.map(linhaLembreteHTML).join("") || '<div class="lem-vazio">'+msgVazia[lemAba]+'</div>';
   $("#btnNotif").hidden = !("Notification" in window) || Notification.permission !== "default";
@@ -1296,15 +1303,16 @@ function verificarLembretes(semAviso){
   if(lemPrimeiraVez){
     lemPrimeiraVez = false;
     atrasados.forEach(t=>lemAvisados.add(t.lem.id));
-    if(n) avisar("🔔 Você tem "+(atrasados.length? atrasados.length+" lembrete(s) atrasado(s)"+(hoje.length?" e ":""):"")+(hoje.length? hoje.length+" para hoje":"")+".");
+    if(n) avisar("Você tem "+(atrasados.length? plural(atrasados.length, "lembrete atrasado", "lembretes atrasados")+(hoje.length?" e ":""):"")+
+      (hoje.length? (atrasados.length ? hoje.length+" para hoje" : plural(hoje.length, "lembrete para hoje", "lembretes para hoje")):"")+".");
     return;
   }
   atrasados.forEach(t=>{
     if(lemAvisados.has(t.lem.id)) return;
     lemAvisados.add(t.lem.id);
     const msg = (t.l.nome||"Condomínio")+" — "+(t.lem.texto||"retomar contato");
-    avisar("🔔 Lembrete: "+msg);
-    try{ if("Notification" in window && Notification.permission==="granted") new Notification("🔔 Lembrete", {body:msg}); }catch(_){}
+    avisar("Lembrete: "+msg);
+    try{ if("Notification" in window && Notification.permission==="granted") new Notification("Lembrete", {body:msg}); }catch(_){}
   });
 }
 
@@ -1403,8 +1411,8 @@ function renderContatosPagina(){
   const todos = todosContatos(), lista = contatosFiltrados();
   const nAvulsos = todos.filter(c => c.avulsoId).length;
   $("#ctResumo").textContent = lista.length === todos.length
-    ? todos.length+" contato(s) · "+(todos.length-nAvulsos)+" de condomínios · "+nAvulsos+" avulso(s)"
-    : lista.length+" de "+todos.length+" contato(s)";
+    ? plural(todos.length, "contato", "contatos")+": "+(todos.length-nAvulsos)+" de condomínios e "+plural(nAvulsos, "avulso", "avulsos")
+    : lista.length+" de "+plural(todos.length, "contato", "contatos");
   // WhatsApp logo (same as in the condo panel), a bit smaller to fit the table row
   const zap = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2m0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24m4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.81-.78.97-.15.17-.29.19-.54.06-.25-.12-1.04-.38-1.99-1.22-.73-.66-1.23-1.46-1.37-1.71-.15-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.16-.25.24-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.4-.42-.56-.42-.14-.01-.31-.01-.47-.01a.9.9 0 0 0-.65.3c-.23.24-.86.84-.86 2.05s.88 2.38 1 2.55c.13.17 1.73 2.64 4.2 3.7.59.25 1.04.4 1.4.52.59.19 1.12.16 1.55.1.47-.07 1.47-.6 1.68-1.18.2-.58.2-1.08.14-1.18-.06-.1-.22-.16-.47-.28"/></svg>';
   $("#ctCorpo").innerHTML = lista.map(c => {
@@ -1558,7 +1566,7 @@ const ICONE_COPIAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 function renderTemplates(){
   const lista = templatesFiltrados();
   $("#tpResumo").textContent = templates.length
-    ? (lista.length === templates.length ? templates.length+" template(s)" : lista.length+" de "+templates.length+" template(s)")
+    ? (lista.length === templates.length ? plural(templates.length, "template", "templates") : lista.length+" de "+plural(templates.length, "template", "templates"))
     : "";
   $("#tpGrade").innerHTML = lista.map(t =>
     '<article class="tp-cartao" data-tp="'+escapar(t.id)+'">'+
@@ -1577,7 +1585,7 @@ function renderTemplates(){
     '</article>'
   ).join("") || '<p class="tp-vazio">'+(templates.length
     ? "Nenhum template encontrado com essa busca."
-    : 'Nenhum template ainda. Clique em "+ Novo template" para criar o primeiro (ex.: mensagem de apresentação no WhatsApp).')+'</p>';
+    : 'Nenhum template ainda.')+'</p>';
 }
 function templatesAberto(){ return $("#telaTemplates").classList.contains("aberta"); }
 async function abrirTemplates(){
@@ -1824,7 +1832,7 @@ function atualizarBotaoVisitar(){
   const on = !!(l && l.visitar);
   b.classList.toggle("ativo", on);
   b.setAttribute("aria-pressed", on ? "true" : "false");
-  b.innerHTML = ICONE_CARRO + (on ? " Visitar ✓" : " Visitar");
+  b.innerHTML = ICONE_CARRO + (on ? " Marcado para visitar" : " Visitar");
   b.title = on ? "Marcado para visitar. Clique para desmarcar." : "Marcar este condomínio para visitar";
 }
 async function alternarVisitar(){
@@ -1837,7 +1845,7 @@ async function alternarVisitar(){
   const ok = await gravarLead(l);
   desenhar();
   atualizarBotaoVisitar();              // if the database refused, this shows the real state again
-  if(ok !== false) avisar((l.nome||"Condomínio")+(l.visitar ? " marcado para visitar 🚗" : " não está mais marcado para visitar"));
+  if(ok !== false) avisar((l.nome||"Condomínio")+(l.visitar ? " marcado para visitar" : " não está mais marcado para visitar"));
 }
 // Green SULTS toggle at the top of the panel. On = the card shows a green "S" badge
 // next to the name of who edited last. The change is saved with the "Salvar" button.
@@ -1845,11 +1853,11 @@ function atualizarBotaoSults(){
   const b = $("#btnSults");
   b.classList.toggle("ativo", sultsForm);
   b.setAttribute("aria-pressed", sultsForm ? "true" : "false");
-  b.textContent = sultsForm ? "✓ SULTS" : "SULTS";
+  b.textContent = "SULTS";
   b.title = sultsForm ? "Marcado como SULTS. Clique para desmarcar." : "Marcar este condomínio como SULTS";
 }
 // "Adicionar à rota" button in the panel. The route itself lives in mapa.js (window.__rota).
-// Shows "📍 Adicionar à rota de visitas" or "✓ Parada 2 de 5 na rota · Remover".
+// Shows "Adicionar à rota de visitas" (with a pin icon) or "Na rota, parada 2 de 5. Remover".
 // Hidden for a new condo (it has no id until it's saved).
 function atualizarBotaoRotaLead(){
   const bloco = $("#blocoRotaLead"), btn = $("#btnRotaLead"), api = window.__rota;
@@ -1859,8 +1867,9 @@ function atualizarBotaoRotaLead(){
   const na = api.tem(editandoId);
   btn.classList.toggle("na-rota", na);
   btn.textContent = na
-    ? "✓ Parada "+api.posicao(editandoId)+" de "+api.total()+" na rota · Remover"
-    : "📍 Adicionar à rota de visitas";
+    ? "Na rota, parada "+api.posicao(editandoId)+" de "+api.total()+". Remover"
+    : "Adicionar à rota de visitas";
+  btn.insertAdjacentHTML("afterbegin", na ? "" : ICONE_PIN+" ");
 }
 function alternarRotaLead(){
   if(!editandoId || !window.__rota) return;
@@ -2107,7 +2116,7 @@ async function iniciarQuadro(){
       .subscribe();
     ultimaSync = Date.now();
   } else {
-    $("#nomeUsuario").textContent = "Modo local (só neste navegador)";
+    $("#nomeUsuario").textContent = "Modo local";
     $("#sinal").className = "sinal local";
   }
   desenhar();
@@ -2257,7 +2266,7 @@ function grupoDashboard(chave, lista){
     case "contato":  return val === "com"
       ? g("Com contato (telefone ou e-mail)", temContato)
       : g("Sem contato (sem telefone nem e-mail)", l => !temContato(l));
-    case "seminfo":  return g("Sem nenhuma informação", semInformacao);
+    case "seminfo":  return g("Sem informação", semInformacao);
     case "conc": {
       if(!val) return g("Sem concorrente", l => !String(l.concorrente||"").trim());
       const um = lista.find(l => normalizarNome(l.concorrente) === val);
@@ -2308,7 +2317,7 @@ function cartaoDb(titulo, corpo, cls){
 }
 function textoVencimento(l){
   const d = diasAte(l.fimContrato);
-  return d < 0 ? "vencido" : d === 0 ? "vence hoje" : "vence em "+d+"d";
+  return d < 0 ? "vencido" : d === 0 ? "vence hoje" : "vence em "+plural(d, "dia", "dias");
 }
 function renderDashboard(){
   const r = calcularDashboard(leads), T = r.total;
@@ -2318,14 +2327,13 @@ function renderDashboard(){
     return;
   }
   const html = [];
-  html.push('<p class="ct-resumo">Todos os '+T+' condomínios do funil — os filtros do quadro não se aplicam aqui. Toque em qualquer número para ver quais condomínios estão nele.</p>');
   // big numbers
   html.push('<div class="db-kpis">'+
     kpiDb(T, "condomínios", "", "destaque", "todos")+
     kpiDb(numBR(r.aptosTotal), "apartamentos no funil", r.aptosFechados ? numBR(r.aptosFechados)+" em condomínios fechados" : "", "", "aptos")+
-    kpiDb(r.comContato, "com contato", pctDb(r.comContato, T)+"% têm telefone ou e-mail", "ok", "contato:com")+
-    kpiDb(r.semInfo.length, "sem nenhuma informação", "só nome/endereço", r.semInfo.length ? "alerta" : "", "seminfo")+
-    kpiDb(r.status.verde, "fechados", r.conversao == null ? "nenhum fechado/perdido ainda" : r.conversao+"% de conversão (fechados ÷ fechados + perdidos)", "ok", "status:verde")+
+    kpiDb(r.comContato, "com contato", pctDb(r.comContato, T)+"% do total", "ok", "contato:com")+
+    kpiDb(r.semInfo.length, "sem informação", "", r.semInfo.length ? "alerta" : "", "seminfo")+
+    kpiDb(r.status.verde, "fechados", r.conversao == null ? "" : r.conversao+"% de conversão", "ok", "status:verde")+
     kpiDb(r.lembretesVencidos, "com lembrete vencido", "", r.lembretesVencidos ? "perigo" : "", "lembrete")+
   '</div>');
   const cartoes = [];
@@ -2340,15 +2348,15 @@ function renderDashboard(){
   cartoes.push(cartaoDb("Contato e informação",
     barraDb("Com contato (telefone ou e-mail)", r.comContato, T, "contato:com", "ok")+
     barraDb("Sem contato", r.semContato, T, "contato:sem", "alerta")+
-    barraDb("Sem nenhuma informação", r.semInfo.length, T, "seminfo", "perigo")+
-    '<h4>Sem nenhuma informação</h4>'+
-    listaDb(r.semInfo, null, "Todos têm alguma informação. 👏")));
+    barraDb("Sem informação", r.semInfo.length, T, "seminfo", "perigo")+
+    '<h4>Quais estão sem informação</h4>'+
+    listaDb(r.semInfo, null, "Todos têm alguma informação.")));
   // competitor minimarket
   cartoes.push(cartaoDb("Minimercado concorrente",
     r.concorrentes.map(c => barraDb(escapar(c.nome), c.n, T, "conc:"+normalizarNome(c.nome), "alerta")).join("")+
     barraDb("Sem concorrente", r.semConcorrente, T, "conc:", "ok")+
     '<h4>Contrato do concorrente vencendo (até '+DIAS_FIM_CONTRATO+' dias)</h4>'+
-    listaDb(r.vencendo, l => escapar(l.concorrente)+' · '+textoVencimento(l),
+    listaDb(r.vencendo, l => escapar(l.concorrente)+', '+textoVencimento(l),
       "Nenhum contrato vencendo nos próximos "+DIAS_FIM_CONTRATO+" dias.")));
   // situation
   cartoes.push(cartaoDb("Situação", ["verde","amarelo","vermelho","nenhum"].map(s =>
@@ -2365,7 +2373,7 @@ function renderDashboard(){
       '<button type="button" '+attrGrupo("parados")+'><b>'+r.parados.length+'</b> parados há '+DIAS_PARADO+'+ dias</button>'+
     '</div>'+
     '<h4>Parados há mais de '+DIAS_PARADO+' dias (em aberto)</h4>'+
-    listaDb(r.parados, l => "desde "+dataBR(l.atualizadoEm || l.criadoEm), "Nenhum condomínio parado. 👍")));
+    listaDb(r.parados, l => "desde "+dataBR(l.atualizadoEm || l.criadoEm), "Nenhum condomínio parado.")));
   html.push('<div class="db-grade">'+cartoes.join("")+'</div>');
   $("#dbConteudo").innerHTML = html.join("");
   if(dashDetalhe) renderDetalheDashboard();   // keep the open list up to date
@@ -2384,15 +2392,15 @@ function linhaDetalheDb(l, chave){
   if(l.responsavel) info.push(escapar(l.responsavel));
   if(l.zona) info.push(escapar(l.zona));
   const linha2 = [];
-  if(c) linha2.push("📞 "+escapar([c.nome, c.telefone || c.email].filter(Boolean).join(" · ")));
-  else if(contatos.some(x => x.nome)) linha2.push("👤 "+escapar(contatos.find(x => x.nome).nome)+" (sem telefone/e-mail)");
-  if(l.concorrente) linha2.push("🏪 "+escapar(l.concorrente)+(l.fimContrato ? " · "+textoVencimento(l)+" ("+dataBR(l.fimContrato)+")" : ""));
-  if(chave === "parados") linha2.push("⏸ sem mudanças desde "+dataBR(l.atualizadoEm || l.criadoEm));
+  if(c) linha2.push("Contato: "+escapar([c.nome, c.telefone || c.email].filter(Boolean).join(", ")));
+  else if(contatos.some(x => x.nome)) linha2.push("Contato: "+escapar(contatos.find(x => x.nome).nome)+", sem telefone nem e-mail");
+  if(l.concorrente) linha2.push("Concorrente: "+escapar(l.concorrente)+(l.fimContrato ? ", contrato "+textoVencimento(l).replace(/^vence/, "vence")+" ("+dataBR(l.fimContrato)+")" : ""));
+  if(chave === "parados") linha2.push("Sem mudanças desde "+dataBR(l.atualizadoEm || l.criadoEm));
   const lem = proximoLembrete(l);
-  if(lem && (chave === "lembrete" || lembreteVencido(l))) linha2.push("🔔 "+escapar(lem.texto || "Lembrete")+" · "+dataBR(dtLembrete(lem)));
+  if(lem && (chave === "lembrete" || lembreteVencido(l))) linha2.push("Lembrete: "+escapar(lem.texto || "sem texto")+", "+dataBR(dtLembrete(lem)));
   return '<li class="db-det-item st-'+st+'">'+
     '<button type="button" data-db-lead="'+escapar(l.id)+'">'+escapar(l.nome || "Sem nome")+'</button>'+
-    '<span class="db-det-info">'+info.join(" · ")+'</span>'+
+    '<span class="db-det-info">'+info.join(", ")+'</span>'+
     (linha2.length ? '<span class="db-det-extra">'+linha2.join("<br>")+'</span>' : '')+
   '</li>';
 }
@@ -2812,7 +2820,7 @@ function admDesenharOrgs(){
   $("#admOrgs").innerHTML = admOrgs.map(o => `
     <div class="adm-org ${o.id===admSel?"sel":""}" data-org="${o.id}">
       <b>${escapar(o.nome)}</b>${o.ativa?'<span class="adm-tag">você está aqui</span>':""}
-      <small>${o.membros} membro(s) · ${o.condominios} lead(s)</small>
+      <small>${plural(o.membros, "membro", "membros")}, ${plural(o.condominios, "condomínio", "condomínios")}</small>
       ${admSuper && !o.ativa ? `<div class="adm-linha"><button class="adm-b" data-entrar="${escapar(o.nome)}">Entrar nesta organização</button></div>` : ""}
     </div>`).join("") || '<p class="adm-dica">Nenhuma organização.</p>';
   const at = admOrgs.find(o => o.ativa);

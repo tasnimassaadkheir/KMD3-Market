@@ -59,7 +59,7 @@ describe("Adding a condo to the route from its panel", () => {
     assert.match(await btn.textContent(), /Adicionar à rota de visitas/);
 
     await btn.click();
-    assert.match(await btn.textContent(), /Parada 1 de 1 na rota/);
+    assert.match(await btn.textContent(), /Na rota, parada 1 de 1/);
     assert.deepEqual(await lerLS(page, "quitandinha:rota"), ["c_perto"]);
     assert.match(await page.textContent("#aviso"), /entrou na rota/);
 
@@ -98,7 +98,7 @@ describe("Start point (ponto de partida)", () => {
     await page.waitForSelector("#mpPartidaAtual:not([hidden])");
     assert.equal(await page.textContent("#mpPartidaNome"), "Rua Augusta, 100, São Paulo, SP");
     assert.deepEqual(await linhaDaRota(page), [POS.PARTIDA, POS.PERTO, POS.MEIO]);
-    assert.match(await page.textContent("#mpRotaTotal"), /saindo do ponto de partida/);
+    assert.match(await page.textContent("#mpRotaTotal"), /km em linha reta/);
     assert.ok((await lerLS(page, "quitandinha:rotaInicio")).lat, "start point is saved");
 
     await page.click("#mpPartidaLimpar");
@@ -107,7 +107,7 @@ describe("Start point (ponto de partida)", () => {
     await context.close();
   });
 
-  test("'📍' uses the device's current location as the start", async () => {
+  test("the target button uses the device's current location as the start", async () => {
     const { page, context } = await abrirMapa({ rota: ["c_perto"], geolocation: { latitude: POS.PARTIDA[0], longitude: POS.PARTIDA[1] } });
     await page.click("#mpPartidaGps");
     await page.waitForSelector("#mpPartidaAtual:not([hidden])");
@@ -135,7 +135,7 @@ describe("Typed addresses as stops", () => {
     await page.waitForFunction(() => document.querySelectorAll("#mpRotaLista li").length === 2);
     const itens = page.locator("#mpRotaLista li");
     assert.match(await itens.nth(1).textContent(), /Fornecedor de frutas/);
-    assert.match(await itens.nth(1).textContent(), /Endereço adicionado/);
+    assert.match(await itens.nth(1).textContent(), /Endereço avulso/);
     assert.equal(await itens.nth(1).locator(".num.extra").count(), 1);
     assert.deepEqual(await linhaDaRota(page), [POS.PERTO, POS.MEIO]);
     assert.equal(await page.inputValue("#mpEndInput"), "", "field is cleared");
