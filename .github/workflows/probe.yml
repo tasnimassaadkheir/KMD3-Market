@@ -27,5 +27,17 @@ jobs:
             hits=$(grep -o -i '.\{0,200\}\(downloadArquivo\|DownloadCamadas\|arqTipo\|IPTU\).\{0,200\}' js.tmp | head -15)
             if [ -n "$hits" ]; then log "== JS $url"; echo "$hits" >> $out; fi
           done
+          mkdir -p pages
+          curl -sS -L -m 60 https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx -o pages/sbc.html
+          curl -sS -L -m 60 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx -o pages/download_sbc.html
+          for f in pages/*.html; do grep -oE "(src|href)=['\"][^'\"]+['\"]" $f | sed -E "s/^(src|href)=.//;s/.$//" | grep -E '\.js' ; done | sort -u > pages/scripts.txt
+          n=0
+          while read s; do
+            n=$((n+1))
+            case "$s" in http*) url="$s";; /*) url="https://download.geosampa.prefeitura.sp.gov.br$s";; *) url="https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/$s";; esac
+            curl -sS -L -m 40 "$url" -o "pages/js_$n.js" 2>/dev/null
+            echo "$n $url" >> pages/scripts_map.txt
+          done < pages/scripts.txt
+          grep -l -i 'downloadArquivo\|DownloadCamadas\|arqTipo' pages/*.js pages/*.html >> probe.txt 2>&1
           git config user.name probe; git config user.email probe@example.com
-          git add probe.txt; git commit -m "probe results"; git push
+          git add probe.txt pages; git commit -m "probe results 2"; git push
