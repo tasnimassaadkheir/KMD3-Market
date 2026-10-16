@@ -16,4 +16,4 @@ jobs:
           log(){ echo "$@" >> $out; }
           timeout 300 node probe/crawl.mjs || true
           git config user.name probe; git config user.email probe@example.com
-          git add probe; git commit -m "probe results 6"; git push
+          git add probe; git commit -m "probe results 7"; git push
