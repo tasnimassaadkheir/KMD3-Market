@@ -1,10 +1,10 @@
 == HEAD https://geosampa.prefeitura.sp.gov.br/
-200 https://geosampa.prefeitura.sp.gov.br/ 48350
+200 https://geosampa.prefeitura.sp.gov.br/ 41669
 == HEAD https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx
-200 https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx 47650
+200 https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx 49077
 == HEAD http://download.geosampa.prefeitura.sp.gov.br/
 200 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx 229558
-== sbc size 51414
+== sbc size 44873
 == lines with IPTU/download in html
 == scripts
 pages/download_sbc.html

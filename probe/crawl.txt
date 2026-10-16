@@ -1,0 +1,32 @@
+cookie yes 200
+TEMAS: |01_Limites Administrativos|02_População|03_Equipamentos|04_Transporte|05_Sistema Viário|06_Habitação e Edificação|07_Proteção e Defesa Civil|08_Infraestrutura Urbana|09_Verde e Recursos Naturais|10_Meio Físico|11_Rural|12_Cadastro|13_Legislação Urbana|14_Patrimônio Cultural|15_Acessibilidade|16_Atlas Ambiental|17_Economia|18_Imagens Satelites|19_Mosaico de Ortofotos|20_Plantas e Mapas Históricos|21_Articulacao de Imagens|23_Proteção aos Aeródromos_INTRA|24_Licenciamento Ambiental|25_Limpeza Urbana|26_Licenciamento|27_Imageamento|28_Uso_do_Solo|29_Drenagem
+PASTAS 01_Limites Administrativos => undefined
+PASTAS 02_População => undefined
+PASTAS 03_Equipamentos => undefined
+PASTAS 04_Transporte => undefined
+PASTAS 05_Sistema Viário => undefined
+PASTAS 06_Habitação e Edificação => undefined
+PASTAS 07_Proteção e Defesa Civil => undefined
+PASTAS 08_Infraestrutura Urbana => undefined
+PASTAS 09_Verde e Recursos Naturais => undefined
+PASTAS 10_Meio Físico => undefined
+PASTAS 11_Rural => undefined
+PASTAS 12_Cadastro => undefined
+  SUB 12_Cadastro\undefined => undefined
+  ARQTEMAS 12_Cadastro\undefined => undefined
+PASTAS 13_Legislação Urbana => undefined
+PASTAS 14_Patrimônio Cultural => undefined
+PASTAS 15_Acessibilidade => undefined
+PASTAS 16_Atlas Ambiental => undefined
+PASTAS 17_Economia => undefined
+PASTAS 18_Imagens Satelites => undefined
+PASTAS 19_Mosaico de Ortofotos => undefined
+PASTAS 20_Plantas e Mapas Históricos => undefined
+PASTAS 21_Articulacao de Imagens => undefined
+PASTAS 23_Proteção aos Aeródromos_INTRA => undefined
+PASTAS 24_Licenciamento Ambiental => undefined
+PASTAS 25_Limpeza Urbana => undefined
+PASTAS 26_Licenciamento => undefined
+PASTAS 27_Imageamento => undefined
+PASTAS 28_Uso_do_Solo => undefined
+PASTAS 29_Drenagem => undefined

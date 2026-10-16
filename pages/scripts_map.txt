@@ -6,3 +6,7 @@
 2 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/../js/includes.js
 3 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/../js/modernizr-latest.js
 4 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/../js/util.js
+1 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/../js/html5shiv.js
+2 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/../js/includes.js
+3 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/../js/modernizr-latest.js
+4 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/../js/util.js
