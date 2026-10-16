@@ -1,0 +1,13 @@
+-rw-r--r-- 1 runner runner 6831280 Oct 16 13:53 osasco.zip
+Archive:  osasco.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+ 54497402  2024-05-17 18:14   3534401_OSASCO.csv
+---------                     -------
+ 54497402                     1 file
+0000000   C   O   D   _   U   N   I   C   O   _   E   N   D   E   R   E
+0000020   C   O   ;   C   O   D   _   U   F   ;   C   O   D   _   M   U
+0000040   N   I   C   I   P   I   O   ;   C   O   D   _   D   I   S   T
+0000060   R   I   T   O   ;   C   O   D   _   S   U   B   D   I   S   T
+0000100   R   I   T   O   ;   C   O   D   _   S   E   T   O   R   ;   N
+328130
