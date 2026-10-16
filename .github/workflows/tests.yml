@@ -1,0 +1,47 @@
+# Runs the automated tests on GitHub every time code is pushed or a pull request is opened.
+# Results appear in the repository's "Actions" tab.
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:        # also allows running it by hand from the Actions tab
+
+jobs:
+  unit:
+    name: Unit tests (Node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run test:unit          # no packages needed: uses Node's built-in test runner
+
+  e2e:
+    name: End-to-end tests (Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  api:
+    name: API tests (Postman / Newman, real Supabase)
+    # Only when started by hand, because it uses the real database.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run test:api
+        env:
+          KMD3_EMAIL: ${{ secrets.KMD3_EMAIL }}
+          KMD3_PASSWORD: ${{ secrets.KMD3_PASSWORD }}

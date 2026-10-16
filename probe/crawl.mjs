@@ -8,15 +8,16 @@ const pg = await fetch(BASE + "_SBC.aspx");
 cookie = (pg.headers.getSetCookie?.() || []).map(c => c.split(";")[0]).join("; ");
 log("cookie", cookie ? "yes" : "no", pg.status);
 async function pm(metodo, pNomePasta){
+  const corpo = metodo === "pesquisaPastas" ? {nomePastaRaiz: pNomePasta} : {pNomePasta};
   const r = await fetch(BASE + "_SBC.aspx/" + metodo, {method:"POST", headers:{"Content-Type":"application/json; charset=utf-8", cookie},
-    body: JSON.stringify({pNomePasta})});
+    body: JSON.stringify(corpo)});
   const t = await r.text();
   try{ return JSON.parse(t).d; }catch(e){ return "ERR " + r.status + " " + t.slice(0, 200); }
 }
 const temas = await pm("pesquisaSubPastas", "TEMAS");
 log("TEMAS:", temas);
 const nomes = String(temas).split("|").map(x => x.split(":")[0]).filter(Boolean);
-for(const t of nomes){
+for(const t of nomes.filter(n => /cadastro|habita/i.test(n))){
   const pastas = await pm("pesquisaPastas", t + "\\");
   log("PASTAS", t, "=>", String(pastas).slice(0, 1500));
   if(!/cadastr|iptu/i.test(t + pastas)) continue;
@@ -30,5 +31,10 @@ for(const t of nomes){
     const arqT = await pm("pesquisaArquivosTemas", t + "\\" + p);
     log("  ARQTEMAS", t + "\\" + p, "=>", String(arqT).slice(0, 1500));
   }
+}
+// try downloading the most recent IPTU file found (only the first bytes)
+const alvo = out.join("\n").match(/ARQ (12_Cadastro[^ ]*IPTU[^ ]*) => ([^\n]*)/i);
+if(alvo){
+  log("ALVO", alvo[1], alvo[2].slice(0, 300));
 }
 fs.writeFileSync("probe/crawl.txt", out.join("\n"));

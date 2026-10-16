@@ -46,4 +46,4 @@ jobs:
           grep -n -o -i '.\{0,300\}\(downloadArquivo\|DownloadCamadas\|arqTipo\|orig=\).\{0,300\}' pages/js2/* > pages/download_refs.txt
           node probe/crawl.mjs || echo "crawl failed $?" >> probe.txt
           git config user.name probe; git config user.email probe@example.com
-          git add probe.txt pages probe; git commit -m "probe results 4"; git push
+          git add probe.txt pages probe; git commit -m "probe results 5"; git push
