@@ -375,7 +375,7 @@
   const temInicio = () => !!(inicio && inicio.lat != null);
   // Name/address of a stop, for the list and the exports. 'l' = the condo (empty for manual addresses).
   function infoParada(id){
-    if(ehExtra(id)){ const x = extras[id] || {}; return {nome:x.nome || x.endereco || "Endereço", endereco:x.endereco || "", extra:true, l:{}}; }
+    if(ehExtra(id)){ const x = extras[id] || {}; return {nome:x.nome || x.endereco || "Endereço", endereco:x.endereco || "", extra:true, detalhe:x.detalhe || "", l:{}}; }
     const l = leads.find(x => x.id === id) || {};
     return {nome:l.nome || "(sem nome)", endereco:l.endereco || "", extra:false, l};
   }
@@ -410,7 +410,7 @@
     $m("#mpRotaLista").innerHTML = rota.map((id, i) => {
       const inf = infoParada(id), ok = !!pontoDaRota(id);
       const sub = !ok ? (inf.extra ? "endereço não encontrado" : "sem localização ainda · confira o endereço")
-                      : (inf.extra ? "📌 Endereço adicionado" : inf.endereco);
+                      : (inf.extra ? (inf.detalhe || "📌 Endereço adicionado") : inf.endereco);
       return '<li data-id="'+escapar(id)+'"><span class="num'+(inf.extra?' extra':'')+'">'+(i+1)+'</span><div class="txt"><b>'+escapar(inf.nome)+'</b><span>'+
         escapar(sub)+'</span></div>'+
         '<button data-acao="sobe" title="Subir" aria-label="Subir" '+(i===0?'disabled':'')+'>▲</button>'+
@@ -869,6 +869,27 @@
     tem: id => rota.includes(id),
     posicao: id => rota.indexOf(id) + 1,
     total: () => rota.length,
-    alternar(id){ alternarNaRota(id); return rota.includes(id); }
+    alternar(id){ alternarNaRota(id); return rota.includes(id); },
+    // Stops that aren't condos yet (Prospecção). 'p' = {id, nome, endereco, lat, lng, detalhe};
+    // the stop id is "x_" + p.id, so the same building is never added twice. Returns true if now in the route.
+    alternarEndereco(p){
+      const id = "x_" + p.id, i = rota.indexOf(id);
+      if(i >= 0){ rota.splice(i, 1); delete extras[id]; }
+      else {
+        extras[id] = {id, nome:p.nome, endereco:p.endereco || "", lat:p.lat ?? null, lng:p.lng ?? null, detalhe:p.detalhe || ""};
+        rota.push(id);
+      }
+      desenharRota();
+      return rota.includes(id);
+    },
+    temEndereco: idOrigem => rota.includes("x_" + idOrigem),
+    posicaoEndereco: idOrigem => rota.indexOf("x_" + idOrigem) + 1,
+    // A building from Prospecção became a condo card: the stop keeps its place, now pointing to the card.
+    trocarEndereco(idOrigem, idCondominio){
+      const i = rota.indexOf("x_" + idOrigem); if(i < 0) return;
+      delete extras["x_" + idOrigem];
+      if(rota.includes(idCondominio)) rota.splice(i, 1); else rota[i] = idCondominio;
+      desenharRota();
+    }
   };
 })();

@@ -1,10 +1,18 @@
-// E2E tests: the Prospecção page (☰ → Prospecção): IPTU import, list, map and "+ Funil".
+// E2E tests: the Prospecção page (☰ → Prospecção): list, map, "+ Funil" and "+ Rota".
+// The page loads dados/prospeccao-sp.json (made every month by the GitHub robot, scripts/iptu.mjs).
+// Here that file is replaced by a small list made BY THE SAME SCRIPT from a tiny fake IPTU CSV.
 const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
+const path = require("node:path");
+const { Readable } = require("node:stream");
 const { setup, openApp, irPeloMenu } = require("./helpers");
 
-let env;
-before(async () => { env = await setup(); });
+let env, LISTA;
+before(async () => {
+  env = await setup();
+  const { resumirStream } = await import(path.join(__dirname, "..", "..", "scripts", "iptu.mjs"));
+  LISTA = await resumirStream(Readable.from([csvIptu()]));
+});
 after(async () => { await env.close(); });
 
 // A tiny IPTU-like file: 3 buildings (250, 120 and 40 apartments) + garages, a house and an older year.
@@ -27,12 +35,12 @@ function csvIptu() {
 }
 const GEO = { "neto de araujo, 320": [-23.589, -46.634], "avenida paulista, 1000": [-23.565, -46.652] };
 
-async function abrir(page) {
+// Serves the list (or an error) in place of dados/prospeccao-sp.json, then opens the page.
+async function abrir(page, lista = LISTA) {
+  await page.unroute("**/dados/prospeccao-sp.json");
+  await page.route("**/dados/prospeccao-sp.json", (r) => lista ? r.fulfill({ json: lista }) : r.fulfill({ status: 404, body: "" }));
   await irPeloMenu(page, "#btnProspeccao");
   await page.waitForSelector("#telaProspeccao.aberta");
-}
-async function importar(page, buffer = csvIptu(), nome = "IPTU_2026.csv") {
-  await page.setInputFiles("#prArquivo", { name: nome, mimeType: "text/csv", buffer });
 }
 const nomes = (page) => page.locator("#prLista .pr-end").allTextContents();
 // Circles the fake map drew for the Prospecção page.
@@ -41,25 +49,29 @@ const circulos = (page) => page.evaluate(() => window.__leaflet.groups.flatMap((
   .map((l) => ({ latlng: l.latlng, cor: l.o.fillColor, popup: l.popup })));
 
 describe("Prospecção page", () => {
-  test("is in the menu; before importing it explains how to get the IPTU file", async () => {
+  test("is in the menu; if the list can't be loaded it says so and 'Tentar de novo' works", async () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true });
-    await abrir(page);
-    assert.equal(await page.locator("#prVazio").isVisible(), true);
-    assert.match(await page.textContent("#prVazio"), /GeoSampa/);
+    await abrir(page, null);
+    await page.waitForSelector("#prErro:not([hidden])");
+    assert.match(await page.textContent("#prErro"), /Não consegui carregar a lista/);
     assert.equal(await page.locator("#prSplit").isHidden(), true);
+    await page.unroute("**/dados/prospeccao-sp.json");
+    await page.route("**/dados/prospeccao-sp.json", (r) => r.fulfill({ json: LISTA }));
+    await page.click("#btnPrTentar");
+    await page.waitForSelector(".pr-item");
+    assert.equal(await page.locator("#prErro").isHidden(), true);
     await page.keyboard.press("Escape");
     assert.equal(await page.locator("#telaProspeccao.aberta").count(), 0);
     assert.deepEqual(errors, []);
     await context.close();
   });
 
-  test("imports the IPTU file: one row per building, apartments counted, biggest first, no owner names", async () => {
+  test("shows the list made by the robot: one row per building, apartments counted, biggest first, no owner names", async () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
-    await importar(page);
     await page.waitForSelector(".pr-item");
-    assert.match(await page.textContent("#prInfo"), /IPTU 2026 · 3 condomínios/);
-    assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320"], "default filter: 200+ apartments");
+    assert.match(await page.textContent("#prInfo"), /IPTU 2026 · 3 condomínios em São Paulo com 10\+ apartamentos · lista atualizada em/);
+    assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320", "Avenida Paulista, 1000"], "default filter: 100+ apartments");
     await page.selectOption("#prMinimo", "0");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
     assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320", "Avenida Paulista, 1000", "Alameda Inexistente, 77"]);
@@ -80,7 +92,6 @@ describe("Prospecção page", () => {
     let consultas = 0; const urls = [];
     page.on("request", (r) => { if (r.url().includes("nominatim")) { consultas++; urls.push(decodeURIComponent(r.url().split("q=")[1])); } });
     await abrir(page);
-    await importar(page);
     await page.waitForSelector(".pr-item");
     await page.selectOption("#prMinimo", "0");
     await page.waitForFunction(() => document.querySelectorAll(".pr-loc a").length === 1, null, { timeout: 15000 });
@@ -95,11 +106,9 @@ describe("Prospecção page", () => {
     assert.equal(consultas, 4, "2 found at the first try + 2 tries for the one not found: " + urls.join(" | "));
 
     // positions are saved: opening the page again doesn't look anything up
-    await page.waitForFunction(() => new Promise((ok) => {
-      const r = indexedDB.open("kmd3market", 1);
-      r.onsuccess = () => { const t = r.result.transaction("kv").objectStore("kv").get("prospeccao_sp");
-        t.onsuccess = () => ok((t.result?.linhas || []).every((l) => l.geo_em)); };
-    }));
+    const pos = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:prospGeo") || "{}"));
+    assert.deepEqual(Object.keys(pos).sort(), ["009012-013", "010020-021", "030040-055"]);
+    assert.equal(pos["030040-055"].lat, null, "not found is remembered too");
     await page.reload(); await page.waitForSelector(".coluna");
     await abrir(page);
     await page.selectOption("#prMinimo", "0");
@@ -112,7 +121,6 @@ describe("Prospecção page", () => {
   test("'+ Funil' creates a card in Futura Prospecção with address and apartments, and marks the building", async () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
-    await importar(page);
     await page.waitForSelector(".pr-item .pr-add");
     await page.waitForFunction(() => document.querySelector(".pr-loc").textContent.includes("📍"), null, { timeout: 10000 });
     await page.click(".pr-item .pr-add");
@@ -139,10 +147,65 @@ describe("Prospecção page", () => {
     await context.close();
   });
 
+  test("'+ Rota' puts a building in the visit route without creating a card; clicking again takes it out", async () => {
+    const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
+    await abrir(page);
+    await page.waitForSelector(".pr-item .pr-loc");
+    await page.waitForFunction(() => document.querySelector(".pr-loc").textContent.includes("📍"), null, { timeout: 10000 });
+    const rota = () => page.evaluate(() => ({ ids: JSON.parse(localStorage.getItem("quitandinha:rota") || "[]"),
+      extras: JSON.parse(localStorage.getItem("quitandinha:rotaExtras") || "{}") }));
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota.na-rota");
+    assert.equal((await page.textContent(".pr-item .pr-rota")).trim(), "✓ Rota (1)");
+    assert.match(await page.textContent("#aviso"), /Adicionado à rota \(parada 1\)/);
+    let r = await rota();
+    assert.deepEqual(r.ids, ["x_009012-013"]);
+    assert.deepEqual(r.extras["x_009012-013"], { id: "x_009012-013", nome: "Rua Doutor Neto de Araujo, 320",
+      endereco: "Rua Doutor Neto de Araujo, 320 - Vila Mariana - São Paulo - SP - 04111-000",
+      lat: -23.589, lng: -46.634, detalhe: "🔎 Prospecção · 250 aptos · Vila Mariana" });
+    assert.equal(await page.locator(".cartao").count(), 0, "no card was created");
+    // the route panel of the main map lists it
+    assert.match(await page.textContent("#mpRotaLista"), /Rua Doutor Neto de Araujo, 320.*Prospecção · 250 aptos/s);
+    // the button in the map pop-up shows it too
+    assert.match((await circulos(page))[0].popup, /✓ Rota \(1\)/);
+    // click again: out of the route
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota:not(.na-rota)");
+    r = await rota();
+    assert.deepEqual(r.ids, []);
+    assert.deepEqual(r.extras, {});
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+
+  test("a building in the route that becomes a card keeps its place in the route, now as the card", async () => {
+    const { page, context } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
+    await abrir(page);
+    await page.waitForSelector(".pr-item .pr-loc");
+    await page.waitForFunction(() => document.querySelector(".pr-loc").textContent.includes("📍"), null, { timeout: 10000 });
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota.na-rota");
+    await page.click(".pr-item .pr-add");
+    await page.waitForSelector(".pr-item .pr-no-funil");
+    const { ids, extras } = await page.evaluate(() => ({ ids: JSON.parse(localStorage.getItem("quitandinha:rota")),
+      extras: JSON.parse(localStorage.getItem("quitandinha:rotaExtras")) }));
+    const card = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios")).find((l) => /Neto de Araujo/.test(l.nome)).id);
+    assert.deepEqual(ids, [card]);
+    assert.deepEqual(extras, {});
+    assert.equal((await page.textContent(".pr-item .pr-rota")).trim(), "✓ Rota (1)", "still shown as in the route");
+    // and for a card, "+ Rota" / "✓ Rota" toggles the card itself
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota:not(.na-rota)");
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:rota"))), []);
+    await page.click(".pr-item .pr-rota");
+    await page.waitForSelector(".pr-item .pr-rota.na-rota");
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:rota"))), [card]);
+    await context.close();
+  });
+
   test("'Só nesta área do mapa' lists only buildings already placed inside the visible area", async () => {
     const { page, context } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
-    await importar(page);
     await page.waitForSelector(".pr-item");
     await page.selectOption("#prMinimo", "0");
     await page.waitForFunction(() => document.querySelectorAll(".pr-loc a").length === 1, null, { timeout: 15000 });
@@ -155,19 +218,9 @@ describe("Prospecção page", () => {
     await context.close();
   });
 
-  test("a file that isn't the IPTU one is refused with a clear message", async () => {
-    const { page, context } = await openApp(env, { fakeLeaflet: true });
-    await abrir(page);
-    await importar(page, Buffer.from("nome;telefone\nAna;1199\n"), "contatos.csv");
-    await page.waitForFunction(() => /não parece ser o do IPTU/.test(document.querySelector("#aviso").textContent));
-    assert.equal(await page.locator("#prVazio").isVisible(), true);
-    await context.close();
-  });
-
   test("on a phone, Lista / Mapa tabs switch between the list and the map, without sideways scroll", async () => {
     const { page, context } = await openApp(env, { fakeLeaflet: true, nominatim: GEO, viewport: { width: 390, height: 844 } });
     await abrir(page);
-    await importar(page);
     await page.waitForSelector(".pr-item");
     assert.equal(await page.locator(".pr-col-lista").isVisible(), true);
     assert.equal(await page.locator(".pr-col-mapa").isVisible(), false);

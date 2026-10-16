@@ -23,12 +23,13 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - Multiple contacts per condo, each with one-click **WhatsApp** and **Ligar** (call: opens the phone keypad with the number) buttons, and a **Quem é** dropdown (Síndico, ADM, Zelador, Morador, Gerente predial, or **Outro…** to type a new type, which then appears in every card's dropdown).
 
 **Prospecção page (☰ → Prospecção)**
-- Finds condos in São Paulo that aren't in the funnel yet, **with the number of apartments**, from the city's IPTU (property tax) register.
-- Import the IPTU `.csv` from [GeoSampa](https://geosampa.prefeitura.sp.gov.br) once a year (Download de dados → Cadastro → IPTU). The file is read on your computer and grouped into one row per building (address, neighborhood, CEP, apartments, floors, year built). Owner names and CPF/CNPJ are never kept.
-- Search by street, neighborhood or CEP, with a minimum size (50+, 100+, 200+, 300+ apartments). Biggest first, up to 100 at a time.
+- Finds condos in São Paulo that aren't in the funnel yet, **with the number of apartments**, from the city's IPTU (property tax) register — about 24,500 buildings with 10+ apartments.
+- **Nobody downloads anything.** A GitHub robot (workflow *Atualizar prospecção (IPTU)*, script `scripts/iptu.mjs`) runs every month: it takes the newest IPTU file from [GeoSampa](https://geosampa.prefeitura.sp.gov.br), groups the 3.9 million properties into buildings (address, neighborhood, CEP, apartments, floors, year built, construction standard) and saves `dados/prospeccao-sp.json`, which is published with the site. It only rebuilds when a new year appears; to rebuild now, open **Actions → Atualizar prospecção (IPTU) → Run workflow** (tick "forcar"). Owner names and CPF/CNPJ are never in the list.
+- Search by street, neighborhood or CEP, with a minimum size (50+, 100+ — the default —, 200+, 300+ apartments). Biggest first, up to 100 at a time. The register's neighborhood field is often empty, so street or CEP finds more.
 - Results show on a **list and a map**. The register has no coordinates, so each building is looked up once by its address (OpenStreetMap, 1 per second) and the position is saved for the whole team. Buildings found only by street are marked "aproximado"; ones not found get a Google Maps link.
 - **Só nesta área do mapa**: lists only buildings already placed inside the part of the map on screen.
 - **+ Funil** creates a card in *Futura Prospecção* with the address and apartments filled in (and its map position, so the main map doesn't look it up again). Buildings already in the funnel show **✓ No funil** and a green dot.
+- **+ Rota** puts a building in the visit route (☰ → Mapa → Rota) without creating a card — handy to visit a whole area and only register the ones that work out. The button shows **✓ Rota (n)** with its stop number; clicking again takes it out. If the building later becomes a card, its stop keeps its place and points to the card.
 - On phones, **Lista / Mapa** tabs switch between the two.
 
 **Dashboard page (☰ → Dashboard)**
@@ -155,8 +156,8 @@ The project has three layers of automated tests. All of them run in **local mode
 
 | Layer | What it checks | Tool | Count |
 |---|---|---|---|
-| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters, dashboard numbers and the condo list behind each number (size bands, contacts, competitors, expiring contracts, stale deals), reading the IPTU register (columns, quotes, grouping units into buildings, garages and older years left out, no owner data kept) and the street names sent to the map lookup. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 109 |
-| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, editing reminders, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the Templates page (create, copy, edit, delete, search), the Dashboard page (numbers, the condo list behind each number, "Ver no quadro", live update), the Prospecção page (IPTU import, search, map positions looked up once and saved, "+ Funil", "Só nesta área do mapa", wrong file, phone tabs), the SULTS toggle and badge, the Visitar button and car badge, the map's Visitar filter, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 111 |
+| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters, dashboard numbers and the condo list behind each number (size bands, contacts, competitors, expiring contracts, stale deals), the IPTU robot (columns, quotes, Latin-1 files, grouping units into buildings, neighborhood chosen by majority, garages / small buildings / older years left out, no owner data kept, GeoSampa download link), reading the list in the page and the street names sent to the map lookup. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 113 |
+| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, editing reminders, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the Templates page (create, copy, edit, delete, search), the Dashboard page (numbers, the condo list behind each number, "Ver no quadro", live update), the Prospecção page (list loaded from the robot's file or a clear error with "Tentar de novo", search, map positions looked up once and saved, "+ Funil", "+ Rota" and the stop turning into the card, "Só nesta área do mapa", phone tabs), the SULTS toggle and badge, the Visitar button and car badge, the map's Visitar filter, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 112 |
 | **API** | The Supabase API the app depends on: login, CRUD on `condominios`, team list, permission functions, and that nothing is readable or writable without a login (Row Level Security) | Postman collection run by Newman | 19 requests |
 
 ### Run the tests
@@ -243,20 +244,16 @@ Texts from the Templates page. Every logged-in user can see and edit them. If th
 | `criado_por` | `text` | Name of who created it |
 | `criado_em`, `atualizado_em` | `timestamptz` | |
 
-### Table `prospeccao_sp`
+### Table `prospeccao_geo`
 
-One row per residential building from São Paulo's IPTU register (Prospecção page). Every logged-in user can see it, import a new file and save map positions. If the table doesn't exist yet, the data is kept only in the browser that imported it (IndexedDB) and a warning explains it. Importing a new year keeps the map positions already found.
+Map positions of the Prospecção buildings (the list itself is the file `dados/prospeccao-sp.json`). Each building is looked up once by its address and saved here for the whole team. If the table doesn't exist yet, positions are kept only in each browser (`quitandinha:prospGeo`).
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | `text` | Primary key: setor + quadra + condominium number from the register |
-| `logradouro`, `numero`, `bairro`, `cep` | `text` | Address |
-| `apartamentos`, `unidades`, `pavimentos`, `ano_construcao`, `ano_iptu` | `integer` | Apartments, all units (no garages), floors, year built, register year |
-| `padrao` | `text` | Construction standard from the register |
-| `busca` | `text` | Address without accents, for the search (trigram index) |
-| `lat`, `lng` | `double precision` | Map position (empty until looked up, or if not found) |
+| `id` | `text` | Primary key: the building's id in the list (setor + quadra + condominium number) |
+| `lat`, `lng` | `double precision` | Position (empty if the address wasn't found) |
 | `geo_precisao` | `text` | `numero` (exact) or `rua` (only the street was found) |
-| `geo_em`, `importado_em` | `timestamptz` | When the position was looked up / when the row was imported |
+| `geo_em` | `timestamptz` | When it was looked up (not-found addresses are retried after 30 days) |
 
 ### Table `equipe`
 
@@ -331,8 +328,7 @@ The app keeps a local copy in `localStorage` so nothing is lost if the connectio
 | `quitandinha:rotaExtras` | Typed addresses added to the route |
 | `quitandinha:rotaInicio` | The route's starting point |
 | `quitandinha:prospAdicionados` | Which Prospecção buildings were turned into cards from this browser |
-
-The Prospecção data itself is kept in IndexedDB (database `kmd3market`, key `prospeccao_sp`) when the Supabase table doesn't exist, because it's too big for localStorage.
+| `quitandinha:prospGeo` | Map positions of Prospecção buildings (only used if the database has no `prospeccao_geo` table) |
 
 The `quitandinha:` prefix comes from the project's previous name. Changing it would make browsers lose their saved data and pending changes, so it was kept on purpose.
 
