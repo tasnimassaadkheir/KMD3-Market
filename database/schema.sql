@@ -80,32 +80,17 @@ create table if not exists public.templates (
   atualizado_em timestamptz default now()
 );
 
--- Prospecção (página Prospecção): um resumo por prédio do cadastro do IPTU de São Paulo.
--- Só endereço, nº de apartamentos, andares e ano — nada de nomes de donos ou CPF/CNPJ.
--- lat/lng = posição no mapa, procurada uma vez pelo endereço e guardada aqui para a equipe toda.
-create extension if not exists pg_trgm;
-create table if not exists public.prospeccao_sp (
-  id             text primary key,          -- setor + quadra + nº do condomínio
-  logradouro     text,
-  numero         text,
-  bairro         text,
-  cep            text,
-  apartamentos   integer,
-  unidades       integer,
-  pavimentos     integer,
-  ano_construcao integer,
-  padrao         text,
-  ano_iptu       integer,
-  busca          text,                      -- texto sem acentos para a busca
-  lat            double precision,
+-- Prospecção (página Prospecção): posição no mapa de cada prédio da lista do IPTU.
+-- A lista em si (endereço, nº de apartamentos…) vem do arquivo dados/prospeccao-sp.json,
+-- atualizado todo mês por um robô no GitHub. Aqui ficam só as posições, procuradas uma vez
+-- pelo endereço e guardadas para a equipe toda.
+create table if not exists public.prospeccao_geo (
+  id             text primary key,          -- id do prédio na lista (setor + quadra + nº do condomínio)
+  lat            double precision,          -- vazio = endereço não encontrado
   lng            double precision,
   geo_precisao   text,                      -- 'numero' ou 'rua' (aproximado)
-  geo_em         timestamptz,               -- quando a posição foi procurada
-  importado_em   timestamptz
+  geo_em         timestamptz                -- quando foi procurada
 );
-create index if not exists prospeccao_sp_apartamentos on public.prospeccao_sp (apartamentos desc);
-create index if not exists prospeccao_sp_busca on public.prospeccao_sp using gin (busca gin_trgm_ops);
-create index if not exists prospeccao_sp_lat_lng on public.prospeccao_sp (lat, lng);
 
 -- ============================================================
 -- Segurança: só quem estiver logado enxerga e edita os dados
@@ -135,11 +120,11 @@ create policy "equipe logada usa templates"
   to authenticated
   using (true) with check (true);
 
-alter table public.prospeccao_sp enable row level security;
--- Toda a equipe logada vê, importa e atualiza a prospecção.
-drop policy if exists "equipe logada usa prospeccao" on public.prospeccao_sp;
-create policy "equipe logada usa prospeccao"
-  on public.prospeccao_sp for all
+alter table public.prospeccao_geo enable row level security;
+-- Toda a equipe logada vê e salva as posições da prospecção.
+drop policy if exists "equipe logada usa prospeccao geo" on public.prospeccao_geo;
+create policy "equipe logada usa prospeccao geo"
+  on public.prospeccao_geo for all
   to authenticated
   using (true) with check (true);
 

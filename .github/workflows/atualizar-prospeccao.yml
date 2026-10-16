@@ -9,9 +9,6 @@ name: Atualizar prospecção (IPTU)
 on:
   schedule:
     - cron: "17 9 3 * *"        # day 3 of every month, 06:17 in São Paulo
-  push:                         # TEMPORARY: first run on this branch (removed before merging)
-    branches: [claude/prospeccao-automatica]
-    paths: [".github/workflows/atualizar-prospeccao.yml", "scripts/iptu.mjs"]
   workflow_dispatch:
     inputs:
       forcar:
@@ -42,15 +39,14 @@ jobs:
           echo "GeoSampa: $nome (ano $ano) · lista atual: ano $atual"
           echo "nome=$nome" >> "$GITHUB_OUTPUT"
           echo "ano=$ano" >> "$GITHUB_OUTPUT"
-          if [ "$ano" -gt "$atual" ] || [ "${{ inputs.forcar }}" = "true" ] || [ "${{ github.event_name }}" = "push" ]; then echo "gerar=sim" >> "$GITHUB_OUTPUT"; else echo "Já está atualizado."; fi
+          if [ "$ano" -gt "$atual" ] || [ "${{ inputs.forcar }}" = "true" ]; then echo "gerar=sim" >> "$GITHUB_OUTPUT"; else echo "Já está atualizado."; fi
 
       - name: Baixar e resumir
         if: steps.ultimo.outputs.gerar == 'sim'
         run: |
-          mkdir -p diag
-          node scripts/iptu.mjs baixar "${{ steps.ultimo.outputs.nome }}" iptu.zip 2> >(tee diag/baixar.log >&2)
-          unzip -l iptu.zip | tee diag/unzip.log
-          unzip -p iptu.zip | node scripts/iptu.mjs resumir > novo.json 2> >(tee diag/resumir.log >&2)
+          node scripts/iptu.mjs baixar "${{ steps.ultimo.outputs.nome }}" iptu.zip
+          unzip -l iptu.zip
+          unzip -p iptu.zip | node scripts/iptu.mjs resumir > novo.json
           mkdir -p dados && mv novo.json dados/prospeccao-sp.json
           ls -l dados/prospeccao-sp.json
 
@@ -64,10 +60,3 @@ jobs:
           git commit -m "Prospecção: lista do IPTU ${{ steps.ultimo.outputs.ano }} atualizada"
           git push
 
-      # TEMPORARY (debug of the first run): save the error messages in the branch.
-      - name: Diagnóstico
-        if: failure() && github.event_name == 'push'
-        run: |
-          git config user.name "kmd3-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f diag || true
-          git commit -m "diag" && git push || true

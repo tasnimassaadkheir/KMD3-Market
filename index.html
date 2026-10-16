@@ -449,7 +449,8 @@
 
 <!-- ==================== PROSPECÇÃO PAGE ====================
      Condos in São Paulo from the city's IPTU register (number of apartments included),
-     on a list and on a map, with "+ Funil" to turn one into a card. Built by prospeccao.js. -->
+     on a list and on a map, with "+ Funil" and "+ Rota". Built by prospeccao.js from
+     dados/prospeccao-sp.json, which a GitHub robot updates every month. -->
 <section class="tela-lem tela-prosp" id="telaProspeccao" aria-labelledby="tituloProspeccao">
   <div class="tela-lem-topo">
     <button type="button" class="btn-voltar" id="btnFecharProspeccao">← Voltar ao quadro</button>
@@ -459,14 +460,12 @@
       <select class="ct-filtro" id="prMinimo" aria-label="Mínimo de apartamentos">
         <option value="0">Qualquer tamanho</option>
         <option value="50">50+ aptos</option>
-        <option value="100">100+ aptos</option>
-        <option value="200" selected>200+ aptos</option>
+        <option value="100" selected>100+ aptos</option>
+        <option value="200">200+ aptos</option>
         <option value="300">300+ aptos</option>
       </select>
       <label class="pr-area"><input type="checkbox" id="prArea"> Só nesta área do mapa</label>
       <button type="button" class="ct-sec" id="btnPrExportar" hidden>Exportar</button>
-      <button type="button" class="ct-prim" id="btnPrImportar">Importar IPTU</button>
-      <input type="file" id="prArquivo" accept=".csv,text/csv" hidden>
     </div>
   </div>
   <div class="pr-faixa">
@@ -475,16 +474,11 @@
     <span id="prGeoStatus" role="status"></span>
   </div>
   <div class="pr-corpo">
-    <!-- Shown until an IPTU file is imported. -->
-    <div class="pr-vazio" id="prVazio" hidden>
-      <h3>Encontre condomínios que ainda não estão no funil</h3>
-      <p>A lista vem do cadastro do IPTU da Prefeitura de São Paulo, que tem <b>todos os prédios da cidade e quantos apartamentos cada um tem</b>. É preciso importar o arquivo uma vez (e de novo quando sair o do ano seguinte):</p>
-      <ol>
-        <li>Abra o <a href="https://geosampa.prefeitura.sp.gov.br" target="_blank" rel="noopener">GeoSampa</a>.</li>
-        <li>Clique em <b>Download de dados</b> → <b>Cadastro</b> → <b>IPTU</b> e baixe o arquivo <b>.csv</b> do ano mais recente.</li>
-        <li>Clique em <b>Importar IPTU</b> e escolha o arquivo. Ele é lido neste computador; nomes de donos e CPF/CNPJ não são guardados.</li>
-      </ol>
-      <button type="button" class="ct-prim" id="btnPrImportarVazio">Importar arquivo do IPTU</button>
+    <!-- Shown only if the list (dados/prospeccao-sp.json) couldn't be loaded. -->
+    <div class="pr-vazio" id="prErro" hidden>
+      <h3>Não consegui carregar a lista de condomínios</h3>
+      <p>Verifique a internet e tente de novo. A lista vem do cadastro do IPTU da Prefeitura de São Paulo e é atualizada sozinha todo mês.</p>
+      <button type="button" class="ct-prim" id="btnPrTentar">Tentar de novo</button>
     </div>
     <!-- List + map. On phones, two tabs switch between them. -->
     <div class="pr-split" id="prSplit" data-aba="lista" hidden>
