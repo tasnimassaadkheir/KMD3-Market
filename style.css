@@ -1178,3 +1178,7 @@ button.db-barra:hover .db-rot{text-decoration:underline}
   .tela-prosp .ct-ferr .ct-filtro{flex:1 1 calc(50% - 4px);min-width:0}
   .tela-prosp .ct-ferr .ct-filtro[hidden]{display:none}
 }
+/* line icons used inside text and buttons: always text-sized */
+svg.ico{width:15px;height:15px;flex:none;vertical-align:-3px}
+.btn-rota-lead{display:inline-flex;align-items:center;gap:6px}
+#mpPartidaGps svg.ico{width:17px;height:17px;vertical-align:middle}

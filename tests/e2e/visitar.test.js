@@ -82,4 +82,16 @@ describe("Visitar", () => {
     assert.match(linhas[1], /"Sim"$/);
     await context.close();
   });
+  test("regression: the route and Visitar buttons stay button-sized (the pin icon once made them huge)", async () => {
+    const { page, context } = await openApp(env, { leads: [lead({ visitar: true })] });
+    await page.click(".cartao");
+    await page.waitForSelector("#painel.aberto");
+    for (const id of ["#btnRotaLead", "#btnVisitarLead"]) {
+      const b = await page.locator(id).boundingBox();
+      assert.ok(b.height <= 40, `${id} is ${b.height}px tall`);
+    }
+    const ico = await page.locator("#btnRotaLead svg").boundingBox();
+    assert.ok(ico.width <= 18 && ico.height <= 18, "icon is text-sized");
+    await context.close();
+  });
 });
