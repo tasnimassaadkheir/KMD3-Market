@@ -47,9 +47,10 @@ jobs:
       - name: Baixar e resumir
         if: steps.ultimo.outputs.gerar == 'sim'
         run: |
-          node scripts/iptu.mjs baixar "${{ steps.ultimo.outputs.nome }}" iptu.zip
-          unzip -l iptu.zip
-          unzip -p iptu.zip | node scripts/iptu.mjs resumir > novo.json
+          mkdir -p diag
+          node scripts/iptu.mjs baixar "${{ steps.ultimo.outputs.nome }}" iptu.zip 2> >(tee diag/baixar.log >&2)
+          unzip -l iptu.zip | tee diag/unzip.log
+          unzip -p iptu.zip | node scripts/iptu.mjs resumir > novo.json 2> >(tee diag/resumir.log >&2)
           mkdir -p dados && mv novo.json dados/prospeccao-sp.json
           ls -l dados/prospeccao-sp.json
 
@@ -62,3 +63,11 @@ jobs:
           if git diff --cached --quiet; then echo "Nada mudou."; exit 0; fi
           git commit -m "Prospecção: lista do IPTU ${{ steps.ultimo.outputs.ano }} atualizada"
           git push
+
+      # TEMPORARY (debug of the first run): save the error messages in the branch.
+      - name: Diagnóstico
+        if: failure() && github.event_name == 'push'
+        run: |
+          git config user.name "kmd3-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f diag || true
+          git commit -m "diag" && git push || true
