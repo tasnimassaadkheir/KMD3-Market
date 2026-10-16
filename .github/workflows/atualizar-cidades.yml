@@ -5,9 +5,6 @@
 name: Atualizar prospecção - cidades vizinhas (IBGE)
 
 on:
-  push:                         # TEMPORARY: first run on this branch (removed before merging)
-    branches: [claude/prospeccao-osasco]
-    paths: [".github/workflows/atualizar-cidades.yml", "scripts/cnefe.mjs", "scripts/cidades.json"]
   workflow_dispatch:
 
 permissions:

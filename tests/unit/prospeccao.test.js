@@ -7,8 +7,11 @@ const { Readable } = require("node:stream");
 const path = require("node:path");
 const { loadApp, ROOT } = require("../helpers/load-app");
 
-let I;   // scripts/iptu.mjs (an ES module)
-before(async () => { I = await import(path.join(ROOT, "scripts", "iptu.mjs")); });
+let I, C;   // scripts/iptu.mjs and scripts/cnefe.mjs (ES modules)
+before(async () => {
+  I = await import(path.join(ROOT, "scripts", "iptu.mjs"));
+  C = await import(path.join(ROOT, "scripts", "cnefe.mjs"));
+});
 
 const CAB = ["NUMERO DO CONTRIBUINTE", "ANO DO EXERCICIO", "NOME DO CONTRIBUINTE 1", "CPF/CNPJ DO CONTRIBUINTE 1",
   "NUMERO DO CONDOMINIO", "NOME DE LOGRADOURO DO IMOVEL", "NUMERO DO IMOVEL", "BAIRRO DO IMOVEL", "CEP DO IMOVEL",
@@ -105,6 +108,35 @@ describe("robot: grouping into buildings", () => {
   });
 });
 
+describe("robot: neighboring cities from the IBGE Census (scripts/cnefe.mjs)", () => {
+  const CAB = "COD_UNICO_ENDERECO;COD_UF;COD_MUNICIPIO;CEP;DSC_LOCALIDADE;NOM_TIPO_SEGLOGR;NOM_TITULO_SEGLOGR;NOM_SEGLOGR;NUM_ENDERECO;" +
+    "NOM_COMP_ELEM1;VAL_COMP_ELEM1;LATITUDE;LONGITUDE;COD_ESPECIE;COD_TIPO_ESPECI";
+  const ap = (i, cep, tipo, titulo, nome, num, bairro, lat, lng, esp = "103") =>
+    [i, 35, 3534401, cep, bairro, tipo, titulo, nome, num, "APARTAMENTO", i, lat, lng, 1, esp].join(";");
+  test("apartments at the same CEP + street + number are one building, with its mean position and most common neighborhood", async () => {
+    const linhas = [CAB];
+    for (let i = 0; i < 12; i++) linhas.push(ap(i, "06160180", "RUA", "", "JUAN VICENTE", "482", i < 9 ? "BANDEIRAS" : "JARDIM", -23.55 - i * 0.0001, -46.81));
+    for (let i = 0; i < 11; i++) linhas.push(ap(100 + i, "06010170", "AVENIDA", "PRESIDENTE", "JOAO GOULART", "48", "UMUARAMA", -23.5567, -46.7765));
+    for (let i = 0; i < 5; i++) linhas.push(ap(200 + i, "06010170", "RUA", "", "PEQUENA", "1", "CENTRO", -23.5, -46.7));      // too small
+    for (let i = 0; i < 30; i++) linhas.push(ap(300 + i, "06010170", "RUA", "", "DAS CASAS", "1", "CENTRO", -23.5, -46.7, "101")); // houses
+    const r = await C.resumirCnefe(Readable.from([Buffer.from(linhas.join("\r\n"), "latin1")]), "Osasco");
+    assert.equal(r.linhasLidas, 58);
+    assert.deepEqual(r.campos, ["id", "logradouro", "numero", "bairro", "cep", "apartamentos", "lat", "lng"]);
+    assert.equal(r.total, 2);
+    const [a, b] = r.linhas;
+    assert.deepEqual(a.slice(0, 6), ["3534401-06160180-482-ruajuanvicente", "Rua Juan Vicente", "482", "Bandeiras", "06160-180", 12]);
+    assert.ok(Math.abs(a[6] - -23.55055) < 1e-6 && a[7] === -46.81, "mean position");
+    assert.equal(b[1], "Avenida Presidente Joao Goulart", "street type + title + name");
+  });
+  test("joins cities into one file, each row pointing to its city", () => {
+    const um = (cidade, n) => ({ cidade, ano: 2022, total: 1, minimoAptos: 10, linhas: [["id-" + cidade, "Rua A", "1", "B", "06000-000", n, -23.5, -46.8]] });
+    const j = C.juntar([um("Osasco", 50), um("Barueri", 80)]);
+    assert.deepEqual(j.cidades.map((c) => c.nome), ["Osasco", "Barueri"]);
+    assert.equal(j.campos.at(-1), "cidade");
+    assert.deepEqual(j.linhas.map((l) => [l[0], l.at(-1)]), [["id-Barueri", 1], ["id-Osasco", 0]], "biggest first");
+  });
+});
+
 describe("page: reading the list and preparing map lookups (prospeccao.js)", () => {
   const app = loadApp({ extra: ["prospeccao.js"] });
   const P = (code) => app.json(`(() => { const P = window.Prospeccao; return ${code}; })()`);
@@ -118,6 +150,17 @@ describe("page: reading the list and preparing map lookups (prospeccao.js)", () 
     assert.equal(l.ano_iptu, 2026);
     assert.ok(l.busca.includes("rua doutor neto de araujo") && l.busca.includes("04111000") && l.busca.includes("vila mariana"),
       "can be found by the written-out street name, CEP without dash and neighborhood");
+  });
+  test("lerLista() of the neighboring cities: city name, source, and the position already filled in", () => {
+    const l = P(`P.lerLista({ano: 2022, cidades: [{nome: "Osasco", total: 1}], campos: ["id","logradouro","numero","bairro","cep","apartamentos","lat","lng","cidade"],
+      linhas: [["3534401-x","Rua Juan Vicente","482","Bandeiras","06160-180",2641,-23.559,-46.816,0]]})[0]`);
+    assert.equal(l.cidade, "Osasco");
+    assert.equal(l.fonte, "Censo 2022 – IBGE");
+    assert.deepEqual([l.lat, l.lng, l.geo_precisao], [-23.559, -46.816, "numero"]);
+    assert.ok(l.geo_em, "marked as located, so it's never looked up");
+    assert.equal(l.regiao, "", "São Paulo zones don't apply");
+    assert.ok(l.busca.includes("osasco"));
+    assert.equal(P(`P.enderecoCompleto(${JSON.stringify(l)})`), "Rua Juan Vicente, 482 - Bandeiras - Osasco - SP - 06160-180");
   });
   test("expandirLogradouro() writes out street types and titles for the map lookup", () => {
     assert.equal(P(`P.expandirLogradouro("R Dr Neto de Araujo")`), "Rua Doutor Neto de Araujo");
