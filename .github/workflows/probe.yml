@@ -39,5 +39,10 @@ jobs:
             echo "$n $url" >> pages/scripts_map.txt
           done < pages/scripts.txt
           grep -l -i 'downloadArquivo\|DownloadCamadas\|arqTipo' pages/*.js pages/*.html >> probe.txt 2>&1
+          mkdir -p pages/js2
+          for f in _MapasSBC.js _ControleTela.js _LayerSwitcher2.js _LayerSwitcher3.js _ObterInformacao.js initTela.js _DownloadImagem.js Controle.GetInfoCamada.js util/GeoSampa.Config.js ModuloAnalise-Load.js _Impressao.js; do
+            curl -sS -L -m 60 "https://download.geosampa.prefeitura.sp.gov.br/js/$f" -o "pages/js2/$(echo $f | tr / _)" 2>/dev/null
+          done
+          grep -n -o -i '.\{0,300\}\(downloadArquivo\|DownloadCamadas\|arqTipo\|orig=\).\{0,300\}' pages/js2/* > pages/download_refs.txt
           git config user.name probe; git config user.email probe@example.com
-          git add probe.txt pages; git commit -m "probe results 2"; git push
+          git add probe.txt pages; git commit -m "probe results 3"; git push
