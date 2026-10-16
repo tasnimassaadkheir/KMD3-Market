@@ -1,0 +1,64 @@
+# Keeps the Prospecção list up to date, with no one having to download anything.
+# Every month (and whenever you click "Run workflow" in the Actions tab) it:
+#   1. asks GeoSampa for the newest IPTU file (IPTU_AAAA.zip)
+#   2. if it's newer than the list we have (or if "forcar" was ticked), downloads it,
+#      groups the apartments by building and saves dados/prospeccao-sp.json
+#   3. commits that file, so the site (Vercel) publishes it automatically.
+name: Atualizar prospecção (IPTU)
+
+on:
+  schedule:
+    - cron: "17 9 3 * *"        # day 3 of every month, 06:17 in São Paulo
+  push:                         # TEMPORARY: first run on this branch (removed before merging)
+    branches: [claude/prospeccao-automatica]
+    paths: [".github/workflows/atualizar-prospeccao.yml", "scripts/iptu.mjs"]
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Gerar de novo mesmo se o ano não mudou"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write               # to commit the updated list
+
+concurrency: atualizar-prospeccao
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Arquivo mais recente no GeoSampa
+        id: ultimo
+        run: |
+          read nome ano < <(node scripts/iptu.mjs ultimo)
+          atual=$(node -e 'try{console.log(require("./dados/prospeccao-sp.json").ano||0)}catch(e){console.log(0)}')
+          echo "GeoSampa: $nome (ano $ano) · lista atual: ano $atual"
+          echo "nome=$nome" >> "$GITHUB_OUTPUT"
+          echo "ano=$ano" >> "$GITHUB_OUTPUT"
+          if [ "$ano" -gt "$atual" ] || [ "${{ inputs.forcar }}" = "true" ]; then echo "gerar=sim" >> "$GITHUB_OUTPUT"; else echo "Já está atualizado."; fi
+
+      - name: Baixar e resumir
+        if: steps.ultimo.outputs.gerar == 'sim'
+        run: |
+          node scripts/iptu.mjs baixar "${{ steps.ultimo.outputs.nome }}" iptu.zip
+          unzip -l iptu.zip
+          unzip -p iptu.zip | node scripts/iptu.mjs resumir > novo.json
+          mkdir -p dados && mv novo.json dados/prospeccao-sp.json
+          ls -l dados/prospeccao-sp.json
+
+      - name: Salvar no repositório
+        if: steps.ultimo.outputs.gerar == 'sim'
+        run: |
+          git config user.name "kmd3-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados/prospeccao-sp.json
+          if git diff --cached --quiet; then echo "Nada mudou."; exit 0; fi
+          git commit -m "Prospecção: lista do IPTU ${{ steps.ultimo.outputs.ano }} atualizada"
+          git push
