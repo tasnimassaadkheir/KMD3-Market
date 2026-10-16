@@ -85,6 +85,8 @@ export function chaveCondominio(contribuinte, condominio){
   if(c && /[1-9]/.test(c)) return d.slice(0, 6) + "-" + c;
   return d.slice(0, 10);
 }
+// Values that show up in the neighborhood field but aren't neighborhoods ("TORRE 1", "BLOCO A", "E VAGA TR.123/13"…).
+const ehLixoBairro = b => /^(torre|bloco|bl|ed|edif|edificio|e vaga|vaga|apto|ap|sala|loja|garagem|tr\b)|\d{3,}/i.test(normalizar(b));
 const ehApartamento = uso => /apartamento/.test(normalizar(uso));
 const ehGaragem = uso => /garage/.test(normalizar(uso));
 
@@ -95,16 +97,20 @@ export function somarLinha(grupos, campos, cols){
   const ano = cols.ano !== undefined ? (inteiro(campos[cols.ano]) || 0) : 0;
   const k = ano + "|" + chave;                         // years are kept apart; only the latest is used
   let g = grupos.get(k);
-  if(!g){ g = {id:chave, ano, apartamentos:0, logradouro:"", numero:"", bairro:"", cep:"", pavimentos:null, anoConstrucao:null, padrao:""}; grupos.set(k, g); }
+  if(!g){ g = {id:chave, ano, apartamentos:0, logradouro:"", numero:"", bairros:null, cep:"", pavimentos:null, anoConstrucao:null, padrao:""}; grupos.set(k, g); }
   const uso = campos[cols.uso];
   if(ehGaragem(uso) || !ehApartamento(uso)) return true;
   g.apartamentos++;
   if(!g.logradouro){                                   // address of the building: from its first apartment
     g.logradouro = String(campos[cols.logradouro] || "").trim();
     g.numero = String(campos[cols.numero] || "").trim().replace(/^0+(?=\d)/, "");
-    if(cols.bairro !== undefined) g.bairro = String(campos[cols.bairro] || "").trim();
     if(cols.cep !== undefined) g.cep = formatarCep(campos[cols.cep]);
     if(cols.padrao !== undefined) g.padrao = String(campos[cols.padrao] || "").trim();
+  }
+  // Neighborhood: the one most apartments say (the field sometimes holds things like "TORRE 1").
+  if(cols.bairro !== undefined){
+    const b = String(campos[cols.bairro] || "").trim();
+    if(b && !ehLixoBairro(b)){ g.bairros = g.bairros || new Map(); g.bairros.set(b, (g.bairros.get(b) || 0) + 1); }
   }
   if(cols.pavimentos !== undefined){ const p = inteiro(campos[cols.pavimentos]); if(p && p < 200 && (!g.pavimentos || p > g.pavimentos)) g.pavimentos = p; }
   if(cols.anoConstrucao !== undefined){ const a = inteiro(campos[cols.anoConstrucao]); if(a && a > 1800 && a < 2100 && (!g.anoConstrucao || a < g.anoConstrucao)) g.anoConstrucao = a; }
@@ -124,7 +130,9 @@ export function resumir(grupos, minimo = MIN_APTOS){
       if(!idxPadrao.has(g.padrao)){ idxPadrao.set(g.padrao, padroes.length); padroes.push(g.padrao); }
       p = idxPadrao.get(g.padrao);
     }
-    linhas.push([g.id, titulo(g.logradouro), g.numero, titulo(g.bairro), g.cep, g.apartamentos, g.pavimentos, g.anoConstrucao, p]);
+    let bairro = "", nMax = 0;
+    if(g.bairros) g.bairros.forEach((n, b) => { if(n > nMax){ nMax = n; bairro = b; } });
+    linhas.push([g.id, titulo(g.logradouro), g.numero, titulo(bairro), g.cep, g.apartamentos, g.pavimentos, g.anoConstrucao, p]);
   });
   linhas.sort((a, b) => b[5] - a[5] || String(a[0]).localeCompare(String(b[0])));
   return {
@@ -206,7 +214,8 @@ if(process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){
     const { Readable } = await import("node:stream");
     const { pipeline } = await import("node:stream/promises");
     await pipeline(Readable.fromWeb(r.body), fs.createWriteStream(b));
-    const inicio = fs.readFileSync(b).subarray(0, 2).toString("latin1");
+    const fd = fs.openSync(b, "r"), dois = Buffer.alloc(2); fs.readSync(fd, dois, 0, 2, 0); fs.closeSync(fd);
+    const inicio = dois.toString("latin1");
     if(inicio !== "PK") throw new Error("o arquivo baixado não é um .zip");
     console.error("baixado:", b, fs.statSync(b).size, "bytes");
   } else if(cmd === "resumir"){

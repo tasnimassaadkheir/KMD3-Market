@@ -42,7 +42,7 @@ jobs:
           echo "GeoSampa: $nome (ano $ano) · lista atual: ano $atual"
           echo "nome=$nome" >> "$GITHUB_OUTPUT"
           echo "ano=$ano" >> "$GITHUB_OUTPUT"
-          if [ "$ano" -gt "$atual" ] || [ "${{ inputs.forcar }}" = "true" ]; then echo "gerar=sim" >> "$GITHUB_OUTPUT"; else echo "Já está atualizado."; fi
+          if [ "$ano" -gt "$atual" ] || [ "${{ inputs.forcar }}" = "true" ] || [ "${{ github.event_name }}" = "push" ]; then echo "gerar=sim" >> "$GITHUB_OUTPUT"; else echo "Já está atualizado."; fi
 
       - name: Baixar e resumir
         if: steps.ultimo.outputs.gerar == 'sim'

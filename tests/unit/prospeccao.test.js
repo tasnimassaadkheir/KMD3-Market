@@ -1,79 +1,117 @@
-// Unit tests: Prospecção — reading the IPTU register and preparing map lookups (prospeccao.js).
-const { test, describe } = require("node:test");
+// Unit tests: Prospecção.
+//  - scripts/iptu.mjs: the GitHub robot that turns São Paulo's IPTU register into the list
+//  - prospeccao.js: reading that list in the browser and preparing map lookups
+const { test, describe, before } = require("node:test");
 const assert = require("node:assert/strict");
-const { loadApp } = require("../helpers/load-app");
+const { Readable } = require("node:stream");
+const path = require("node:path");
+const { loadApp, ROOT } = require("../helpers/load-app");
 
-const app = loadApp({ extra: ["prospeccao.js"] });
-const P = (code) => app.json(`(() => { const P = window.Prospeccao; return ${code}; })()`);
+let I;   // scripts/iptu.mjs (an ES module)
+before(async () => { I = await import(path.join(ROOT, "scripts", "iptu.mjs")); });
 
 const CAB = ["NUMERO DO CONTRIBUINTE", "ANO DO EXERCICIO", "NOME DO CONTRIBUINTE 1", "CPF/CNPJ DO CONTRIBUINTE 1",
   "NUMERO DO CONDOMINIO", "NOME DE LOGRADOURO DO IMOVEL", "NUMERO DO IMOVEL", "BAIRRO DO IMOVEL", "CEP DO IMOVEL",
   "TIPO DE USO DO IMOVEL", "QUANTIDADE DE PAVIMENTOS", "ANO DA CONSTRUCAO CORRIGIDO", "TIPO DE PADRAO DA CONSTRUCAO"];
+const APTO = "Apartamento em condomínio", GARAGEM = "Garagem (unidade autônoma) em edifício em condomínio";
+const linha = (sql, ano, cond, rua, num, uso, extra = {}) =>
+  [sql, String(ano), "FULANO DE TAL", "123.456.789-00", cond, rua, num, extra.bairro || "VILA MARIANA", extra.cep || "04111000",
+    uso, extra.pav || "", extra.anoC || "", extra.padrao || ""];
+// n apartments of one building: SQLs setorQuadra + lot 1000.. + digit
+const predio = (setorQuadra, n, ano, cond, rua, num, extra) =>
+  Array.from({ length: n }, (_, i) => linha(`${setorQuadra}${1000 + i}1`, ano, cond, rua, num, APTO, extra));
 
-describe("reading the CSV", () => {
+describe("robot: reading the IPTU CSV (scripts/iptu.mjs)", () => {
   test("finds the needed columns by name (accents/case ignored) and never maps owner columns", () => {
-    const m = P(`P.mapearColunas(${JSON.stringify(CAB.map((h) => h.toLowerCase()))})`);
+    const m = I.mapearColunas(CAB.map((h) => h.toLowerCase()));
     assert.deepEqual(m.faltando, []);
     assert.equal(m.cols.contribuinte, 0);
     assert.equal(m.cols.logradouro, 5);
     assert.equal(m.cols.uso, 9);
     assert.ok(!Object.values(m.cols).includes(2) && !Object.values(m.cols).includes(3), "owner name / CPF not used");
-  });
-  test("reports which required columns are missing", () => {
-    assert.deepEqual(P(`P.mapearColunas(["A", "B"]).faltando`), ["contribuinte", "condominio", "logradouro", "numero", "uso"]);
+    assert.deepEqual(I.mapearColunas(["A", "B"]).faltando, ["contribuinte", "condominio", "logradouro", "numero", "uso"]);
   });
   test("splits fields with ';' or ',' and handles quotes", () => {
-    assert.equal(P(`P.detectarSeparador("a;b;c")`), ";");
-    assert.equal(P(`P.detectarSeparador("a,b,c")`), ",");
-    assert.deepEqual(P(`P.separarCampos('1;"R A; B";"diz ""oi""";4', ";")`), ["1", "R A; B", 'diz "oi"', "4"]);
+    assert.equal(I.detectarSeparador("a;b;c"), ";");
+    assert.equal(I.detectarSeparador("a,b,c"), ",");
+    assert.deepEqual(I.separarCampos('1;"R A; B";"diz ""oi""";4', ";"), ["1", "R A; B", 'diz "oi"', "4"]);
   });
   test("units of one building share setor + quadra + condominium number", () => {
-    assert.equal(P(`P.chaveCondominio("009.012.0345-1", "01-3")`), "009012-013");
-    assert.equal(P(`P.chaveCondominio("009.012.0346-1", "01-3")`), "009012-013", "another apartment, same building");
-    assert.equal(P(`P.chaveCondominio("009.012.0345-1", "00-0")`), "0090120345", "no condominium: its own lot");
-    assert.equal(P(`P.chaveCondominio("123", "01-3")`), null);
+    assert.equal(I.chaveCondominio("009.012.0345-1", "01-3"), "009012-013");
+    assert.equal(I.chaveCondominio("009.012.0346-1", "01-3"), "009012-013");
+    assert.equal(I.chaveCondominio("009.012.0345-1", "00-0"), "0090120345", "no condominium: its own lot");
+    assert.equal(I.chaveCondominio("123", "01-3"), null);
+  });
+  test("text helpers", () => {
+    assert.equal(I.titulo("R DOUTOR NETO DE ARAUJO"), "R Doutor Neto de Araujo");
+    assert.equal(I.formatarCep("04111000"), "04111-000");
+  });
+  test("download link is the one GeoSampa builds", () => {
+    assert.equal(I.urlArquivo("IPTU_2026.zip"),
+      "https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/downloadArquivo.aspx?orig=DownloadCamadas&arq=12_Cadastro%5C%5CIPTU_INTER%5C%5CXLS_CSV%5C%5CIPTU_2026&arqTipo=XLS_CSV");
   });
 });
 
-describe("grouping into condominiums", () => {
-  // Builds rows with the CAB columns and runs them through somarLinha + resumir.
-  function resumo(linhas) {
-    return P(`(() => {
-      const cols = P.mapearColunas(${JSON.stringify(CAB)}).cols, g = new Map();
-      ${JSON.stringify(linhas)}.forEach(l => P.somarLinha(g, l, cols));
-      return P.resumir(g);
-    })()`);
+describe("robot: grouping into buildings", () => {
+  function resumo(linhas, minimo) {
+    const cols = I.mapearColunas(CAB).cols, g = new Map();
+    linhas.forEach((l) => I.somarLinha(g, l, cols));
+    return I.resumir(g, minimo);
   }
-  const linha = (sql, ano, cond, rua, num, uso, extra = {}) =>
-    [sql, String(ano), "FULANO DE TAL", "123.456.789-00", cond, rua, num, extra.bairro || "VILA MARIANA", extra.cep || "04111000",
-      uso, extra.pav || "", extra.anoC || "", extra.padrao || ""];
-  const apto = "Apartamento em condomínio", garagem = "Garagem (unidade autônoma) em edifício em condomínio";
-
-  test("counts apartments (not garages), keeps the latest year, needs 2+ apartments, biggest first", () => {
-    const rows = [];
-    for (let i = 0; i < 3; i++) rows.push(linha(`0090120${300 + i}1`, 2026, "01-3", "R DOUTOR NETO DE ARAUJO", "0320", apto, { pav: "15", anoC: "1998", padrao: "Residencial vertical, padrão C" }));
-    rows.push(linha("00901203101", 2026, "01-3", "R DOUTOR NETO DE ARAUJO", "0320", garagem));
-    for (let i = 0; i < 5; i++) rows.push(linha(`0100200${400 + i}1`, 2026, "02-1", "AV PAULISTA", "1000", apto, { bairro: "BELA VISTA", cep: "01310100" }));
-    rows.push(linha("02003004005", 2026, "00-0", "R SOZINHA", "10", apto));                       // 1 apartment: not a condo
-    rows.push(linha("03003004005", 2026, "00-0", "R DAS CASAS", "5", "Residencial horizontal"));   // a house
-    for (let i = 0; i < 9; i++) rows.push(linha(`0090120${300 + i}1`, 2025, "01-3", "R DOUTOR NETO DE ARAUJO", "0320", apto)); // older year
-    const r = resumo(rows);
+  test("counts apartments (not garages), keeps the latest year, minimum size, biggest first, compact format", () => {
+    const rows = [
+      ...predio("009012", 12, 2026, "01-3", "R DOUTOR NETO DE ARAUJO", "0320", { pav: "15", anoC: "1998", padrao: "Residencial vertical, padrão C" }),
+      linha("00901290001", 2026, "01-3", "R DOUTOR NETO DE ARAUJO", "0320", GARAGEM),
+      ...predio("010020", 15, 2026, "02-1", "AV PAULISTA", "1000", { bairro: "BELA VISTA", cep: "01310100", padrao: "Residencial vertical, padrão C" }),
+      ...predio("020030", 5, 2026, "03-1", "R PEQUENA", "10", {}),                        // 5 apartments: below the minimum
+      linha("03003004005", 2026, "00-0", "R DAS CASAS", "5", "Residencial horizontal"),    // a house
+      ...predio("009012", 40, 2025, "01-3", "R DOUTOR NETO DE ARAUJO", "0320", {}),       // older year
+    ];
+    const r = resumo(rows, 10);
     assert.equal(r.ano, 2026);
-    assert.equal(r.linhas.length, 2);
-    const [a, b] = r.linhas;
-    assert.equal(a.logradouro, "Av Paulista"); assert.equal(a.apartamentos, 5); assert.equal(a.bairro, "Bela Vista"); assert.equal(a.cep, "01310-100");
-    assert.equal(b.logradouro, "R Doutor Neto de Araujo"); assert.equal(b.numero, "320");
-    assert.equal(b.apartamentos, 3, "garage and 2025 rows not counted");
-    assert.equal(b.pavimentos, 15); assert.equal(b.ano_construcao, 1998);
-    assert.equal(b.id, "009012-013");
+    assert.equal(r.total, 2);
+    assert.deepEqual(r.campos, ["id", "logradouro", "numero", "bairro", "cep", "apartamentos", "pavimentos", "ano_construcao", "padrao"]);
+    assert.deepEqual(r.padroes, ["Residencial vertical, padrão C"], "each standard listed once");
+    assert.deepEqual(r.linhas, [
+      ["010020-021", "Av Paulista", "1000", "Bela Vista", "01310-100", 15, null, null, 0],
+      ["009012-013", "R Doutor Neto de Araujo", "320", "Vila Mariana", "04111-000", 12, 15, 1998, 0],
+    ]);
     assert.ok(!JSON.stringify(r).includes("FULANO") && !JSON.stringify(r).includes("123.456"), "no owner data kept");
   });
+  test("neighborhood = the one most apartments say, ignoring values like 'TORRE 1'", () => {
+    const rows = [
+      ...predio("009012", 3, 2026, "01-3", "R A", "1", { bairro: "TORRE 1" }),
+      ...predio("009013", 0, 2026, "01-3", "R A", "1", {}),
+    ];
+    // same building (setor+quadra 009012, condominium 01-3): 3 say "TORRE 1", 8 say "VILA MARIANA", 2 say "MOEMA"
+    rows.push(...Array.from({ length: 8 }, (_, i) => linha(`009012${2000 + i}1`, 2026, "01-3", "R A", "1", APTO, { bairro: "VILA MARIANA" })));
+    rows.push(...Array.from({ length: 2 }, (_, i) => linha(`009012${3000 + i}1`, 2026, "01-3", "R A", "1", APTO, { bairro: "MOEMA" })));
+    assert.equal(resumo(rows, 10).linhas[0][3], "Vila Mariana");
+  });
+  test("reads a whole Latin-1 CSV stream, as the GeoSampa file comes", async () => {
+    const csv = [CAB.join(";"), ...predio("009012", 11, 2026, "01-3", "R SÃO JOÃO", "5", { bairro: "CONSOLAÇÃO" }).map((l) => l.join(";"))].join("\r\n");
+    const r = await I.resumirStream(Readable.from([Buffer.from(csv, "latin1")]));
+    assert.equal(r.linhasLidas, 11);
+    assert.deepEqual(r.linhas.map((l) => [l[1], l[3], l[5]]), [["R São João", "Consolação", 11]]);
+  });
+  test("a CSV without the IPTU columns is refused", async () => {
+    await assert.rejects(I.resumirStream(Readable.from([Buffer.from("nome;telefone\nAna;1199\n")])), /Colunas não encontradas/);
+  });
 });
 
-describe("text helpers", () => {
-  test("titulo() and formatarCep()", () => {
-    assert.equal(P(`P.titulo("R DOUTOR NETO DE ARAUJO")`), "R Doutor Neto de Araujo");
-    assert.equal(P(`P.formatarCep("04111000")`), "04111-000");
+describe("page: reading the list and preparing map lookups (prospeccao.js)", () => {
+  const app = loadApp({ extra: ["prospeccao.js"] });
+  const P = (code) => app.json(`(() => { const P = window.Prospeccao; return ${code}; })()`);
+  test("lerLista() turns the compact file into searchable buildings", () => {
+    const lista = P(`P.lerLista({ano: 2026, campos: ["id","logradouro","numero","bairro","cep","apartamentos","pavimentos","ano_construcao","padrao"],
+      padroes: ["Residencial vertical, padrão C"], linhas: [["009012-013","R Dr Neto de Araujo","320","Vila Mariana","04111-000",250,20,1998,0]]})`);
+    assert.equal(lista.length, 1);
+    const l = lista[0];
+    assert.equal(l.apartamentos, 250);
+    assert.equal(l.padrao, "Residencial vertical, padrão C");
+    assert.equal(l.ano_iptu, 2026);
+    assert.ok(l.busca.includes("rua doutor neto de araujo") && l.busca.includes("04111000") && l.busca.includes("vila mariana"),
+      "can be found by the written-out street name, CEP without dash and neighborhood");
   });
   test("expandirLogradouro() writes out street types and titles for the map lookup", () => {
     assert.equal(P(`P.expandirLogradouro("R Dr Neto de Araujo")`), "Rua Doutor Neto de Araujo");
