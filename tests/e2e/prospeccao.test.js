@@ -80,14 +80,14 @@ describe("Prospecção page", () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
     await page.waitForSelector(".pr-item");
-    assert.match(await page.textContent("#prInfo"), /3 condomínios em São Paulo \(IPTU 2026\), com 10\+ apartamentos · lista atualizada em/);
+    assert.match(await page.textContent("#prInfo"), /^3 condomínios em São Paulo \(IPTU 2026\)\. Atualizado em/);
     assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320", "Avenida Paulista, 1000"], "default filter: 100+ apartments");
     await page.selectOption("#prMinimo", "0");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
     assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320", "Avenida Paulista, 1000", "Alameda Inexistente, 77"]);
     const primeiro = await page.locator(".pr-item").first().innerText();
     assert.match(primeiro, /250\s+aptos/);
-    assert.match(primeiro, /Vila Mariana · 04111-000 · 20 andares · de 1998/);
+    assert.match(primeiro, /Vila Mariana, 04111-000, 20 andares, de 1998/);
     assert.ok(!(await page.content()).includes("DONO SECRETO"));
     // search by neighborhood
     await page.fill("#prBusca", "bela vista");
@@ -112,7 +112,7 @@ describe("Prospecção page", () => {
     assert.match(c[0].popup, /250 apartamentos/);
     assert.match(c[0].popup, /\+ Adicionar ao funil/);
     assert.match(await page.locator(".pr-item", { hasText: "Inexistente" }).innerText(), /Google Maps/);
-    assert.match(await page.textContent("#prGeoStatus"), /1 endereço\(s\) não encontrado/);
+    assert.match(await page.textContent("#prGeoStatus"), /1 endereço não encontrado no mapa/);
     assert.equal(consultas, 4, "2 found at the first try + 2 tries for the one not found: " + urls.join(" | "));
 
     // positions are saved: opening the page again doesn't look anything up
@@ -132,7 +132,9 @@ describe("Prospecção page", () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
     await page.waitForSelector(".pr-item .pr-add");
-    await page.waitForFunction(() => document.querySelector(".pr-loc").textContent.includes("📍"), null, { timeout: 10000 });
+    // wait until every visible building has finished its map lookup (rows are redrawn when a position arrives)
+    await page.waitForFunction(() => !document.querySelector('.pr-loc[data-loc="esperando"]') &&
+      document.querySelector(".pr-loc").dataset.loc === "ok", null, { timeout: 15000 });
     await page.click(".pr-item .pr-add");
     await page.waitForSelector(".pr-item .pr-no-funil");
     const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios")).find((l) => /Neto de Araujo/.test(l.nome)));
@@ -146,7 +148,7 @@ describe("Prospecção page", () => {
     assert.equal((await circulos(page))[0].cor, "#2FA45F");
     const cache = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:geocache") || "{}"));
     assert.ok(Object.values(cache).some((g) => g.lat === -23.589), "position copied to the main map");
-    // "✓ No funil" opens the card
+    // "No funil" opens the card
     await page.click(".pr-item .pr-no-funil");
     await page.waitForSelector("#painel.aberto");
     assert.equal(await page.inputValue("#f_nome"), "Condomínio Rua Doutor Neto de Araujo, 320");
@@ -160,24 +162,26 @@ describe("Prospecção page", () => {
   test("'+ Rota' puts a building in the visit route without creating a card; clicking again takes it out", async () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
-    await page.waitForSelector(".pr-item .pr-loc");
-    await page.waitForFunction(() => document.querySelector(".pr-loc").textContent.includes("📍"), null, { timeout: 10000 });
+    await page.waitForSelector(".pr-item .pr-loc", { state: "attached" });
+    // wait until every visible building has finished its map lookup (rows are redrawn when a position arrives)
+    await page.waitForFunction(() => !document.querySelector('.pr-loc[data-loc="esperando"]') &&
+      document.querySelector(".pr-loc").dataset.loc === "ok", null, { timeout: 15000 });
     const rota = () => page.evaluate(() => ({ ids: JSON.parse(localStorage.getItem("quitandinha:rota") || "[]"),
       extras: JSON.parse(localStorage.getItem("quitandinha:rotaExtras") || "{}") }));
     await page.click(".pr-item .pr-rota");
     await page.waitForSelector(".pr-item .pr-rota.na-rota");
-    assert.equal((await page.textContent(".pr-item .pr-rota")).trim(), "✓ Rota (1)");
-    assert.match(await page.textContent("#aviso"), /Adicionado à rota \(parada 1\)/);
+    assert.equal((await page.textContent(".pr-item .pr-rota")).trim(), "Na rota (1)");
+    assert.match(await page.textContent("#aviso"), /Adicionado à rota como parada 1/);
     let r = await rota();
     assert.deepEqual(r.ids, ["x_009012-013"]);
     assert.deepEqual(r.extras["x_009012-013"], { id: "x_009012-013", nome: "Rua Doutor Neto de Araujo, 320",
       endereco: "Rua Doutor Neto de Araujo, 320 - Vila Mariana - São Paulo - SP - 04111-000",
-      lat: -23.589, lng: -46.634, detalhe: "🔎 Prospecção · 250 aptos · Vila Mariana" });
+      lat: -23.589, lng: -46.634, detalhe: "Prospecção: 250 aptos, Vila Mariana" });
     assert.equal(await page.locator(".cartao").count(), 0, "no card was created");
     // the route panel of the main map lists it
-    assert.match(await page.textContent("#mpRotaLista"), /Rua Doutor Neto de Araujo, 320.*Prospecção · 250 aptos/s);
+    assert.match(await page.textContent("#mpRotaLista"), /Rua Doutor Neto de Araujo, 320.*Prospecção: 250 aptos/s);
     // the button in the map pop-up shows it too
-    assert.match((await circulos(page))[0].popup, /✓ Rota \(1\)/);
+    assert.match((await circulos(page))[0].popup, /Na rota \(1\)/);
     // click again: out of the route
     await page.click(".pr-item .pr-rota");
     await page.waitForSelector(".pr-item .pr-rota:not(.na-rota)");
@@ -191,8 +195,10 @@ describe("Prospecção page", () => {
   test("a building in the route that becomes a card keeps its place in the route, now as the card", async () => {
     const { page, context } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
-    await page.waitForSelector(".pr-item .pr-loc");
-    await page.waitForFunction(() => document.querySelector(".pr-loc").textContent.includes("📍"), null, { timeout: 10000 });
+    await page.waitForSelector(".pr-item .pr-loc", { state: "attached" });
+    // wait until every visible building has finished its map lookup (rows are redrawn when a position arrives)
+    await page.waitForFunction(() => !document.querySelector('.pr-loc[data-loc="esperando"]') &&
+      document.querySelector(".pr-loc").dataset.loc === "ok", null, { timeout: 15000 });
     await page.click(".pr-item .pr-rota");
     await page.waitForSelector(".pr-item .pr-rota.na-rota");
     await page.click(".pr-item .pr-add");
@@ -202,8 +208,8 @@ describe("Prospecção page", () => {
     const card = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios")).find((l) => /Neto de Araujo/.test(l.nome)).id);
     assert.deepEqual(ids, [card]);
     assert.deepEqual(extras, {});
-    assert.equal((await page.textContent(".pr-item .pr-rota")).trim(), "✓ Rota (1)", "still shown as in the route");
-    // and for a card, "+ Rota" / "✓ Rota" toggles the card itself
+    assert.equal((await page.textContent(".pr-item .pr-rota")).trim(), "Na rota (1)", "still shown as in the route");
+    // and for a card, "+ Rota" / "Na rota" toggles the card itself
     await page.click(".pr-item .pr-rota");
     await page.waitForSelector(".pr-item .pr-rota:not(.na-rota)");
     assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:rota"))), []);
@@ -224,11 +230,11 @@ describe("Prospecção page", () => {
     await page.selectOption("#prRegiao", "sul");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
     assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320"]);
-    assert.equal(await page.textContent("#prResumo"), "1 condomínio(s) na Zona Sul");
+    assert.equal(await page.textContent("#prResumo"), "1 condomínio na Zona Sul");
     await page.selectOption("#prRegiao", "centro");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
     assert.deepEqual(await nomes(page), ["Avenida Paulista, 1000"]);
-    assert.equal(await page.textContent("#prResumo"), "1 condomínio(s) no Centro");
+    assert.equal(await page.textContent("#prResumo"), "1 condomínio no Centro");
     await page.selectOption("#prRegiao", "norte");
     await page.waitForSelector(".pr-nada");
     await page.selectOption("#prRegiao", "");
@@ -247,16 +253,16 @@ describe("Prospecção page", () => {
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 4);
     assert.equal(await page.locator("#prCidade").isVisible(), true);
     assert.deepEqual(await page.locator("#prCidade option").allTextContents(), ["Todas as cidades", "São Paulo (3)", "Osasco (1)"]);
-    assert.match(await page.textContent("#prInfo"), /3 condomínios em São Paulo \(IPTU 2026\) \+ 1 em Osasco \(Censo 2022\), com 10\+ apartamentos/);
+    assert.match(await page.textContent("#prInfo"), /^3 condomínios em São Paulo \(IPTU 2026\) e 1 em Osasco \(Censo 2022\)\./);
     // biggest first across cities: 250 (SP), 150 (Osasco), 120 (SP), 40 (SP)
     assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320", "Rua Juan Vicente, 482", "Avenida Paulista, 1000", "Alameda Inexistente, 77"]);
     const item = page.locator(".pr-item", { hasText: "Juan Vicente" });
-    assert.match(await item.innerText(), /Osasco · Bandeiras · 06160-180/);
-    assert.match(await item.innerText(), /📍 no mapa/);
+    assert.match(await item.innerText(), /Osasco, Bandeiras, 06160-180/);
+    assert.equal(await item.locator(".pr-loc").getAttribute("data-loc"), "ok", "already placed");
 
     await page.selectOption("#prCidade", "Osasco");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
-    assert.equal(await page.textContent("#prResumo"), "1 condomínio(s) em Osasco");
+    assert.equal(await page.textContent("#prResumo"), "1 condomínio em Osasco");
     assert.equal(await page.locator("#prRegiao").isVisible(), false, "São Paulo zones hidden for Osasco");
     const c = await circulos(page);
     assert.deepEqual(c.map((x) => x.latlng), [[-23.5593, -46.8167]]);

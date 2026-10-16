@@ -310,7 +310,7 @@
     naoAchados = semLocal.filter(x => !x.aguardando);
     const bt = $m("#mpSemLoc");
     bt.hidden = !naoAchados.length;
-    bt.textContent = "⚠ " + naoAchados.length + " sem localização";
+    bt.textContent = plural(naoAchados.length, "sem localização", "sem localização");
     if(!$m("#mpLista").hidden) montarListaSemLocal();
     atualizarStatus();
     if(!ajustado && pontos.size){ ajustado = true; enquadrar(); }
@@ -410,7 +410,7 @@
     $m("#mpRotaLista").innerHTML = rota.map((id, i) => {
       const inf = infoParada(id), ok = !!pontoDaRota(id);
       const sub = !ok ? (inf.extra ? "endereço não encontrado" : "sem localização ainda · confira o endereço")
-                      : (inf.extra ? (inf.detalhe || "📌 Endereço adicionado") : inf.endereco);
+                      : (inf.extra ? (inf.detalhe || "Endereço avulso") : inf.endereco);
       return '<li data-id="'+escapar(id)+'"><span class="num'+(inf.extra?' extra':'')+'">'+(i+1)+'</span><div class="txt"><b>'+escapar(inf.nome)+'</b><span>'+
         escapar(sub)+'</span></div>'+
         '<button data-acao="sobe" title="Subir" aria-label="Subir" '+(i===0?'disabled':'')+'>▲</button>'+
@@ -419,7 +419,7 @@
     }).join("");
 
     $m("#mpRotaTotal").textContent = pts.length > 1
-      ? "≈ " + fmtKm(distanciaTotal(pts)) + " km em linha reta" + (temInicio() ? ", saindo do ponto de partida" : "") + " (o trajeto real é maior)" : "";
+      ? "≈ " + fmtKm(distanciaTotal(pts)) + " km em linha reta" : "";
     $m("#mpRotaGmaps").disabled = pts.length < 2;
     $m("#mpRotaOtimizar").disabled = nComPos < (temInicio() ? 2 : 3);
     $m("#mpRotaOtimizar").title = temInicio()

@@ -63,7 +63,7 @@ describe("calendar export", () => {
     assert.equal(url.hostname, "calendar.google.com");
     assert.equal(url.searchParams.get("action"), "TEMPLATE");
     assert.equal(url.searchParams.get("dates"), "20261006T090000/20261006T093000");
-    assert.match(url.searchParams.get("text"), /Edifício Aurora — Ligar para o síndico/);
+    assert.match(url.searchParams.get("text"), /Edifício Aurora: Ligar para o síndico/);
     assert.equal(url.searchParams.get("location"), "Rua A, 10");
   });
   test("linkGoogleAgenda() returns '#' for an invalid date", () => {

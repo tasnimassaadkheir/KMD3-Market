@@ -24,7 +24,7 @@ describe("Visitar", () => {
 
     await btn.click();
     assert.equal(await btn.getAttribute("aria-pressed"), "true");
-    assert.match(await btn.textContent(), /Visitar ✓/);
+    assert.match(await btn.textContent(), /Marcado para visitar/);
     await page.waitForSelector(".cartao .selo-visitar svg");   // shows without pressing Salvar
     await page.waitForFunction(() => JSON.parse(localStorage.getItem("quitandinha:condominios"))[0].visitar === true);
     assert.match((await salvo(page)).historico[0].o_que, /Marcado para visitar/);

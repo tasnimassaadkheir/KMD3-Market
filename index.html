@@ -27,7 +27,7 @@
 <!-- Google Fonts: 'preconnect' opens the connection early so the fonts load faster. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <!-- Our own stylesheet (all the CSS that was inside <style> before). -->
 <link rel="stylesheet" href="style.css">
@@ -57,10 +57,10 @@
     <!-- Filter by status. The 'value' is what the code checks; the text is what the user sees. -->
     <select class="filtro" id="filtroStatus" aria-label="Filtrar por situação">
       <option value="">Todas as situações</option>
-      <option value="verde">🟢 Fechado</option>
-      <option value="amarelo">🟡 Em andamento</option>
-      <option value="vermelho">🔴 Perdido</option>
-      <option value="nenhum">⚪ Sem situação</option>
+      <option value="verde">Fechado</option>
+      <option value="amarelo">Em andamento</option>
+      <option value="vermelho">Perdido</option>
+      <option value="nenhum">Sem situação</option>
     </select>
     <!-- Filter by person responsible. The names are added by JavaScript (atualizarFiltroResp). -->
     <select class="filtro" id="filtroResp" aria-label="Filtrar por responsável">
@@ -156,7 +156,7 @@
     <button class="mp-rota-cab" id="mpRotaCab" type="button">Rota de visitas <span class="n" id="mpRotaN">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
     <div class="mp-rota-corpo">
       <!-- Start point (ponto de partida): shown when set; otherwise the form to set it
-           (typed address, or 📍 = the device's current location). -->
+           (typed address, or the target button = the device's current location). -->
       <div class="mp-partida">
         <div class="mp-partida-atual" id="mpPartidaAtual" hidden>
           <span class="ico" aria-hidden="true">▶</span>
@@ -168,7 +168,7 @@
           <div class="mp-campo">
             <input id="mpPartidaInput" type="text" placeholder="Endereço de saída" autocomplete="street-address">
             <button type="button" id="mpPartidaOk">Definir</button>
-            <button type="button" class="sec" id="mpPartidaGps" title="Usar minha localização atual" aria-label="Usar minha localização atual">📍</button>
+            <button type="button" class="sec" id="mpPartidaGps" title="Usar minha localização atual" aria-label="Usar minha localização atual"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
           </div>
         </div>
       </div>
@@ -192,10 +192,10 @@
       </div>
       <!-- Export menu: spreadsheet, WhatsApp, copy as text, print / save as PDF. -->
       <div class="mp-rota-export" id="mpRotaExport" hidden>
-        <button type="button" data-exp="csv">📊 Planilha (Excel)</button>
-        <button type="button" data-exp="whats">💬 WhatsApp</button>
-        <button type="button" data-exp="copiar">📋 Copiar texto</button>
-        <button type="button" data-exp="imprimir">🖨️ Imprimir / PDF</button>
+        <button type="button" data-exp="csv">Planilha (Excel)</button>
+        <button type="button" data-exp="whats">WhatsApp</button>
+        <button type="button" data-exp="copiar">Copiar texto</button>
+        <button type="button" data-exp="imprimir">Imprimir ou salvar PDF</button>
       </div>
     </div>
   </aside>
@@ -244,7 +244,7 @@
         <label class="campo"><span>Fase do funil</span><select class="txt" id="f_fase"></select></label>
       </div>
       <label class="campo"><span>Zona</span><input class="txt" id="f_zona"></label>
-      <label class="campo campo-importante"><span>Importante ⚠️</span>
+      <label class="campo campo-importante"><span>Importante</span>
         <textarea class="txt" id="f_importante" style="min-height:60px"></textarea>
       </label>
     </fieldset>
@@ -269,7 +269,7 @@
       <!-- Residents' profile + the notes timeline (each note gets date and author automatically). -->
       <legend>Perfil e observações</legend>
       <label class="campo"><textarea class="txt" id="f_perfil" aria-label="Perfil dos moradores"></textarea></label>
-      <label class="campo" style="margin-bottom:6px"><span style="font-family:'Bricolage Grotesque','Inter',sans-serif;font-size:13px;font-weight:700;color:#093E4F">Timeline</span></label>
+      <label class="campo" style="margin-bottom:6px"><span style="font-family:'Schibsted Grotesk',sans-serif;font-size:13px;font-weight:700;color:#093E4F">Timeline</span></label>
       <div class="obs-lista" id="obsLista"></div>
       <div class="obs-nova">
         <textarea class="txt" id="obsTexto" style="min-height:70px"></textarea>
@@ -336,10 +336,10 @@
 <section class="tela-lem" id="telaLembretes" aria-labelledby="tituloLembretes">
   <div class="tela-lem-topo">
     <button type="button" class="btn-voltar" id="btnFecharLembretes">← Voltar ao quadro</button>
-    <h2 id="tituloLembretes">🔔 Lembretes</h2>
+    <h2 id="tituloLembretes">Lembretes</h2>
     <div class="lem-ferr">
       <label><input type="checkbox" id="lemSoMeus"> Só os meus leads</label>
-      <button type="button" id="btnNotif" hidden>🔔 Ativar avisos no navegador</button>
+      <button type="button" id="btnNotif" hidden>Ativar avisos no navegador</button>
     </div>
   </div>
   <div class="tela-lem-corpo">
@@ -357,7 +357,7 @@
 <section class="tela-lem tela-contatos" id="telaContatos" aria-labelledby="tituloContatos">
   <div class="tela-lem-topo">
     <button type="button" class="btn-voltar" id="btnFecharContatos">← Voltar ao quadro</button>
-    <h2 id="tituloContatos">📇 Contatos</h2>
+    <h2 id="tituloContatos">Contatos</h2>
     <div class="ct-ferr">
       <input class="ct-busca" id="ctBusca" type="search" placeholder="Buscar nome, número, e-mail…" aria-label="Buscar contatos">
       <select class="ct-filtro" id="ctFiltroTipo" aria-label="Filtrar por quem é"></select>
@@ -396,7 +396,7 @@
 <section class="tela-lem tela-templates" id="telaTemplates" aria-labelledby="tituloTemplates">
   <div class="tela-lem-topo">
     <button type="button" class="btn-voltar" id="btnFecharTemplates">← Voltar ao quadro</button>
-    <h2 id="tituloTemplates">📝 Templates</h2>
+    <h2 id="tituloTemplates">Templates</h2>
     <div class="ct-ferr">
       <input class="ct-busca" id="tpBusca" type="search" placeholder="Buscar título ou texto…" aria-label="Buscar templates">
       <button type="button" class="ct-prim" id="btnNovoTemplate">+ Novo template</button>
@@ -427,7 +427,7 @@
 <section class="tela-lem tela-dashboard" id="telaDashboard" aria-labelledby="tituloDashboard">
   <div class="tela-lem-topo">
     <button type="button" class="btn-voltar" id="btnFecharDashboard">← Voltar ao quadro</button>
-    <h2 id="tituloDashboard">📊 Dashboard</h2>
+    <h2 id="tituloDashboard">Dashboard</h2>
   </div>
   <div class="tela-lem-corpo">
     <div class="tela-lem-in db-in" id="dbConteudo"></div>
@@ -454,7 +454,7 @@
 <section class="tela-lem tela-prosp" id="telaProspeccao" aria-labelledby="tituloProspeccao">
   <div class="tela-lem-topo">
     <button type="button" class="btn-voltar" id="btnFecharProspeccao">← Voltar ao quadro</button>
-    <h2 id="tituloProspeccao">🔎 Prospecção</h2>
+    <h2 id="tituloProspeccao">Prospecção</h2>
     <div class="ct-ferr">
       <input class="ct-busca" id="prBusca" type="search" placeholder="Rua, bairro ou CEP…" aria-label="Buscar condomínios por rua, bairro ou CEP">
       <!-- City (São Paulo, Osasco…) and region of São Paulo (by CEP). Options with counts are filled in by prospeccao.js. -->
@@ -550,7 +550,7 @@
 <!-- ==================== ADMIN SCREEN ====================
      Organizations (left) and members with their permissions (right). -->
 <div class="adm-tela" id="admTela" hidden>
-  <div class="adm-topo"><h2>Administração</h2><button class="btn" id="admFechar">✕ Fechar</button></div>
+  <div class="adm-topo"><h2>Administração</h2><button class="btn" id="admFechar">Fechar</button></div>
   <div class="adm-grade">
     <section class="adm-card">
       <h3>Organizações</h3>

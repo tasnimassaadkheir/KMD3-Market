@@ -31,7 +31,7 @@
   /* Page body: font, dark gradient background, white text.
      display:flex + flex-direction:column stacks header, board and map vertically. */
   body{
-    margin:0;font-family:"Inter",system-ui,-apple-system,Segoe UI,sans-serif;
+    margin:0;font-family:"Schibsted Grotesk",system-ui,-apple-system,Segoe UI,sans-serif;
     background:radial-gradient(900px 500px at 12% -10%, #117494 0%, transparent 60%),
                linear-gradient(180deg, var(--verde-fundo) 0%, var(--verde-fundo-2) 100%);
     background-attachment:fixed;color:#fff;-webkit-font-smoothing:antialiased;
@@ -52,7 +52,7 @@
      (.marca h1 / .marca span exist for a text title, the app currently shows only the logo image.) */
   .marca{display:flex;align-items:center;gap:8px;flex:none}
   .marca .logo-img{height:28px;width:auto;display:block}
-  .marca h1{font-family:"Bricolage Grotesque","Inter",sans-serif;font-weight:800;font-size:16px;
+  .marca h1{font-family:"Schibsted Grotesk",sans-serif;font-weight:800;font-size:16px;
     letter-spacing:-.02em;margin:0;line-height:1}
   .marca span{display:block;font-size:10px;color:var(--claro-45);font-weight:500;margin-top:2px}
   /* Toolbar that holds the filters and action buttons.
@@ -140,7 +140,7 @@
   .coluna.alvo{background:rgba(233,178,60,.16);border-color:var(--milho)}
   /* Column header: title, 'invert order' button and the card counter. */
   .coluna > .cabeca{display:flex;align-items:center;gap:8px;padding:12px 12px 8px}
-  .coluna .cabeca h2{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:14px;
+  .coluna .cabeca h2{font-family:"Schibsted Grotesk",sans-serif;font-size:14px;
     font-weight:700;margin:0;letter-spacing:-.01em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   /* Pill showing how many cards are in the column. */
   .contagem{font-size:12px;color:var(--claro-45);background:rgba(0,0,0,.22);
@@ -169,8 +169,8 @@
      .cartao = one condo card. The colored left border shows its status:
      st-verde = closed, st-amarelo = in progress, st-vermelho = lost, st-nenhum = no status.
      .arrastando = the card currently being dragged. */
-  .cartao{background:var(--creme);color:var(--tinta);border-radius:var(--raio);padding:10px 11px 9px;
-    box-shadow:0 1px 0 rgba(0,0,0,.28);border-left:4px solid transparent;cursor:grab}
+  .cartao{background:var(--creme);color:var(--tinta);border-radius:6px;padding:10px 11px 9px;
+    box-shadow:0 1px 0 rgba(0,0,0,.28);border-left:3px solid transparent;cursor:grab}
   .cartao:hover{box-shadow:0 0 0 2px var(--milho),0 1px 0 rgba(0,0,0,.28)}
   /* small car on the card's top-right corner, sticking out of the card = marked "Visitar".
      .lista has 8px padding so the part outside the card isn't cut off. */
@@ -223,14 +223,14 @@
   @media (prefers-reduced-motion:reduce){.painel{transition:none}}
   /* Panel header (title + close button) and the scrollable body (.corpo). */
   .painel .cabeca{padding:16px 20px;border-bottom:1px solid #E6E4DA;display:flex;align-items:center;gap:12px}
-  .painel .cabeca h2{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:17px;margin:0;font-weight:700;
+  .painel .cabeca h2{font-family:"Schibsted Grotesk",sans-serif;font-size:17px;margin:0;font-weight:700;
     flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .fechar{margin-left:0;border:0;background:#EAEFE9;color:var(--tinta);width:30px;height:30px;
     border-radius:8px;font-size:16px;line-height:1}
   .corpo{flex:1;overflow-y:auto;padding:18px 20px 26px}
   /* Form sections. fieldset groups related fields, legend is the section title. */
   fieldset{border:0;padding:0;margin:0 0 22px}
-  legend{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:13px;font-weight:700;
+  legend{font-family:"Schibsted Grotesk",sans-serif;font-size:13px;font-weight:700;
     color:#093E4F;margin-bottom:10px;padding:0}
   /* .linha = puts fields side by side in a row, each taking equal width. */
   .linha{display:flex;gap:12px}
@@ -286,7 +286,7 @@
   .historico b{color:var(--tinta);font-weight:600}
   .toggle-historico{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
     padding:9px 12px;border-radius:8px;border:1px solid #D6D9D0;background:#F7F8F4;
-    font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:13px;font-weight:700;color:#093E4F}
+    font-family:"Schibsted Grotesk",sans-serif;font-size:13px;font-weight:700;color:#093E4F}
   .toggle-historico:hover{background:#EAEFE9}
   .toggle-historico svg{width:14px;height:14px;flex:none;transition:transform .15s}
   .toggle-historico[aria-expanded="true"] svg{transform:rotate(180deg)}
@@ -350,7 +350,7 @@
   .lem-quando{display:block;font-size:11.5px;font-weight:700;color:#093E4F;margin-bottom:2px}
   .lem-item.atrasado .lem-quando{color:#8E2A22}
   .lem-texto{display:block;word-break:break-word;padding-right:26px;line-height:1.4}
-  .lem-lead{display:block;font-family:"Bricolage Grotesque","Inter",sans-serif;font-weight:700;font-size:13.5px;
+  .lem-lead{display:block;font-family:"Schibsted Grotesk",sans-serif;font-weight:700;font-size:13.5px;
     color:#093E4F;margin-bottom:2px;cursor:pointer;background:none;border:0;padding:0;text-align:left}
   .lem-lead:hover{text-decoration:underline}
   .lem-resp{display:block;font-size:11px;color:var(--tinta-suave);margin-top:2px}
@@ -402,7 +402,7 @@
   .tela-lem{position:fixed;inset:0;z-index:35;background:var(--creme);color:var(--tinta);display:none;flex-direction:column}
   .tela-lem.aberta{display:flex}
   .tela-lem-topo{background:#093E4F;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-  .tela-lem-topo h2{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:18px;margin:0;font-weight:700}
+  .tela-lem-topo h2{font-family:"Schibsted Grotesk",sans-serif;font-size:18px;margin:0;font-weight:700}
   .tela-lem-topo .lem-ferr{margin:0 0 0 auto;color:rgba(255,255,255,.85)}
   .tela-lem-topo .lem-ferr button{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.25)}
   .tela-lem-topo .btn-voltar{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;
@@ -455,7 +455,7 @@
   .lem-ferr button{border:1px solid #D6D9D0;background:#fff;color:#093E4F;border-radius:7px;padding:5px 9px;
     font-size:11.5px;font-weight:600;cursor:pointer}
   /* Small uppercase heading for a group of reminders. */
-  .lem-grupo-titulo{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:12px;font-weight:700;
+  .lem-grupo-titulo{font-family:"Schibsted Grotesk",sans-serif;font-size:12px;font-weight:700;
     color:var(--tinta-suave);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px}
 
   /* contatos (síndico/administradora unificados em uma lista de contatos) */
@@ -554,7 +554,7 @@
   .entrada.aberta{display:grid}
   .caixa-entrada{width:min(380px,100%);background:var(--creme);color:var(--tinta);border-radius:14px;
     padding:28px 26px}
-  .caixa-entrada h2{font-family:"Bricolage Grotesque","Inter",sans-serif;margin:14px 0 4px;font-size:20px}
+  .caixa-entrada h2{font-family:"Schibsted Grotesk",sans-serif;margin:14px 0 4px;font-size:20px}
   .caixa-entrada p{margin:0 0 20px;font-size:13px;color:var(--tinta-suave);line-height:1.5}
   /* Red error message box (e.g. wrong password). */
   .erro{background:#FBE3E1;color:#963029;font-size:12.5px;padding:9px 11px;border-radius:8px;margin-bottom:12px}
@@ -646,7 +646,7 @@
 .menu-lateral.aberto{transform:none}
 @media (prefers-reduced-motion:reduce){.menu-lateral{transition:none}}
 .menu-cabeca{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 12px;margin-bottom:6px;
-  border-bottom:1px solid rgba(255,255,255,.12);font-family:"Bricolage Grotesque","Inter",sans-serif;font-weight:700;font-size:15px}
+  border-bottom:1px solid rgba(255,255,255,.12);font-family:"Schibsted Grotesk",sans-serif;font-weight:700;font-size:15px}
 .menu-fechar{width:30px;height:30px;border:0;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;font-size:14px}
 .menu-fechar:hover{background:rgba(255,255,255,.2)}
 /* one menu option: icon + text (+ reminders count) */
@@ -691,7 +691,7 @@ body.vista-mapa #quadro{display:none}
 #vistaMapa{flex:1;min-height:0;position:relative;isolation:isolate;z-index:1}
 #vistaMapa[hidden]{display:none}
 /* The map itself fills the whole map section. */
-#mapa{position:absolute;inset:0;background:#0b1f26;font-family:"Inter",system-ui,sans-serif}
+#mapa{position:absolute;inset:0;background:#0b1f26;font-family:"Schibsted Grotesk",system-ui,sans-serif}
 /* Floating bar on top of the map: color mode, heatmap, 'fit all' button, status and legend. */
 .mp-topo{position:absolute;top:10px;left:10px;right:312px;z-index:1000;display:flex;flex-direction:column;gap:6px;pointer-events:none;min-width:0}
 .mp-topo>*{pointer-events:auto;min-width:0}
@@ -823,7 +823,7 @@ body.vista-mapa #quadro{display:none}
 .leaflet-popup-tip{background:var(--creme)}
 /* Content of a map popup: name, details, and 'Abrir cartão' / 'Adicionar à rota' buttons. */
 .mp-pop{min-width:190px;font-size:12.5px;line-height:1.4}
-.mp-pop h3{margin:0 0 3px;font-size:14px;font-family:"Bricolage Grotesque","Inter",sans-serif}
+.mp-pop h3{margin:0 0 3px;font-size:14px;font-family:"Schibsted Grotesk",sans-serif}
 .mp-pop p{margin:0 0 3px;color:var(--tinta-suave)}
 .mp-pop .aprox{color:#9A6B12;font-weight:600}
 .mp-pop .bt{display:flex;gap:6px;margin-top:8px}
@@ -862,7 +862,7 @@ body.vista-mapa #quadro{display:none}
 /* standalone contact form */
 .ct-form{background:#fff;border:1px solid #E1E4DA;border-radius:12px;padding:14px 16px 12px;margin-bottom:14px}
 .ct-form[hidden]{display:none}
-.ct-form h3{margin:0 0 10px;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:15px;color:#093E4F}
+.ct-form h3{margin:0 0 10px;font-family:"Schibsted Grotesk",sans-serif;font-size:15px;color:#093E4F}
 .ct-form-campos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 12px}
 .ct-tipo-outro{margin-top:6px}
 .ct-tipo-outro[hidden]{display:none}
@@ -928,7 +928,7 @@ body.vista-mapa #quadro{display:none}
 .tp-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;align-items:start}
 .tp-cartao{background:#fff;border:1px solid #E1E4DA;border-radius:12px;padding:12px 14px 10px;display:flex;flex-direction:column;gap:8px}
 .tp-cabeca{display:flex;align-items:flex-start;gap:10px}
-.tp-cabeca h3{flex:1;min-width:0;margin:3px 0 0;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:15px;color:#093E4F;
+.tp-cabeca h3{flex:1;min-width:0;margin:3px 0 0;font-family:"Schibsted Grotesk",sans-serif;font-size:15px;color:#093E4F;
   overflow-wrap:anywhere}
 /* "Copiar" button: teal; turns green with "Copiado" for 2 seconds after copying */
 .tp-copiar{flex:none;display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border:0;border-radius:8px;
@@ -950,7 +950,7 @@ body.vista-mapa #quadro{display:none}
 .db-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
 .db-kpi{background:#fff;border:1px solid #E1E4DA;border-left:4px solid #C9CEC2;border-radius:12px;padding:12px 14px;
   display:flex;flex-direction:column;gap:2px;min-width:0}
-.db-kpi b{font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:28px;line-height:1.1;color:#093E4F}
+.db-kpi b{font-family:"Schibsted Grotesk",sans-serif;font-size:28px;line-height:1.1;color:#093E4F}
 .db-kpi span{font-size:13px;font-weight:600;color:var(--tinta)}
 .db-kpi small{font-size:11.5px;color:var(--tinta-suave)}
 .db-kpi.destaque{background:#093E4F;border-color:#093E4F}
@@ -962,7 +962,7 @@ body.vista-mapa #quadro{display:none}
 /* cards */
 .db-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;align-items:start}
 .db-cartao{background:#fff;border:1px solid #E1E4DA;border-radius:12px;padding:14px 16px;min-width:0}
-.db-cartao h3{margin:0 0 10px;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:15px;color:#093E4F}
+.db-cartao h3{margin:0 0 10px;font-family:"Schibsted Grotesk",sans-serif;font-size:15px;color:#093E4F}
 .db-cartao h4{margin:14px 0 6px;font-size:12px;font-weight:700;color:var(--tinta-suave);text-transform:uppercase;letter-spacing:.03em}
 /* one row with a bar */
 .db-barra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:center;width:100%;
@@ -982,7 +982,7 @@ button.db-barra:hover{background:#F1F3EC}
 .db-tamanhos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .db-tam{border:1px solid #E1E4DA;border-radius:10px;padding:10px 6px;text-align:center;display:flex;flex-direction:column;gap:2px;min-width:0}
 .db-tam b{width:30px;height:30px;margin:0 auto 2px;border-radius:50%;display:grid;place-items:center;
-  background:#093E4F;color:#fff;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:15px}
+  background:#093E4F;color:#fff;font-family:"Schibsted Grotesk",sans-serif;font-size:15px}
 .db-tam.sem b{background:#AEB5A8}
 .db-tam strong{font-size:22px;color:#093E4F;line-height:1.1}
 .db-tam span{font-size:11px;color:var(--tinta-suave);line-height:1.25}
@@ -1013,7 +1013,7 @@ button.db-kpi:focus-visible,button.db-tam:focus-visible,.db-mini button:focus-vi
 .db-det-caixa{background:var(--creme);border-radius:14px;width:min(640px,100%);max-height:min(720px,100%);display:flex;flex-direction:column;
   box-shadow:0 18px 50px rgba(3,18,13,.35);overflow:hidden}
 .db-det-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;background:#093E4F;color:#fff}
-.db-det-topo h3{margin:0;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:16px}
+.db-det-topo h3{margin:0;font-family:"Schibsted Grotesk",sans-serif;font-size:16px}
 .db-det-topo p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.75)}
 .db-det-fechar{flex-shrink:0;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);
   color:#fff;font-size:14px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
@@ -1057,7 +1057,7 @@ button.db-kpi:focus-visible,button.db-tam:focus-visible,.db-mini button:focus-vi
 /* message when the list could not be loaded */
 .pr-vazio{max-width:640px;margin:28px auto;padding:22px 24px;background:#fff;border:1px dashed #D6D9D0;border-radius:14px;color:var(--tinta);font-size:14px;line-height:1.5}
 .pr-vazio[hidden]{display:none}
-.pr-vazio h3{margin:0 0 8px;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:18px;color:#093E4F}
+.pr-vazio h3{margin:0 0 8px;font-family:"Schibsted Grotesk",sans-serif;font-size:18px;color:#093E4F}
 .pr-vazio ol{padding-left:20px;margin:10px 0 16px}
 .pr-vazio li{margin-bottom:6px}
 .pr-vazio a{color:#0E627D;font-weight:600}
@@ -1091,7 +1091,7 @@ button.db-kpi:focus-visible,button.db-tam:focus-visible,.db-mini button:focus-vi
 .pr-rota.na-rota{border-color:#E8D3A8;background:#FBF3E2;color:#7a5718}
 .pr-nada{padding:20px 6px;text-align:center;font-size:13px;color:var(--tinta-suave)}
 /* map popup */
-.pr-pop{display:flex;flex-direction:column;gap:3px;font-family:"Inter",sans-serif;font-size:12px;color:#0E627D;min-width:200px}
+.pr-pop{display:flex;flex-direction:column;gap:3px;font-family:"Schibsted Grotesk",sans-serif;font-size:12px;color:#0E627D;min-width:200px}
 .pr-pop b{font-size:13.5px;color:#093E4F}
 .pr-pop-aptos{font-size:14px;font-weight:700;color:#8a6424}
 .pr-pop-aprox{font-style:italic;color:#8a6424}
@@ -1108,4 +1108,73 @@ button.db-kpi:focus-visible,button.db-tam:focus-visible,.db-mini button:focus-vi
   .pr-col-lista{border-right:0}
   .pr-split[data-aba="lista"] .pr-col-mapa{display:none}
   .pr-split[data-aba="mapa"] .pr-col-lista{display:none}
+}
+
+
+/* ==================== DESIGN PASS: calmer, less "template" ====================
+   One typeface (Schibsted Grotesk) with figures that line up; no uppercase labels;
+   lists as rows with thin dividers instead of boxed cards with colored stripes;
+   color only where something needs attention. */
+body{font-variant-numeric:tabular-nums}
+.dropdown-duplicados .dd-titulo,.lem-grupo-titulo,.db-cartao h4{text-transform:none;letter-spacing:0}
+.lem-grupo-titulo{font-size:13px;font-weight:600;color:var(--tinta)}
+
+/* board cards: plain lines of information under the name */
+.cartao h3{margin-bottom:3px}
+.cartao-info{margin:0;font-size:12px;line-height:1.45;color:var(--tinta-suave)}
+.cartao-info .mais{color:var(--tinta);font-weight:600}
+.cartao .etiquetas{margin:6px 0 0}
+.cartao .etiquetas + .meta-cartao,.cartao .cartao-info + .meta-cartao{margin-top:8px}
+.cartao h3 + .meta-cartao{margin-top:6px}
+.cartao.lem-vencido .cartao-info,.cartao.lem-vencido .cartao-info .mais{color:rgba(255,255,255,.9)}
+.cartao .aviso-importante{border-radius:4px;border:0;border-left:3px solid #C9483E}
+.etiqueta{border-radius:4px}
+.etiqueta .ico,.cartao .ico{width:12px;height:12px;vertical-align:-2px}
+
+/* dashboard: a strip of figures and plain sections, not a grid of boxes */
+.db-kpis{display:flex;flex-wrap:wrap;gap:0;margin:4px 0 22px;border-top:1px solid #D9DCD2;border-bottom:1px solid #D9DCD2}
+.db-kpi,button.db-kpi{flex:1 1 150px;background:none;border:0;border-left:0;border-right:1px solid #E1E4DA;border-radius:0;
+  padding:14px 16px 12px;box-shadow:none;transform:none}
+.db-kpi:last-child{border-right:0}
+.db-kpi b{font-size:30px;font-weight:700;letter-spacing:-.01em}
+.db-kpi span{font-size:13px;font-weight:500;color:var(--tinta)}
+.db-kpi.destaque{background:none}
+.db-kpi.destaque b{color:#093E4F}
+.db-kpi.destaque span{color:var(--tinta)}
+button.db-kpi:hover,button.db-tam:hover{transform:none;box-shadow:none;background:#F1F3EC}
+.db-grade{gap:28px 32px}
+.db-cartao{background:none;border:0;border-top:2px solid #093E4F;border-radius:0;padding:12px 0 0}
+.db-cartao h3{font-size:16px;margin-bottom:8px}
+.db-cartao h4{font-size:13px;font-weight:600;color:var(--tinta);margin:18px 0 6px}
+.db-barra{padding:6px 0;border-radius:0}
+button.db-barra:hover{background:none}
+button.db-barra:hover .db-rot{text-decoration:underline}
+.db-trilha{height:4px;border-radius:2px}
+.db-trilha i{border-radius:2px}
+.db-tamanhos{gap:0;border-top:1px solid #E1E4DA;border-bottom:1px solid #E1E4DA}
+.db-tam,button.db-tam{border:0;border-right:1px solid #E1E4DA;border-radius:0;background:none;text-align:left;padding:10px 10px}
+.db-tam:last-child{border-right:0}
+.db-tam b,.db-tam.sem b{width:auto;height:auto;margin:0;border-radius:0;background:none;color:#093E4F;display:block;font-size:15px;font-weight:700}
+.db-lista{border:0;border-top:1px solid #E1E4DA;border-radius:0}
+.db-lista li{padding:7px 0}
+.db-mini button{background:none;border:1px solid #D6D9D0;border-radius:6px}
+.db-mini button:hover{background:#F1F3EC}
+.db-det-caixa{border-radius:8px}
+.db-det-lista{padding:0 18px}
+.db-det-item{background:none;border:0;border-bottom:1px solid #E1E4DA;border-radius:0;padding:11px 0;margin:0}
+.db-det-item:last-child{border-bottom:0}
+
+/* Prospecção: rows on a white sheet */
+.pr-col-lista{background:#fff;padding:6px 16px 30px}
+.pr-col-lista .ct-resumo{margin:10px 0 2px}
+.pr-item{background:none;border:0;border-bottom:1px solid #E6E8E0;border-radius:0;padding:12px 0;margin:0}
+.pr-item.no-funil .pr-end{color:#1d6e40}
+.pr-add,.pr-no-funil,.pr-rota{border-radius:6px}
+.pr-loc-esperando{font-style:normal}
+.db-kpi.destaque,button.db-kpi.destaque{border-color:#E1E4DA}
+.pr-loc:empty{display:none}
+.pr-item-acoes{justify-content:flex-end}
+@media (max-width:760px){
+  .tela-prosp .ct-ferr .ct-filtro{flex:1 1 calc(50% - 4px);min-width:0}
+  .tela-prosp .ct-ferr .ct-filtro[hidden]{display:none}
 }

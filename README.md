@@ -305,7 +305,7 @@ Logins are created in Supabase: **Authentication → Users → Add user**, with 
 | [Leaflet](https://leafletjs.com) + leaflet.heat | Map and heatmap | Loaded from cdnjs only when the map is opened |
 | [Nominatim / OpenStreetMap](https://nominatim.org) | Address → coordinates | Limited to 1 request per second. Results are cached for 14 days when not found |
 | [CARTO](https://carto.com/basemaps) | Map tiles | Key set in `mapa.js` (`CARTO_KEY`). If empty, falls back to OpenStreetMap tiles |
-| Google Fonts | Bricolage Grotesque and Inter | |
+| Google Fonts | Schibsted Grotesk (one family for the whole app) | |
 
 ---
 
