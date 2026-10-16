@@ -1,0 +1,10 @@
+== HEAD https://geosampa.prefeitura.sp.gov.br/
+200 https://geosampa.prefeitura.sp.gov.br/ 47215
+== HEAD https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx
+200 https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx 47335
+== HEAD http://download.geosampa.prefeitura.sp.gov.br/
+200 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx 229559
+== sbc size 50875
+== lines with IPTU/download in html
+== scripts
+pages/download_sbc.html
