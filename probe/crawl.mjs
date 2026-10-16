@@ -1,40 +1,20 @@
-// Lists GeoSampa download folders (TEMAS) looking for IPTU, then tests a download.
+// Lists GeoSampa download folders under 12_Cadastro, looking for IPTU.
 import fs from "node:fs";
 const BASE = "https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/";
 const out = [];
-const log = (...a) => { out.push(a.join(" ")); };
-let cookie = "";
-const pg = await fetch(BASE + "_SBC.aspx");
-cookie = (pg.headers.getSetCookie?.() || []).map(c => c.split(";")[0]).join("; ");
-log("cookie", cookie ? "yes" : "no", pg.status);
-async function pm(metodo, pNomePasta){
-  const corpo = metodo === "pesquisaPastas" ? {nomePastaRaiz: pNomePasta} : {pNomePasta};
-  const r = await fetch(BASE + "_SBC.aspx/" + metodo, {method:"POST", headers:{"Content-Type":"application/json; charset=utf-8", cookie},
-    body: JSON.stringify(corpo)});
-  const t = await r.text();
-  try{ return JSON.parse(t).d; }catch(e){ return "ERR " + r.status + " " + t.slice(0, 200); }
+const log = (...a) => { out.push(a.join(" ")); fs.writeFileSync("probe/crawl.txt", out.join("\n")); };
+const pg = await fetch(BASE + "_SBC.aspx", {signal: AbortSignal.timeout(30000)});
+const cookie = (pg.headers.getSetCookie?.() || []).map(c => c.split(";")[0]).join("; ");
+async function pm(metodo, valor){
+  const corpo = metodo === "pesquisaPastas" ? {nomePastaRaiz: valor} : {pNomePasta: valor};
+  try{
+    const r = await fetch(BASE + "_SBC.aspx/" + metodo, {method:"POST", signal: AbortSignal.timeout(30000),
+      headers:{"Content-Type":"application/json; charset=utf-8", cookie}, body: JSON.stringify(corpo)});
+    const t = await r.text();
+    try{ return JSON.parse(t).d; }catch(e){ return "ERR " + r.status + " " + t.slice(0, 300); }
+  }catch(e){ return "FAIL " + e.message; }
 }
-const temas = await pm("pesquisaSubPastas", "TEMAS");
-log("TEMAS:", temas);
-const nomes = String(temas).split("|").map(x => x.split(":")[0]).filter(Boolean);
-for(const t of nomes.filter(n => /cadastro|habita/i.test(n))){
-  const pastas = await pm("pesquisaPastas", t + "\\");
-  log("PASTAS", t, "=>", String(pastas).slice(0, 1500));
-  if(!/cadastr|iptu/i.test(t + pastas)) continue;
-  for(const p of String(pastas).split("|").map(x => x.split(":")[0]).filter(Boolean)){
-    const sub = await pm("pesquisaSubPastas", t + "\\" + p);
-    log("  SUB", t + "\\" + p, "=>", String(sub).slice(0, 800));
-    for(const s of String(sub).split("|").slice(1).map(x => x.split(":")[0]).filter(Boolean)){
-      const arqs = await pm("pesquisaArquivos", t + "\\" + p + "\\" + s);
-      log("    ARQ", t + "\\" + p + "\\" + s, "=>", String(arqs).slice(0, 1500));
-    }
-    const arqT = await pm("pesquisaArquivosTemas", t + "\\" + p);
-    log("  ARQTEMAS", t + "\\" + p, "=>", String(arqT).slice(0, 1500));
-  }
+for(const [m, v] of [["pesquisaPastas", "12_Cadastro\\"], ["pesquisaPastas", "12_Cadastro"], ["pesquisaSubPastas", "12_Cadastro"],
+                     ["pesquisaArquivosTemas", "12_Cadastro"], ["pesquisaPastas", "TEMAS\\12_Cadastro\\"]]){
+  log(m, JSON.stringify(v), "=>", String(await pm(m, v)).slice(0, 2000));
 }
-// try downloading the most recent IPTU file found (only the first bytes)
-const alvo = out.join("\n").match(/ARQ (12_Cadastro[^ ]*IPTU[^ ]*) => ([^\n]*)/i);
-if(alvo){
-  log("ALVO", alvo[1], alvo[2].slice(0, 300));
-}
-fs.writeFileSync("probe/crawl.txt", out.join("\n"));

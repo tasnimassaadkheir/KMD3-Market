@@ -14,36 +14,6 @@ jobs:
           set +e
           out=probe.txt; : > $out
           log(){ echo "$@" >> $out; }
-          for u in https://geosampa.prefeitura.sp.gov.br/ https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx http://download.geosampa.prefeitura.sp.gov.br/ ; do
-            log "== HEAD $u"; curl -sS -L -m 40 -o /dev/null -w "%{http_code} %{url_effective} %{size_download}\n" "$u" >> $out 2>&1
-          done
-          curl -sS -L -m 60 https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx -o sbc.html 2>>$out
-          log "== sbc size $(wc -c < sbc.html)"
-          log "== lines with IPTU/download in html"; grep -o -i '.\{0,160\}\(iptu\|downloadArquivo\|DownloadCamadas\).\{0,160\}' sbc.html | head -40 >> $out
-          log "== scripts"; grep -o 'src="[^"]*\.js[^"]*"' sbc.html | head -60 >> $out
-          for s in $(grep -o 'src="[^"]*\.js[^"]*"' sbc.html | sed 's/src="//;s/"$//' | head -60); do
-            case "$s" in http*) url="$s";; /*) url="https://geosampa.prefeitura.sp.gov.br$s";; *) url="https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/$s";; esac
-            curl -sS -L -m 40 "$url" -o js.tmp 2>/dev/null
-            hits=$(grep -o -i '.\{0,200\}\(downloadArquivo\|DownloadCamadas\|arqTipo\|IPTU\).\{0,200\}' js.tmp | head -15)
-            if [ -n "$hits" ]; then log "== JS $url"; echo "$hits" >> $out; fi
-          done
-          mkdir -p pages
-          curl -sS -L -m 60 https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx -o pages/sbc.html
-          curl -sS -L -m 60 https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx -o pages/download_sbc.html
-          for f in pages/*.html; do grep -oE "(src|href)=['\"][^'\"]+['\"]" $f | sed -E "s/^(src|href)=.//;s/.$//" | grep -E '\.js' ; done | sort -u > pages/scripts.txt
-          n=0
-          while read s; do
-            n=$((n+1))
-            case "$s" in http*) url="$s";; /*) url="https://download.geosampa.prefeitura.sp.gov.br$s";; *) url="https://download.geosampa.prefeitura.sp.gov.br/PaginasPublicas/$s";; esac
-            curl -sS -L -m 40 "$url" -o "pages/js_$n.js" 2>/dev/null
-            echo "$n $url" >> pages/scripts_map.txt
-          done < pages/scripts.txt
-          grep -l -i 'downloadArquivo\|DownloadCamadas\|arqTipo' pages/*.js pages/*.html >> probe.txt 2>&1
-          mkdir -p pages/js2
-          for f in _MapasSBC.js _ControleTela.js _LayerSwitcher2.js _LayerSwitcher3.js _ObterInformacao.js initTela.js _DownloadImagem.js Controle.GetInfoCamada.js util/GeoSampa.Config.js ModuloAnalise-Load.js _Impressao.js; do
-            curl -sS -L -m 60 "https://download.geosampa.prefeitura.sp.gov.br/js/$f" -o "pages/js2/$(echo $f | tr / _)" 2>/dev/null
-          done
-          grep -n -o -i '.\{0,300\}\(downloadArquivo\|DownloadCamadas\|arqTipo\|orig=\).\{0,300\}' pages/js2/* > pages/download_refs.txt
-          node probe/crawl.mjs || echo "crawl failed $?" >> probe.txt
+          timeout 300 node probe/crawl.mjs || true
           git config user.name probe; git config user.email probe@example.com
-          git add probe.txt pages probe; git commit -m "probe results 5"; git push
+          git add probe; git commit -m "probe results 6"; git push
