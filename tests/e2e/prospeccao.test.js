@@ -203,6 +203,30 @@ describe("Prospecção page", () => {
     await context.close();
   });
 
+  test("'Região' filters by part of the city (by CEP) and shows how many buildings each region has", async () => {
+    const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
+    await abrir(page);
+    await page.waitForSelector(".pr-item");
+    await page.selectOption("#prMinimo", "0");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    assert.deepEqual(await page.locator("#prRegiao option").allTextContents(),
+      ["Toda a cidade", "Centro (1)", "Zona Norte (0)", "Zona Sul (1)", "Zona Leste (0)", "Zona Oeste (1)"]);
+    await page.selectOption("#prRegiao", "sul");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
+    assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320"]);
+    assert.equal(await page.textContent("#prResumo"), "1 condomínio(s) na Zona Sul");
+    await page.selectOption("#prRegiao", "centro");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
+    assert.deepEqual(await nomes(page), ["Avenida Paulista, 1000"]);
+    assert.equal(await page.textContent("#prResumo"), "1 condomínio(s) no Centro");
+    await page.selectOption("#prRegiao", "norte");
+    await page.waitForSelector(".pr-nada");
+    await page.selectOption("#prRegiao", "");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+
   test("'Só nesta área do mapa' lists only buildings already placed inside the visible area", async () => {
     const { page, context } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
