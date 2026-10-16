@@ -1,0 +1,31 @@
+name: Probe GeoSampa
+on:
+  push:
+    branches: [probe/geosampa]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        run: |
+          set +e
+          out=probe.txt; : > $out
+          log(){ echo "$@" >> $out; }
+          for u in https://geosampa.prefeitura.sp.gov.br/ https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx http://download.geosampa.prefeitura.sp.gov.br/ ; do
+            log "== HEAD $u"; curl -sS -L -m 40 -o /dev/null -w "%{http_code} %{url_effective} %{size_download}\n" "$u" >> $out 2>&1
+          done
+          curl -sS -L -m 60 https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/_SBC.aspx -o sbc.html 2>>$out
+          log "== sbc size $(wc -c < sbc.html)"
+          log "== lines with IPTU/download in html"; grep -o -i '.\{0,160\}\(iptu\|downloadArquivo\|DownloadCamadas\).\{0,160\}' sbc.html | head -40 >> $out
+          log "== scripts"; grep -o 'src="[^"]*\.js[^"]*"' sbc.html | head -60 >> $out
+          for s in $(grep -o 'src="[^"]*\.js[^"]*"' sbc.html | sed 's/src="//;s/"$//' | head -60); do
+            case "$s" in http*) url="$s";; /*) url="https://geosampa.prefeitura.sp.gov.br$s";; *) url="https://geosampa.prefeitura.sp.gov.br/PaginasPublicas/$s";; esac
+            curl -sS -L -m 40 "$url" -o js.tmp 2>/dev/null
+            hits=$(grep -o -i '.\{0,200\}\(downloadArquivo\|DownloadCamadas\|arqTipo\|IPTU\).\{0,200\}' js.tmp | head -15)
+            if [ -n "$hits" ]; then log "== JS $url"; echo "$hits" >> $out; fi
+          done
+          git config user.name probe; git config user.email probe@example.com
+          git add probe.txt; git commit -m "probe results"; git push
