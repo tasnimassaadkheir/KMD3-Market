@@ -35,10 +35,19 @@ function csvIptu() {
 }
 const GEO = { "neto de araujo, 320": [-23.589, -46.634], "avenida paulista, 1000": [-23.565, -46.652] };
 
-// Serves the list (or an error) in place of dados/prospeccao-sp.json, then opens the page.
-async function abrir(page, lista = LISTA) {
+// Neighboring cities' list (made by scripts/cnefe.mjs from the IBGE Census): one building in Osasco.
+const VIZINHAS = { fonte: "CNEFE — Censo 2022 (IBGE)", ano: 2022, minimoAptos: 10, geradoEm: "2026-10-16T12:00:00Z", total: 1,
+  cidades: [{ nome: "Osasco", total: 1, ano: 2022 }],
+  campos: ["id", "logradouro", "numero", "bairro", "cep", "apartamentos", "lat", "lng", "cidade"],
+  linhas: [["3534401-06160180-482-ruajuanvicente", "Rua Juan Vicente", "482", "Bandeiras", "06160-180", 150, -23.5593, -46.8167, 0]] };
+
+// Serves the lists (or an error) in place of the files in dados/, then opens the page.
+// By default there are no neighboring cities (404), like before they existed.
+async function abrir(page, lista = LISTA, vizinhas = null) {
   await page.unroute("**/dados/prospeccao-sp.json");
   await page.route("**/dados/prospeccao-sp.json", (r) => lista ? r.fulfill({ json: lista }) : r.fulfill({ status: 404, body: "" }));
+  await page.unroute("**/dados/prospeccao-vizinhas.json");
+  await page.route("**/dados/prospeccao-vizinhas.json", (r) => vizinhas ? r.fulfill({ json: vizinhas }) : r.fulfill({ status: 404, body: "" }));
   await irPeloMenu(page, "#btnProspeccao");
   await page.waitForSelector("#telaProspeccao.aberta");
 }
@@ -60,6 +69,7 @@ describe("Prospecção page", () => {
     await page.click("#btnPrTentar");
     await page.waitForSelector(".pr-item");
     assert.equal(await page.locator("#prErro").isHidden(), true);
+    assert.equal(await page.locator("#prCidade").isVisible(), false, "no city filter when there's only São Paulo");
     await page.keyboard.press("Escape");
     assert.equal(await page.locator("#telaProspeccao.aberta").count(), 0);
     assert.deepEqual(errors, []);
@@ -70,7 +80,7 @@ describe("Prospecção page", () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
     await page.waitForSelector(".pr-item");
-    assert.match(await page.textContent("#prInfo"), /IPTU 2026 · 3 condomínios em São Paulo com 10\+ apartamentos · lista atualizada em/);
+    assert.match(await page.textContent("#prInfo"), /3 condomínios em São Paulo \(IPTU 2026\), com 10\+ apartamentos · lista atualizada em/);
     assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320", "Avenida Paulista, 1000"], "default filter: 100+ apartments");
     await page.selectOption("#prMinimo", "0");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
@@ -223,6 +233,48 @@ describe("Prospecção page", () => {
     await page.waitForSelector(".pr-nada");
     await page.selectOption("#prRegiao", "");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+
+  test("Osasco (IBGE Census): 'Cidade' filter, already on the map without any lookup, and '+ Funil' with the right city", async () => {
+    const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
+    const consultas = [];
+    page.on("request", (r) => { if (r.url().includes("nominatim")) consultas.push(decodeURIComponent(r.url())); });
+    await abrir(page, LISTA, VIZINHAS);
+    await page.waitForSelector(".pr-item");
+    await page.selectOption("#prMinimo", "0");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 4);
+    assert.equal(await page.locator("#prCidade").isVisible(), true);
+    assert.deepEqual(await page.locator("#prCidade option").allTextContents(), ["Todas as cidades", "São Paulo (3)", "Osasco (1)"]);
+    assert.match(await page.textContent("#prInfo"), /3 condomínios em São Paulo \(IPTU 2026\) \+ 1 em Osasco \(Censo 2022\), com 10\+ apartamentos/);
+    // biggest first across cities: 250 (SP), 150 (Osasco), 120 (SP), 40 (SP)
+    assert.deepEqual(await nomes(page), ["Rua Doutor Neto de Araujo, 320", "Rua Juan Vicente, 482", "Avenida Paulista, 1000", "Alameda Inexistente, 77"]);
+    const item = page.locator(".pr-item", { hasText: "Juan Vicente" });
+    assert.match(await item.innerText(), /Osasco · Bandeiras · 06160-180/);
+    assert.match(await item.innerText(), /📍 no mapa/);
+
+    await page.selectOption("#prCidade", "Osasco");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
+    assert.equal(await page.textContent("#prResumo"), "1 condomínio(s) em Osasco");
+    assert.equal(await page.locator("#prRegiao").isVisible(), false, "São Paulo zones hidden for Osasco");
+    const c = await circulos(page);
+    assert.deepEqual(c.map((x) => x.latlng), [[-23.5593, -46.8167]]);
+    assert.match(c[0].popup, /Censo 2022 – IBGE/);
+
+    await page.click(".pr-item .pr-add");
+    await page.waitForSelector(".pr-item .pr-no-funil");
+    const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios")).find((l) => /Juan Vicente/.test(l.nome)));
+    assert.equal(salvo.nome, "Condomínio Rua Juan Vicente, 482");
+    assert.equal(salvo.endereco, "Rua Juan Vicente, 482 - Bandeiras - Osasco - SP - 06160-180");
+    assert.equal(salvo.aptos, 150);
+    assert.match(salvo.historico[0].o_que, /Prospecção \(Censo 2022 – IBGE\)/);
+    await page.waitForTimeout(1500);
+    assert.ok(!consultas.some((u) => /juan vicente/i.test(u)), "Osasco buildings are never looked up");
+
+    await page.selectOption("#prCidade", "São Paulo");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    assert.equal(await page.locator("#prRegiao").isVisible(), true);
     assert.deepEqual(errors, []);
     await context.close();
   });

@@ -852,6 +852,7 @@ body.vista-mapa #quadro{display:none}
 .ct-busca{width:230px}
 .ct-busca::placeholder{color:rgba(255,255,255,.6)}
 .ct-filtro option{background:#062C38;color:#fff}
+.ct-filtro[hidden]{display:none}
 .ct-busca:focus,.ct-filtro:focus{border-color:var(--milho)}
 .ct-prim,.ct-sec{height:32px;border-radius:8px;padding:0 12px;font-size:12.5px;font-weight:600;white-space:nowrap}
 .ct-prim{border:0;background:var(--milho);color:#22180A}

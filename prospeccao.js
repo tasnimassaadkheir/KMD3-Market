@@ -1,4 +1,4 @@
-/* ================= prospecção (IPTU de São Paulo) ================= */
+/* ================= prospecção (IPTU de São Paulo + cidades vizinhas) ================= */
 // =============================================================================
 // KMD3 Market — prospecting page (prospeccao.js)   ☰ → Prospecção
 // -----------------------------------------------------------------------------
@@ -16,7 +16,10 @@
 //     each building is looked up once by its address (OpenStreetMap) and the
 //     position is saved for the whole team (Supabase table "prospeccao_geo";
 //     without it, only in this browser).
-//  4. "+ Funil" turns a building into a card in "Futura Prospecção";
+//  4. Neighboring cities (Osasco…) come from IBGE's 2022 Census address register
+//     (scripts/cnefe.mjs -> dados/prospeccao-vizinhas.json), which already has each
+//     building's position, so they appear on the map right away.
+//  5. "+ Funil" turns a building into a card in "Futura Prospecção";
 //     "+ Rota" puts it in the visit route without creating a card.
 // Owner names and CPF/CNPJ are never in the list.
 //
@@ -27,7 +30,8 @@
 (function(){
   "use strict";
   const $p = s => document.querySelector(s);
-  const ARQUIVO = "dados/prospeccao-sp.json";
+  const ARQUIVO = "dados/prospeccao-sp.json";                 // São Paulo (IPTU, monthly robot)
+  const ARQUIVO_VIZINHAS = "dados/prospeccao-vizinhas.json";  // Osasco… (IBGE Census 2022, robot run by hand)
   const TABELA_GEO = "prospeccao_geo";
   const LIMITE = 100;                 // max rows shown (and placed on the map) at once, biggest first
   const CHAVE_ADICIONADOS = "quitandinha:prospAdicionados";
@@ -35,7 +39,7 @@
 
   // ---------- state ----------
   let todos = null;                   // every building from the list (objects), biggest first
-  let meta = null;                    // {ano, total, geradoEm}
+  let meta = null;                    // {ano, total, geradoEm, minimo, cidades:[{nome, total, fonte}]}
   let erroDados = false;              // the list couldn't be loaded
   let SEM_TABELA = false;             // true -> positions kept only in this browser
   let resultados = [], totalFiltrado = 0;
@@ -69,19 +73,30 @@
     return "";
   }
 
-  // Turns the compact file ({campos, padroes, linhas:[[...], ...]}) into objects.
+  // Turns a compact file ({campos, padroes, linhas:[[...], ...]}) into objects.
+  // São Paulo's file (IPTU) has floors, year built and construction standard; the
+  // neighboring cities' file (IBGE Census) has the city and the position ("lat", "lng") instead.
   function lerLista(j){
     const c = j.campos || [], pos = nome => c.indexOf(nome);
     const i = {id:pos("id"), logradouro:pos("logradouro"), numero:pos("numero"), bairro:pos("bairro"), cep:pos("cep"),
-      apartamentos:pos("apartamentos"), pavimentos:pos("pavimentos"), ano:pos("ano_construcao"), padrao:pos("padrao")};
+      apartamentos:pos("apartamentos"), pavimentos:pos("pavimentos"), ano:pos("ano_construcao"), padrao:pos("padrao"),
+      lat:pos("lat"), lng:pos("lng"), cidade:pos("cidade")};
+    const vizinha = i.cidade >= 0;
+    const fonte = vizinha ? "Censo " + (j.ano || 2022) + " – IBGE" : "IPTU " + (j.ano || "");
+    const val = (r, k) => i[k] >= 0 ? r[i[k]] : undefined;
     return (j.linhas || []).map(r => {
       const l = {
-        id: String(r[i.id]), logradouro: r[i.logradouro] || "", numero: r[i.numero] || "", bairro: r[i.bairro] || "", cep: r[i.cep] || "",
-        apartamentos: r[i.apartamentos] || 0, pavimentos: r[i.pavimentos] ?? null, ano_construcao: r[i.ano] ?? null,
-        padrao: r[i.padrao] != null && j.padroes ? (j.padroes[r[i.padrao]] || "") : "", ano_iptu: j.ano || null
+        id: String(val(r, "id")), logradouro: val(r, "logradouro") || "", numero: val(r, "numero") || "", bairro: val(r, "bairro") || "",
+        cep: val(r, "cep") || "", apartamentos: val(r, "apartamentos") || 0, pavimentos: val(r, "pavimentos") ?? null,
+        ano_construcao: val(r, "ano") ?? null,
+        padrao: val(r, "padrao") != null && j.padroes ? (j.padroes[val(r, "padrao")] || "") : "",
+        cidade: vizinha ? ((j.cidades || [])[val(r, "cidade")] || {}).nome || "" : "São Paulo",
+        fonte, ano_iptu: vizinha ? null : (j.ano || null)
       };
-      l.regiao = regiaoPorCep(l.cep);
-      l.busca = normalizarNome([l.logradouro, expandirLogradouro(l.logradouro), l.numero, l.bairro, l.cep, l.cep.replace(/\D/g, "")].join(" "));
+      // the Census already has the position: nothing to look up
+      if(vizinha && val(r, "lat") != null) Object.assign(l, {lat: val(r, "lat"), lng: val(r, "lng"), geo_precisao: "numero", geo_em: "ibge"});
+      l.regiao = vizinha ? "" : regiaoPorCep(l.cep);
+      l.busca = normalizarNome([l.logradouro, expandirLogradouro(l.logradouro), l.numero, l.bairro, l.cep, l.cep.replace(/\D/g, ""), l.cidade].join(" "));
       return l;
     });
   }
@@ -90,16 +105,45 @@
     const r = await fetch(ARQUIVO, {cache: "no-cache"});
     if(!r.ok) throw new Error("http " + r.status);
     const j = await r.json();
-    todos = lerLista(j);
-    meta = {ano: j.ano, total: todos.length, geradoEm: j.geradoEm, minimo: j.minimoAptos};
+    const sp = lerLista(j);
+    meta = {ano: j.ano, total: sp.length, geradoEm: j.geradoEm, minimo: j.minimoAptos,
+            cidades: [{nome: "São Paulo", total: sp.length, fonte: "IPTU " + (j.ano || "")}]};
+    // Neighboring cities: optional (the page works with São Paulo alone if this file is missing)
+    let viz = [];
+    try{
+      const rv = await fetch(ARQUIVO_VIZINHAS, {cache: "no-cache"});
+      if(rv.ok){
+        const jv = await rv.json();
+        viz = lerLista(jv);
+        (jv.cidades || []).forEach(c => meta.cidades.push({nome: c.nome, total: c.total, fonte: "Censo " + (c.ano || 2022)}));
+      }
+    }catch(e){ /* only São Paulo */ }
+    todos = sp.concat(viz).sort((a, b) => b.apartamentos - a.apartamentos);
+    meta.total = todos.length;
+    preencherCidades();
     preencherRegioes();
     await carregarPosicoes();
   }
 
+  // City dropdown, e.g. "São Paulo (24.542)", "Osasco (706)". Hidden when there's only São Paulo.
+  function preencherCidades(){
+    const sel = $p("#prCidade");
+    sel.innerHTML = '<option value="">Todas as cidades</option>' +
+      meta.cidades.map(c => '<option value="'+escapar(c.nome)+'">'+escapar(c.nome)+' ('+Number(c.total).toLocaleString("pt-BR")+')</option>').join("");
+    sel.hidden = meta.cidades.length < 2;
+  }
+  // The region filter (zones of São Paulo) only makes sense for São Paulo.
+  function atualizarFiltroRegiao(){
+    const cidade = $p("#prCidade").value;
+    const so = cidade && cidade !== "São Paulo";
+    $p("#prRegiao").hidden = so;
+    if(so) $p("#prRegiao").value = "";
+  }
+
   // Region dropdown with how many buildings each region has, e.g. "Zona Sul (7.394)".
   function preencherRegioes(){
-    const n = {}; todos.forEach(l => { n[l.regiao] = (n[l.regiao] || 0) + 1; });
-    $p("#prRegiao").innerHTML = '<option value="">Toda a cidade</option>' +
+    const n = {}; todos.forEach(l => { if(l.regiao) n[l.regiao] = (n[l.regiao] || 0) + 1; });
+    $p("#prRegiao").innerHTML = '<option value="">' + (meta.cidades.length > 1 ? "São Paulo: todas as regiões" : "Toda a cidade") + '</option>' +
       REGIOES.map(r => '<option value="'+r.id+'">'+r.nome+' ('+(n[r.id] || 0).toLocaleString("pt-BR")+')</option>').join("");
   }
 
@@ -138,9 +182,10 @@
 
   // Search: every word must appear (street, number, neighborhood or CEP); minimum apartments; region;
   // optionally only buildings already placed inside an area of the map (area = {s, n, w, e}).
-  function buscar(texto, minimo, area, regiao){
+  function buscar(texto, minimo, area, regiao, cidade){
     const palavras = normalizarNome(texto).split(" ").filter(Boolean);
     const achados = (todos || []).filter(l => (!minimo || l.apartamentos >= minimo) && (!regiao || l.regiao === regiao) &&
+      (!cidade || l.cidade === cidade) &&
       palavras.every(w => l.busca.includes(w)) &&
       (!area || (l.lat != null && l.lat >= area.s && l.lat <= area.n && l.lng >= area.w && l.lng <= area.e)));
     totalFiltrado = achados.length;
@@ -172,8 +217,9 @@
     const rua = expandirLogradouro(l.logradouro);
     if(!rua) return [];
     const out = [];
-    if(l.numero) out.push({q: rua + ", " + l.numero + ", São Paulo, SP, Brasil", precisao: "numero"});
-    out.push({q: rua + (l.bairro ? ", " + l.bairro : "") + ", São Paulo, SP, Brasil", precisao: "rua"});
+    const cidade = (l.cidade || "São Paulo") + ", SP, Brasil";
+    if(l.numero) out.push({q: rua + ", " + l.numero + ", " + cidade, precisao: "numero"});
+    out.push({q: rua + (l.bairro ? ", " + l.bairro : "") + ", " + cidade, precisao: "rua"});
     return out;
   }
   // Needs a lookup if never tried, or not found and the last try was over 30 days ago.
@@ -245,7 +291,7 @@
   const raio = n => Math.max(6, Math.min(16, 4 + Math.sqrt(n || 0) * 0.7));
   function popupHtml(l){
     const ja = leadDoFunil(l);
-    const info = [l.bairro, l.pavimentos ? l.pavimentos + " andares" : "", l.ano_construcao ? "construído em " + l.ano_construcao : "", l.padrao]
+    const info = [l.cidade !== "São Paulo" ? l.cidade : "", l.bairro, l.pavimentos ? l.pavimentos + " andares" : "", l.ano_construcao ? "construído em " + l.ano_construcao : "", l.padrao, l.fonte]
       .filter(Boolean).map(escapar).join(" · ");
     return '<div class="pr-pop">'+
       '<b>'+escapar(nomeRua(l))+'</b>'+
@@ -342,7 +388,7 @@
   const nomeRua = l => expandirLogradouro(l.logradouro) + (l.numero ? ", " + l.numero : "");
   // Full address used in the funnel.
   function enderecoCompleto(l){
-    return [expandirLogradouro(l.logradouro) + (l.numero ? ", " + l.numero : ""), l.bairro, "São Paulo - SP", l.cep].filter(Boolean).join(" - ");
+    return [expandirLogradouro(l.logradouro) + (l.numero ? ", " + l.numero : ""), l.bairro, (l.cidade || "São Paulo") + " - SP", l.cep].filter(Boolean).join(" - ");
   }
   function linkGoogle(l){
     return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(enderecoCompleto(l));
@@ -370,7 +416,7 @@
     const novo = {
       id: NUVEM ? crypto.randomUUID() : gerarId(),
       criadoEm: agora(), atualizadoEm: agora(), criadoPor: meuNome || "", ordem: leads.length,
-      historico: [{quando:agora(), o_que:"Cadastrado pela Prospecção (IPTU " + (l.ano_iptu || "") + ")", por:meuNome || ""}],
+      historico: [{quando:agora(), o_que:"Cadastrado pela Prospecção (" + (l.fonte || "IPTU " + (l.ano_iptu || "")) + ")", por:meuNome || ""}],
       nome: "Condomínio " + rua + (l.numero ? ", " + l.numero : ""),
       endereco: enderecoCompleto(l), aptos: l.apartamentos, fase: "futura", status: "nenhum",
       zona: l.bairro || "", importante: "", contatos: [], concorrente: "", fimContrato: "", perfil: "", notas: "",
@@ -394,12 +440,14 @@
     const info = $p("#prInfo");
     if(!meta || !meta.total){ info.textContent = ""; return; }
     const quando = meta.geradoEm ? new Date(meta.geradoEm).toLocaleDateString("pt-BR") : "";
-    info.textContent = "IPTU " + (meta.ano || "") + " · " + num(meta.total) + " condomínios em São Paulo com " + (meta.minimo || 10) + "+ apartamentos" +
+    // e.g. "24.542 condomínios em São Paulo (IPTU 2026) + 706 em Osasco (Censo 2022), com 10+ apartamentos"
+    const partes = meta.cidades.map((c, i) => num(c.total) + (i === 0 ? " condomínios" : "") + " em " + c.nome + " (" + c.fonte + ")");
+    info.textContent = partes.join(" + ") + ", com " + (meta.minimo || 10) + "+ apartamentos" +
       (quando ? " · lista atualizada em " + quando : "") + (usarNuvem() ? "" : " · posições no mapa salvas só neste navegador");
   }
   function itemHtml(l){
     const ja = leadDoFunil(l);
-    const info = [l.bairro, l.cep, l.pavimentos ? l.pavimentos + " andares" : "", l.ano_construcao ? "de " + l.ano_construcao : "", l.padrao]
+    const info = [l.cidade !== "São Paulo" ? l.cidade : "", l.bairro, l.cep, l.pavimentos ? l.pavimentos + " andares" : "", l.ano_construcao ? "de " + l.ano_construcao : "", l.padrao]
       .filter(Boolean).map(escapar).join(" · ");
     const loc = l.lat != null ? (l.geo_precisao === "rua" ? "📍 no mapa (aproximado)" : "📍 no mapa")
       : l.geo_em ? '<a href="'+escapar(linkGoogle(l))+'" target="_blank" rel="noopener" title="Não achei no mapa; abrir no Google Maps">Google Maps</a>'
@@ -427,7 +475,8 @@
     $p("#btnPrExportar").hidden = vazio;
     if(vazio) return;
     const area = $p("#prArea").checked;
-    const reg = REGIOES.find(r => r.id === $p("#prRegiao").value);
+    const reg = REGIOES.find(r => r.id === $p("#prRegiao").value) ||
+      ($p("#prCidade").value ? {em: "em " + $p("#prCidade").value, de: "de " + $p("#prCidade").value} : null);
     $p("#prResumo").textContent = totalFiltrado > resultados.length
       ? "Mostrando os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (reg ? " " + reg.de : "") + (area ? " nesta área" : "") + ". Refine a busca para ver outros."
       : num(totalFiltrado) + " condomínio(s)" + (reg ? " " + reg.em : "") + (area ? " já localizados nesta área do mapa" : "");
@@ -446,7 +495,8 @@
   let tBusca = null;
   const agendarBusca = () => { clearTimeout(tBusca); tBusca = setTimeout(atualizarBusca, 300); };
   async function atualizarBusca(){
-    buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, areaDoMapa(), $p("#prRegiao").value);
+    atualizarFiltroRegiao();
+    buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, areaDoMapa(), $p("#prRegiao").value, $p("#prCidade").value);
     renderInfo(); renderResultados();
     if(!$p("#prArea").checked){ movidoPeloUsuario = false; enquadrar(); }
     localizar(resultados);
@@ -487,6 +537,7 @@
   $p("#prBusca").addEventListener("input", agendarBusca);
   $p("#prMinimo").addEventListener("change", atualizarBusca);
   $p("#prRegiao").addEventListener("change", atualizarBusca);
+  $p("#prCidade").addEventListener("change", atualizarBusca);
   $p("#prArea").addEventListener("change", atualizarBusca);
   $p("#btnPrTentar").addEventListener("click", () => { fechar(); abrir(); });
   $p("#btnPrExportar").addEventListener("click", exportar);

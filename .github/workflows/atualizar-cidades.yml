@@ -1,0 +1,47 @@
+# Builds the Prospecção list of the cities around São Paulo (Osasco…), from IBGE's
+# 2022 Census address register (CNEFE). The cities are listed in scripts/cidades.json.
+# The CNEFE only changes with a new census, so this runs only when you click
+# "Run workflow" in the Actions tab (e.g. after adding a city to scripts/cidades.json).
+name: Atualizar prospecção - cidades vizinhas (IBGE)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write               # to commit the updated list
+
+concurrency: atualizar-cidades
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Baixar e resumir cada cidade
+        run: |
+          mkdir -p tmp dados
+          arquivos=""
+          for linha in $(node -e 'for(const c of require("./scripts/cidades.json")) console.log(c.codigo + ":" + c.nome.replace(/ /g, "_"))'); do
+            codigo="${linha%%:*}"; nome="${linha#*:}"; nome="${nome//_/ }"
+            url=$(node scripts/cnefe.mjs url "$codigo")
+            echo "$nome: $url"
+            curl -sSfL "$url" -o "tmp/$codigo.zip"
+            unzip -p "tmp/$codigo.zip" | node scripts/cnefe.mjs resumir "$nome" > "tmp/$codigo.json"
+            arquivos="$arquivos tmp/$codigo.json"
+          done
+          node scripts/cnefe.mjs juntar dados/prospeccao-vizinhas.json $arquivos
+          ls -l dados/prospeccao-vizinhas.json
+
+      - name: Salvar no repositório
+        run: |
+          git config user.name "kmd3-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados/prospeccao-vizinhas.json
+          if git diff --cached --quiet; then echo "Nada mudou."; exit 0; fi
+          git commit -m "Prospecção: cidades vizinhas atualizadas (CNEFE 2022)"
+          git push
