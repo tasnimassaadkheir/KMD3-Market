@@ -46,6 +46,29 @@
 
   /* ---------- the list ---------- */
 
+  // Region of the city by CEP (the Correios division of São Paulo), with one adjustment:
+  // 057xx–058xx (Campo Limpo, Capão Redondo, Vila Andrade) count as Zona Sul, as people say.
+  const REGIOES = [
+    {id:"centro", nome:"Centro", em:"no Centro", de:"do Centro"},
+    {id:"norte", nome:"Zona Norte", em:"na Zona Norte", de:"da Zona Norte"},
+    {id:"sul", nome:"Zona Sul", em:"na Zona Sul", de:"da Zona Sul"},
+    {id:"leste", nome:"Zona Leste", em:"na Zona Leste", de:"da Zona Leste"},
+    {id:"oeste", nome:"Zona Oeste", em:"na Zona Oeste", de:"da Zona Oeste"}
+  ];
+  function regiaoPorCep(cep){
+    const d = String(cep || "").replace(/\D/g, "");
+    if(d.length < 5) return "";
+    const n = +d.slice(0, 5);
+    if(n >= 1000 && n <= 1999) return "centro";
+    if(n >= 2000 && n <= 2999) return "norte";
+    if(n >= 3000 && n <= 3999) return "leste";
+    if(n >= 4000 && n <= 4999) return "sul";
+    if(n >= 5700 && n <= 5899) return "sul";
+    if(n >= 5000 && n <= 5999) return "oeste";
+    if(n >= 8000 && n <= 8499) return "leste";
+    return "";
+  }
+
   // Turns the compact file ({campos, padroes, linhas:[[...], ...]}) into objects.
   function lerLista(j){
     const c = j.campos || [], pos = nome => c.indexOf(nome);
@@ -57,6 +80,7 @@
         apartamentos: r[i.apartamentos] || 0, pavimentos: r[i.pavimentos] ?? null, ano_construcao: r[i.ano] ?? null,
         padrao: r[i.padrao] != null && j.padroes ? (j.padroes[r[i.padrao]] || "") : "", ano_iptu: j.ano || null
       };
+      l.regiao = regiaoPorCep(l.cep);
       l.busca = normalizarNome([l.logradouro, expandirLogradouro(l.logradouro), l.numero, l.bairro, l.cep, l.cep.replace(/\D/g, "")].join(" "));
       return l;
     });
@@ -68,7 +92,15 @@
     const j = await r.json();
     todos = lerLista(j);
     meta = {ano: j.ano, total: todos.length, geradoEm: j.geradoEm, minimo: j.minimoAptos};
+    preencherRegioes();
     await carregarPosicoes();
+  }
+
+  // Region dropdown with how many buildings each region has, e.g. "Zona Sul (7.394)".
+  function preencherRegioes(){
+    const n = {}; todos.forEach(l => { n[l.regiao] = (n[l.regiao] || 0) + 1; });
+    $p("#prRegiao").innerHTML = '<option value="">Toda a cidade</option>' +
+      REGIOES.map(r => '<option value="'+r.id+'">'+r.nome+' ('+(n[r.id] || 0).toLocaleString("pt-BR")+')</option>').join("");
   }
 
   /* ---------- saved map positions ---------- */
@@ -104,11 +136,12 @@
     try{ localStorage.setItem(CHAVE_GEO, JSON.stringify(geoLocal)); }catch(e){}
   }
 
-  // Search: every word must appear (street, number, neighborhood or CEP); minimum apartments;
+  // Search: every word must appear (street, number, neighborhood or CEP); minimum apartments; region;
   // optionally only buildings already placed inside an area of the map (area = {s, n, w, e}).
-  function buscar(texto, minimo, area){
+  function buscar(texto, minimo, area, regiao){
     const palavras = normalizarNome(texto).split(" ").filter(Boolean);
-    const achados = (todos || []).filter(l => (!minimo || l.apartamentos >= minimo) && palavras.every(w => l.busca.includes(w)) &&
+    const achados = (todos || []).filter(l => (!minimo || l.apartamentos >= minimo) && (!regiao || l.regiao === regiao) &&
+      palavras.every(w => l.busca.includes(w)) &&
       (!area || (l.lat != null && l.lat >= area.s && l.lat <= area.n && l.lng >= area.w && l.lng <= area.e)));
     totalFiltrado = achados.length;
     resultados = achados.slice(0, LIMITE);
@@ -394,9 +427,10 @@
     $p("#btnPrExportar").hidden = vazio;
     if(vazio) return;
     const area = $p("#prArea").checked;
+    const reg = REGIOES.find(r => r.id === $p("#prRegiao").value);
     $p("#prResumo").textContent = totalFiltrado > resultados.length
-      ? "Mostrando os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (area ? " nesta área" : "") + ". Refine a busca para ver outros."
-      : num(totalFiltrado) + " condomínio(s)" + (area ? " já localizados nesta área do mapa" : "");
+      ? "Mostrando os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (reg ? " " + reg.de : "") + (area ? " nesta área" : "") + ". Refine a busca para ver outros."
+      : num(totalFiltrado) + " condomínio(s)" + (reg ? " " + reg.em : "") + (area ? " já localizados nesta área do mapa" : "");
     $p("#prLista").innerHTML = resultados.map(itemHtml).join("") ||
       '<li class="pr-nada">'+(area ? "Nenhum condomínio já localizado nesta área. Busque uma rua ou bairro (sem “Só nesta área”) para localizar novos."
                                     : "Nenhum condomínio encontrado. Tente outro bairro, rua ou CEP.")+'</li>';
@@ -412,7 +446,7 @@
   let tBusca = null;
   const agendarBusca = () => { clearTimeout(tBusca); tBusca = setTimeout(atualizarBusca, 300); };
   async function atualizarBusca(){
-    buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, areaDoMapa());
+    buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, areaDoMapa(), $p("#prRegiao").value);
     renderInfo(); renderResultados();
     if(!$p("#prArea").checked){ movidoPeloUsuario = false; enquadrar(); }
     localizar(resultados);
@@ -452,6 +486,7 @@
   $p("#btnFecharProspeccao").addEventListener("click", fechar);
   $p("#prBusca").addEventListener("input", agendarBusca);
   $p("#prMinimo").addEventListener("change", atualizarBusca);
+  $p("#prRegiao").addEventListener("change", atualizarBusca);
   $p("#prArea").addEventListener("change", atualizarBusca);
   $p("#btnPrTentar").addEventListener("click", () => { fechar(); abrir(); });
   $p("#btnPrExportar").addEventListener("click", exportar);
@@ -472,6 +507,6 @@
     aberto, fechar,
     atualizar(){ if(aberto()) renderResultados(); },
     // pure functions, exposed for the unit tests
-    lerLista, expandirLogradouro, consultasMapa, enderecoCompleto
+    lerLista, expandirLogradouro, consultasMapa, enderecoCompleto, regiaoPorCep
   };
 })();

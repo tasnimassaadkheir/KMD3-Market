@@ -457,6 +457,10 @@
     <h2 id="tituloProspeccao">🔎 Prospecção</h2>
     <div class="ct-ferr">
       <input class="ct-busca" id="prBusca" type="search" placeholder="Rua, bairro ou CEP…" aria-label="Buscar condomínios por rua, bairro ou CEP">
+      <!-- Region of the city, by CEP. Options (with counts) are filled in by prospeccao.js. -->
+      <select class="ct-filtro" id="prRegiao" aria-label="Região da cidade">
+        <option value="">Toda a cidade</option>
+      </select>
       <select class="ct-filtro" id="prMinimo" aria-label="Mínimo de apartamentos">
         <option value="0">Qualquer tamanho</option>
         <option value="50">50+ aptos</option>

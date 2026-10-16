@@ -87,6 +87,12 @@ describe("robot: grouping into buildings", () => {
     rows.push(...Array.from({ length: 8 }, (_, i) => linha(`009012${2000 + i}1`, 2026, "01-3", "R A", "1", APTO, { bairro: "VILA MARIANA" })));
     rows.push(...Array.from({ length: 2 }, (_, i) => linha(`009012${3000 + i}1`, 2026, "01-3", "R A", "1", APTO, { bairro: "MOEMA" })));
     assert.equal(resumo(rows, 10).linhas[0][3], "Vila Mariana");
+    // other junk seen in the real file is never picked, even when it's the majority
+    for (const lixo of ["E 1 VAGA", "E VAGA TR.34842/13", "BLOCO B", "ED SOLAR", "2 VAGAS", "APTO 12"]) {
+      const r = [...predio("009012", 11, 2026, "01-3", "R A", "1", { bairro: lixo }),
+        linha("00901220001", 2026, "01-3", "R A", "1", APTO, { bairro: "PERDIZES" })];
+      assert.equal(resumo(r, 10).linhas[0][3], "Perdizes", lixo);
+    }
   });
   test("reads a whole Latin-1 CSV stream, as the GeoSampa file comes", async () => {
     const csv = [CAB.join(";"), ...predio("009012", 11, 2026, "01-3", "R SÃO JOÃO", "5", { bairro: "CONSOLAÇÃO" }).map((l) => l.join(";"))].join("\r\n");
@@ -126,6 +132,12 @@ describe("page: reading the list and preparing map lookups (prospeccao.js)", () 
       { q: "Rua Doutor Neto de Araujo, Vila Mariana, São Paulo, SP, Brasil", precisao: "rua" },
     ]);
     assert.deepEqual(P(`P.consultasMapa({logradouro:"", numero:"1"})`), []);
+  });
+  test("regiaoPorCep(): region of São Paulo by CEP", () => {
+    const casos = [["01310-100", "centro"], ["01451-000", "centro"], ["02011-000", "norte"], ["03015-000", "leste"],
+      ["08260-000", "leste"], ["04111-000", "sul"], ["05754-070", "sul"], ["05860-000", "sul"], ["05001-000", "oeste"],
+      ["05422-000", "oeste"], ["06000-000", ""], ["", ""], ["123", ""]];
+    for (const [cep, reg] of casos) assert.equal(P(`P.regiaoPorCep(${JSON.stringify(cep)})`), reg, cep);
   });
   test("enderecoCompleto() is what goes into the new card", () => {
     assert.equal(P(`P.enderecoCompleto({logradouro:"Av Paulista", numero:"1000", bairro:"Bela Vista", cep:"01310-100"})`),

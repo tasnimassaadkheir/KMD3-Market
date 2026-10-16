@@ -86,7 +86,7 @@ export function chaveCondominio(contribuinte, condominio){
   return d.slice(0, 10);
 }
 // Values that show up in the neighborhood field but aren't neighborhoods ("TORRE 1", "BLOCO A", "E VAGA TR.123/13"…).
-const ehLixoBairro = b => /^(torre|bloco|bl|ed|edif|edificio|e vaga|vaga|apto|ap|sala|loja|garagem|tr\b)|\d{3,}/i.test(normalizar(b));
+const ehLixoBairro = b => { const n = normalizar(b); return /\bvagas?\b|\bgaragem\b|\btorre\b|\bbloco\b|\bapto\b|\bsala\b|\bloja\b|\bedif|\btr\.|\d{3,}/.test(n) || /^(bl|ed|ap|e)\b/.test(n); };
 const ehApartamento = uso => /apartamento/.test(normalizar(uso));
 const ehGaragem = uso => /garage/.test(normalizar(uso));
 
