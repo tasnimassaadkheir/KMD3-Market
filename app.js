@@ -2085,6 +2085,7 @@ async function sair(){
 async function iniciarQuadro(){
   await carregarPendencias();
   await buscarTudo();
+  window.__dadosProntos = true;                 // the visit route may now drop stops of deleted condos
   try{ await buscarAvulsos(); }catch(e){}       // standalone contacts (Contatos page)
   if(pendentes.size || paraExcluir.size){
     // havia coisas gravadas offline na última visita: sobem agora
@@ -2115,6 +2116,8 @@ async function iniciarQuadro(){
       })
       .subscribe();
     ultimaSync = Date.now();
+    // The visit route follows the user across devices (table "rotas").
+    if(window.__rota && window.__rota.sincronizar) window.__rota.sincronizar().catch(() => {});
   } else {
     $("#nomeUsuario").textContent = "Modo local";
     $("#sinal").className = "sinal local";

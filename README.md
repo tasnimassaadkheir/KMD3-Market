@@ -71,6 +71,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - A **🚗 Visitar** filter shows only the condos marked "Visitar" (the car on the card), with their count.
 - Heatmap mode.
 - Visit route planner:
+  - The route is saved to your account and is the same on all your devices (laptop, phone…): a change on one shows up on the others by itself. Needs the `rotas` table (see below); without it, each browser keeps its own route.
   - Add condos from a map point **or straight from the condo's panel** ("Adicionar à rota"), which works even with the map closed.
   - Set an optional **starting point** (*ponto de partida*): a typed address, or your current location with 📍.
   - Add **any typed address** as a stop (a supplier, a lunch stop, a prospect not registered yet).
@@ -158,8 +159,8 @@ The project has three layers of automated tests. All of them run in **local mode
 
 | Layer | What it checks | Tool | Count |
 |---|---|---|---|
-| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters, dashboard numbers and the condo list behind each number (size bands, contacts, competitors, expiring contracts, stale deals), the IPTU robot and the IBGE (CNEFE) robot for nearby cities (columns, quotes, Latin-1 files, grouping units into buildings, neighborhood chosen by majority, garages / small buildings / older years left out, no owner data kept, GeoSampa download link), reading the list in the page and the street names sent to the map lookup. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 117 |
-| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, editing reminders, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the Templates page (create, copy, edit, delete, search), the Dashboard page (numbers, the condo list behind each number, "Ver no quadro", live update), the Prospecção page (list loaded from the robot's file or a clear error with "Tentar de novo", search, map positions looked up once and saved, "+ Funil", "+ Rota" and the stop turning into the card, Osasco with the city filter and positions from the Census, "Só nesta área do mapa", phone tabs), the SULTS toggle and badge, the Visitar button and car badge, the map's Visitar filter, the visit route (adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 115 |
+| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters, dashboard numbers and the condo list behind each number (size bands, contacts, competitors, expiring contracts, stale deals), the IPTU robot and the IBGE (CNEFE) robot for nearby cities (columns, quotes, Latin-1 files, grouping units into buildings, neighborhood chosen by majority, garages / small buildings / older years left out, no owner data kept, GeoSampa download link), reading the list in the page and the street names sent to the map lookup. Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 121 |
+| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, editing reminders, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the Templates page (create, copy, edit, delete, search), the Dashboard page (numbers, the condo list behind each number, "Ver no quadro", live update), the Prospecção page (list loaded from the robot's file or a clear error with "Tentar de novo", search, map positions looked up once and saved, "+ Funil", "+ Rota" and the stop turning into the card, Osasco with the city filter and positions from the Census, "Só nesta área do mapa", phone tabs), the SULTS toggle and badge, the Visitar button and car badge, the map's Visitar filter, the visit route (synced between two devices of the same person through a fake Supabase, newest change wins, adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones) | Playwright (Chromium) | 119 |
 | **API** | The Supabase API the app depends on: login, CRUD on `condominios`, team list, permission functions, and that nothing is readable or writable without a login (Row Level Security) | Postman collection run by Newman | 19 requests |
 
 ### Run the tests
@@ -257,6 +258,18 @@ Map positions of the Prospecção buildings (the list itself is the file `dados/
 | `geo_precisao` | `text` | `numero` (exact) or `rua` (only the street was found) |
 | `geo_em` | `timestamptz` | When it was looked up (not-found addresses are retried after 30 days) |
 
+### Table `rotas`
+
+Each person's visit route, so it follows them between devices (laptop, phone…). One row per user; Row Level Security lets each person see and change only their own. Every change is saved here and reaches the person's other open devices through Realtime (and when the app comes back to the screen). When two devices disagree, the most recent change wins. Without this table, the route stays in each browser.
+
+| Column | Type | Notes |
+|---|---|---|
+| `usuario` | `uuid` | Primary key: the logged-in user (`auth.uid()`) |
+| `rota` | `jsonb` | Stops in order (condo ids, or `x_…` for typed addresses and Prospecção buildings) |
+| `extras` | `jsonb` | Typed addresses and Prospecção buildings in the route (name, address, position) |
+| `inicio` | `jsonb` | Starting point, or empty |
+| `atualizado_em` | `timestamptz` | When the route last changed (decides which copy wins) |
+
 ### Table `equipe`
 
 | Column | Type | Notes |
@@ -329,6 +342,7 @@ The app keeps a local copy in `localStorage` so nothing is lost if the connectio
 | `quitandinha:rota` | The current visit route (stops in order) |
 | `quitandinha:rotaExtras` | Typed addresses added to the route |
 | `quitandinha:rotaInicio` | The route's starting point |
+| `quitandinha:rotaAtualizadaEm` | When this browser's copy of the route last changed (to compare with the database) |
 | `quitandinha:prospAdicionados` | Which Prospecção buildings were turned into cards from this browser |
 | `quitandinha:prospGeo` | Map positions of Prospecção buildings (only used if the database has no `prospeccao_geo` table) |
 
