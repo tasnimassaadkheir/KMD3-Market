@@ -65,8 +65,10 @@ async function openApp(env, opts = {}) {
     ...(opts.geolocation ? { geolocation: opts.geolocation, permissions: ["geolocation"] } : {}),
   });
   // Local mode: serve config.js with empty keys instead of the real ones.
-  await context.route("**/config.js", (route) =>
-    route.fulfill({ contentType: "text/javascript", body: 'const SUPABASE_URL = ""; const SUPABASE_KEY = "";' }));
+  // Cloud mode (opts.nuvem, see criarNuvem): fake keys + a fake Supabase backed by a shared in-memory database.
+  const configJs = opts.nuvem ? 'const SUPABASE_URL = "https://fake.supabase.co"; const SUPABASE_KEY = "sb_publishable_fake";'
+                              : 'const SUPABASE_URL = ""; const SUPABASE_KEY = "";';
+  await context.route("**/config.js", (route) => route.fulfill({ contentType: "text/javascript", body: configJs }));
   // Block everything that is not our local server.
   await context.route((u) => !u.href.startsWith(env.url), (route) => route.abort());
   // Fake address search (registered after the block above, so it takes priority for these URLs).
@@ -86,6 +88,8 @@ async function openApp(env, opts = {}) {
     for (const [end, [lat, lng]] of Object.entries(opts.geo)) cache[normalizar(end + ", Brasil")] = { lat, lng, t: Date.now() };
     await context.addInitScript((c) => localStorage.setItem("quitandinha:geocache", JSON.stringify(c)), cache);
   }
+  if (opts.nuvem) await opts.nuvem.ligar(context);
+  if (opts.initScript) await context.addInitScript(opts.initScript);   // e.g. something already saved in this browser
   // Pre-load data before the page's own scripts run.
   await context.addInitScript(({ leads, equipe }) => {
     if (leads) localStorage.setItem("quitandinha:condominios", JSON.stringify(leads));
@@ -93,6 +97,7 @@ async function openApp(env, opts = {}) {
   }, { leads: opts.leads, equipe: opts.equipe });
 
   const page = await context.newPage();
+  if (opts.nuvem) opts.nuvem.paginas.push(page);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));   // collect JavaScript crashes
   await page.goto(env.url);
@@ -110,6 +115,59 @@ async function irPeloMenu(page, seletor) {
 /** Same as normalizarNome() in app.js: no accents, lowercase, single spaces. */
 function normalizar(s) {
   return String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+/**
+ * A fake Supabase for cloud-mode tests: one in-memory database shared by every page
+ * opened with openApp(env, {nuvem}). Pages are logged in as the same user (like one
+ * person on a laptop and a phone). After each write, the other pages get a Realtime event.
+ * nuvem.tabelas.condominios = [...] pre-loads rows (database format).
+ */
+function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }) {
+  const tabelas = {};
+  const paginas = [];
+  const tab = (t) => (tabelas[t] = tabelas[t] || []);
+  const passa = (linha, filtros) => filtros.every(([op, c, v]) => {
+    const x = linha[c];
+    if (op === "eq") return x === v;
+    if (op === "neq") return x !== v;
+    if (op === "lt") return x < v;
+    if (op === "gte") return x >= v;
+    if (op === "lte") return x <= v;
+    if (op === "in") return v.includes(x);
+    return true;
+  });
+  function executar(q) {
+    const linhas = tab(q.tabela);
+    const chave = q.onConflict || (q.tabela === "rotas" ? "usuario" : "id");
+    let data = null, mudou = false;
+    if (q.op === "select") data = linhas.filter((l) => passa(l, q.filtros));
+    else if (q.op === "insert" || q.op === "upsert") {
+      for (const nova of q.linhas) {
+        const i = linhas.findIndex((l) => l[chave] === nova[chave]);
+        if (i >= 0 && q.op === "upsert") linhas[i] = { ...linhas[i], ...nova }; else linhas.push({ ...nova });
+      }
+      data = q.linhas; mudou = true;
+    } else if (q.op === "update") {
+      data = linhas.filter((l) => passa(l, q.filtros));
+      data.forEach((l) => Object.assign(l, q.valores)); mudou = data.length > 0;
+    } else if (q.op === "delete") {
+      data = linhas.filter((l) => passa(l, q.filtros));
+      tabelas[q.tabela] = linhas.filter((l) => !data.includes(l)); mudou = data.length > 0;
+    }
+    if (mudou) for (const p of paginas) p.evaluate((t) => window.__fakeEmit && window.__fakeEmit(t), q.tabela).catch(() => {});
+    if (q.unico) data = (data || [])[0] || null;
+    return { data: JSON.parse(JSON.stringify(data)), error: null };
+  }
+  return {
+    tabelas, paginas, usuario,
+    async ligar(context) {
+      await context.route("**/supabase-js@2*", (route) =>
+        route.fulfill({ contentType: "text/javascript", path: path.join(__dirname, "fake-supabase.js") }));
+      await context.exposeBinding("__fakeDb", (_src, q) => executar(q));
+      await context.addInitScript((u) => { window.__fakeSessao = { user: u }; }, usuario);
+    },
+  };
 }
 
 /** Builds a condo object with sensible defaults (override what the test needs). */
@@ -130,4 +188,4 @@ function localDateTime(days, hour = 10) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-module.exports = { setup, openApp, lead, localDateTime, normalizar, irPeloMenu };
+module.exports = { setup, openApp, lead, localDateTime, normalizar, irPeloMenu, criarNuvem };

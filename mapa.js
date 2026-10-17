@@ -63,14 +63,70 @@
   try{ inicio = JSON.parse(localStorage.getItem(CHAVE_ROTA_INICIO) || "null"); }catch(e){ inicio = null; }
   // Small helpers to save the cache/route, and to wait a number of milliseconds.
   const salvarGeo = () => { try{ localStorage.setItem(CHAVE_GEO, JSON.stringify(geo)); }catch(e){} };
-  // Saves the route, its manual addresses (only the ones still in the route) and the start point.
-  const salvarRota = () => {
-    Object.keys(extras).forEach(id => { if(!rota.includes(id)) delete extras[id]; });
+  // ---------- ROUTE SYNC between the user's devices ----------
+  // The route is kept in this browser AND, in cloud mode, in the Supabase table "rotas"
+  // (one row per user; nobody else sees it). Each change gets a time; when two devices
+  // disagree, the most recent change wins. Without the table, the route stays per browser.
+  const CHAVE_ROTA_EM = "quitandinha:rotaAtualizadaEm";
+  let rotaEm = ""; try{ rotaEm = localStorage.getItem(CHAVE_ROTA_EM) || ""; }catch(e){}
+  const estadoRota = () => JSON.stringify({rota, extras, inicio});
+  let ultimoEstado = estadoRota();          // what's saved now (to notice real changes)
+  let semTabelaRota = false, tEnvio = null;
+  const nuvemRota = () => typeof NUVEM !== "undefined" && NUVEM && typeof sb !== "undefined" && sb &&
+    typeof sessao !== "undefined" && sessao && sessao.user && !semTabelaRota;
+  // Which copy to keep: "remota" if the database has a newer change, "local" if this device
+  // has a newer one (to be sent), "igual" otherwise. Times are ISO strings (or empty).
+  function decidirRota(localEm, remotoEm){
+    const l = localEm ? Date.parse(localEm) : 0, r = remotoEm ? Date.parse(remotoEm) : 0;
+    if(r > l) return "remota";
+    if(l > r) return "local";
+    return "igual";
+  }
+  async function enviarRota(){
+    if(!nuvemRota()) return;
+    const {error} = await sb.from("rotas").upsert({usuario: sessao.user.id, rota, extras, inicio, atualizado_em: rotaEm || new Date().toISOString()},
+      {onConflict: "usuario"});
+    if(error){ if(tabelaNaoExiste(error, "rotas")) semTabelaRota = true; else console.warn("rota: não sincronizou", error); }
+  }
+  // Gets this user's route from the database and keeps the newest copy.
+  async function baixarRota(){
+    if(!nuvemRota()) return;
+    const {data, error} = await sb.from("rotas").select("rota,extras,inicio,atualizado_em").eq("usuario", sessao.user.id).maybeSingle();
+    if(error){ if(tabelaNaoExiste(error, "rotas")) semTabelaRota = true; else console.warn("rota: não carregou", error); return; }
+    const qual = data ? decidirRota(rotaEm, data.atualizado_em) : (rota.length || inicio ? "local" : "igual");
+    if(qual === "remota"){
+      rota = Array.isArray(data.rota) ? data.rota : [];
+      extras = (data.extras && typeof data.extras === "object") ? data.extras : {};
+      inicio = data.inicio || null;
+      rotaEm = data.atualizado_em;
+      ultimoEstado = estadoRota();
+      guardarLocal();
+      if(rota.some(id => !ehExtra(id))) enfileirar(leads.filter(l => rota.includes(l.id)));   // positions for the map
+      desenharRota();
+    } else if(qual === "local"){
+      if(!rotaEm){ rotaEm = new Date().toISOString(); guardarLocal(); }
+      await enviarRota();
+    }
+  }
+  function guardarLocal(){
     try{
       localStorage.setItem(CHAVE_ROTA, JSON.stringify(rota));
       localStorage.setItem(CHAVE_ROTA_EXTRAS, JSON.stringify(extras));
       localStorage.setItem(CHAVE_ROTA_INICIO, JSON.stringify(inicio));
+      localStorage.setItem(CHAVE_ROTA_EM, rotaEm);
     }catch(e){}
+  }
+  // Saves the route, its manual addresses (only the ones still in the route) and the start point.
+  // A real change gets a new time and is sent to the database (shortly after, in one go).
+  const salvarRota = () => {
+    Object.keys(extras).forEach(id => { if(!rota.includes(id)) delete extras[id]; });
+    const agoraEstado = estadoRota();
+    if(agoraEstado !== ultimoEstado){
+      ultimoEstado = agoraEstado;
+      rotaEm = new Date().toISOString();
+      clearTimeout(tEnvio); tEnvio = setTimeout(enviarRota, 800);
+    }
+    guardarLocal();
   };
   const esperar = ms => new Promise(r => setTimeout(r, ms));
 
@@ -397,7 +453,7 @@
   // and, when the map is open, the dashed gold line and the numbered markers. Then saves the route.
   // The panel part also works while the map is closed (e.g. when adding from the condo panel).
   function desenharRota(){
-    rota = rota.filter(id => ehExtra(id) ? !!extras[id] : leads.some(l => l.id === id));   // drop deleted condos
+    if(window.__dadosProntos) rota = rota.filter(id => ehExtra(id) ? !!extras[id] : leads.some(l => l.id === id));   // drop deleted condos
     const pts = percurso(), nComPos = pts.filter(p => !p.inicio).length;
 
     // start point block: shows the current start, or the form to set one
@@ -865,7 +921,21 @@
   };
   // Small route API used by the condo panel in app.js ("Adicionar à rota" button).
   // It works even while the map is closed: the route is saved and appears when the map opens.
+  // Keep the route in step when coming back to this tab/app (e.g. switching from the laptop to the phone).
+  document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") baixarRota(); });
+  window.addEventListener("focus", () => baixarRota());
   window.__rota = {
+    // Called by app.js after login and once the condos are loaded: fetches the route from the
+    // database and listens for changes made on the user's other devices.
+    async sincronizar(){
+      if(!nuvemRota()) return;
+      await baixarRota();
+      if(semTabelaRota) return;
+      sb.channel("rota-" + sessao.user.id)
+        .on("postgres_changes", {event:"*", schema:"public", table:"rotas", filter:"usuario=eq." + sessao.user.id}, () => baixarRota())
+        .subscribe();
+    },
+    decidir: decidirRota,          // for the tests
     tem: id => rota.includes(id),
     posicao: id => rota.indexOf(id) + 1,
     total: () => rota.length,

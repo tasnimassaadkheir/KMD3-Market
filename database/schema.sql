@@ -92,6 +92,16 @@ create table if not exists public.prospeccao_geo (
   geo_em         timestamptz                -- quando foi procurada
 );
 
+-- Rota de visitas: uma linha por pessoa, para a rota aparecer em todos os aparelhos dela
+-- (notebook, celular…). Só a própria pessoa vê e muda a sua rota.
+create table if not exists public.rotas (
+  usuario       uuid primary key default auth.uid() references auth.users(id) on delete cascade,
+  rota          jsonb not null default '[]'::jsonb,   -- paradas, em ordem
+  extras        jsonb not null default '{}'::jsonb,   -- endereços avulsos e prédios da prospecção
+  inicio        jsonb,                                -- ponto de partida
+  atualizado_em timestamptz not null default now()
+);
+
 -- ============================================================
 -- Segurança: só quem estiver logado enxerga e edita os dados
 -- ============================================================
@@ -128,6 +138,14 @@ create policy "equipe logada usa prospeccao geo"
   to authenticated
   using (true) with check (true);
 
+alter table public.rotas enable row level security;
+-- Cada pessoa só vê e muda a própria rota.
+drop policy if exists "cada um usa a propria rota" on public.rotas;
+create policy "cada um usa a propria rota"
+  on public.rotas for all
+  to authenticated
+  using (usuario = auth.uid()) with check (usuario = auth.uid());
+
 drop policy if exists "equipe logada usa equipe" on public.equipe;
 create policy "equipe logada usa equipe"
   on public.equipe for all
@@ -144,5 +162,16 @@ begin
     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'condominios'
   ) then
     alter publication supabase_realtime add table public.condominios;
+  end if;
+end $$;
+
+-- A rota também em tempo real: mudou no notebook, o celular atualiza sozinho.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'rotas'
+  ) then
+    alter publication supabase_realtime add table public.rotas;
   end if;
 end $$;
