@@ -158,8 +158,7 @@ describe("Typed addresses as stops", () => {
     await page.fill("#mpEndInput", "Fornecedor, São Paulo"); await page.click("#mpEndOk");
     await page.waitForFunction(() => document.querySelectorAll("#mpRotaLista li").length === 2);
 
-    await page.reload(); await page.waitForSelector(".coluna");
-    await irPeloMenu(page, "#btnVista"); await page.waitForSelector("body.vista-mapa");
+    await page.reload(); await page.waitForSelector("body.vista-mapa");   // the map comes back by itself
     assert.equal(await page.textContent("#mpPartidaNome"), "Rua Augusta, 100");
     assert.equal(await page.locator("#mpRotaLista li").count(), 2);
     await context.close();
