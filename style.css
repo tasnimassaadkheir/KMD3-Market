@@ -1182,3 +1182,23 @@ button.db-barra:hover .db-rot{text-decoration:underline}
 svg.ico{width:15px;height:15px;flex:none;vertical-align:-3px}
 .btn-rota-lead{display:inline-flex;align-items:center;gap:6px}
 #mpPartidaGps svg.ico{width:17px;height:17px;vertical-align:middle}
+
+/* ==================== READ-ONLY MODE (role "leitor") ====================
+   body.somente-leitura is set by app.js (aplicarModoLeitura). Everything that changes data
+   is hidden; SULTS / Visitar only show when they're on, as plain labels. */
+.selo-leitura{display:none}
+body.somente-leitura .selo-leitura{display:inline-flex;align-items:center;height:26px;padding:0 9px;border-radius:6px;
+  background:#EEF0E8;color:var(--tinta-suave);font-size:12px;font-weight:600;white-space:nowrap}
+body.somente-leitura :is(#btnNovo, .rodape-coluna, #btnSalvar, #btnExcluir, #btnRotaLead, #btnAddContato, .contato-remover,
+  .tipo-cancelar, .obs-nova, .obs-editar, .obs-remover, .lem-novo, .lem-ok, [data-lem-feito], [data-lem-editar],
+  [data-lem-remover], .lem-x, #btnNovoContato, [data-ct-editar], [data-ct-excluir], #btnNovoTemplate, [data-tp-editar],
+  [data-tp-excluir], .pr-add, .pr-rota, [data-pr-add], [data-pr-rota], [data-mp-rota], #mpRota, .eq-cadastro,
+  .lista-equipe [data-remover]){display:none !important}
+body.somente-leitura #btnSults:not(.ativo), body.somente-leitura #btnVisitarLead:not(.ativo){display:none !important}
+body.somente-leitura #btnSults, body.somente-leitura #btnVisitarLead{pointer-events:none}
+body.somente-leitura .cartao{cursor:pointer}
+/* locked fields keep looking like readable text, not greyed-out controls */
+body.somente-leitura #painel :is(input, select, textarea){background:transparent;border-color:transparent;color:var(--tinta);
+  opacity:1;-webkit-text-fill-color:var(--tinta);resize:none}
+body.somente-leitura #painel :is(input, select, textarea):focus{box-shadow:none;outline:none}
+body.somente-leitura #painel select{appearance:none;-webkit-appearance:none;background-image:none}

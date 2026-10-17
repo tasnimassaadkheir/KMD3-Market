@@ -84,6 +84,30 @@ const perm = {criar:true, editar:true, excluir:true};
 const ACOES = {criar:"criar condomínios", editar:"editar condomínios", excluir:"excluir condomínios"};
 // Shows the 'permission denied' message for an action.
 function negar(acao){ avisar("Você não tem permissão para "+ACOES[acao]+". Fale com um administrador.", true); }
+// READ-ONLY MODE (role "leitor": can see everything, can't create, edit or delete anything).
+// Buttons that change data are hidden (style.css, body.somente-leitura), the condo panel's fields
+// are locked, and every function that writes checks bloqueado() too.
+let somenteLeitura = false;
+function aplicarModoLeitura(){
+  somenteLeitura = NUVEM && !perm.criar && !perm.editar && !perm.excluir;
+  document.body.classList.toggle("somente-leitura", somenteLeitura);
+  $("#btnCancelar").textContent = somenteLeitura ? "Fechar" : "Cancelar";
+  travarPainel();
+}
+// Locks every field of the condo panel (text can still be selected and copied).
+function travarPainel(){
+  if(!somenteLeitura) return;
+  document.querySelectorAll("#painel input, #painel select, #painel textarea").forEach(el => {
+    if(el.matches("select, input[type=checkbox], input[type=radio], input[type=date], input[type=time]")) el.disabled = true;
+    else el.readOnly = true;
+  });
+}
+// true (with a message) when the user is read-only: used at the start of functions that write.
+function bloqueado(){
+  if(!somenteLeitura) return false;
+  avisar("Seu acesso é só de leitura.", true);
+  return true;
+}
 // Asks the database what the current user is allowed to do.
 // sb.rpc("posso", {acao}) calls a database function named "posso" ("can I?").
 // Promise.all runs the 3 questions at the same time and waits for all answers.
@@ -94,6 +118,7 @@ async function carregarPermissoes(){
     const r = await Promise.all(acoes.map(a => sb.rpc("posso",{acao:a})));
     acoes.forEach((a,i) => { perm[a] = r[i].error ? true : !!r[i].data; });   // se a consulta falhar, o banco continua barrando
   }catch(e){}
+  aplicarModoLeitura();
 }
 // ---------- PANEL / FORM STATE ----------
 // editandoId   = id of the condo open in the panel (null = creating a new one)
@@ -568,7 +593,7 @@ const ICONE_CARRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 function montarCartao(l){
   const el = document.createElement("article");
   el.className = "cartao st-" + (l.status||"nenhum");
-  el.draggable = true; el.dataset.id = l.id; el.tabIndex = 0;
+  el.draggable = !somenteLeitura; el.dataset.id = l.id; el.tabIndex = 0;
 
   // Plain lines of information under the name; color (tags) only for what needs attention.
   const info = [];
@@ -820,6 +845,7 @@ function confirmarTipoOutro(i){
 function cancelarTipoOutro(){ tipoOutroAberto = null; renderContatos(); }
 // Adds an empty contact and puts the cursor in its name field.
 function adicionarContato(){
+  if(bloqueado()) return;
   contatosForm.push({nome:"", telefone:"", email:"", tipo:""});
   renderContatos();
   const campos = document.querySelectorAll("#contatosLista .contato-nome");
@@ -912,6 +938,7 @@ function salvarEdicaoObservacao(i){
 }
 // Add a new note at the TOP of the list (unshift) with the current date and user.
 function adicionarObservacao(){
+  if(bloqueado()) return;
   const campo = $("#obsTexto");
   const texto = campo.value.trim();
   if(!texto){ avisar("Escreva a observação antes de adicionar"); return; }
@@ -1140,6 +1167,7 @@ function renderLembretesForm(){
 // Adds a reminder from the date/time/text fields to the form list.
 // It's only really saved when the user clicks Salvar. silencioso = don't show a message.
 function adicionarLembreteForm(silencioso){
+  if(bloqueado()) return;
   const data = $("#lem_data").value, hora = $("#lem_hora").value || "09:00";
   if(!data){ avisar("Escolha a data do lembrete"); return; }
   const texto = $("#lem_texto").value.trim();
@@ -1460,6 +1488,7 @@ function abrirFormAvulso(id){
 }
 function fecharFormAvulso(){ $("#ctForm").hidden = true; avulsoEditando = null; }
 async function salvarAvulso(){
+  if(bloqueado()) return;
   const nome = $("#ct_nome").value.trim();
   if(!nome){ avisar("Escreva o nome do contato."); $("#ct_nome").focus(); return; }
   let tipo = $("#ct_tipo").value;
@@ -1609,6 +1638,7 @@ function abrirFormTemplate(id){
 }
 function fecharFormTemplate(){ $("#tpForm").hidden = true; templateEditando = null; }
 async function salvarTemplate(){
+  if(bloqueado()) return;
   const titulo = $("#tp_titulo").value.trim(), texto = $("#tp_texto").value.replace(/\s+$/, "");
   if(!titulo){ avisar("Dê um título ao template."); $("#tp_titulo").focus(); return; }
   if(!texto.trim()){ avisar("Escreva o texto do template."); $("#tp_texto").focus(); return; }
@@ -1722,6 +1752,7 @@ function desenharEquipe(){
 }
 // Adds a person to the team (in the database or locally), after checking the name isn't repeated.
 async function adicionarEquipe(){
+  if(bloqueado()) return;
   const nome = $("#eq_nome").value.trim();
   const email = $("#eq_email").value.trim();
   if(!nome){ avisar("Escreva o nome do responsável"); return; }
@@ -1740,6 +1771,7 @@ async function adicionarEquipe(){
 }
 // Removes a person from the team. Their condos stay on the board.
 async function removerEquipe(id){
+  if(bloqueado()) return;
   const p = equipe.find(x=>String(x.id)===String(id));
   if(!p || !confirm("Remover "+p.nome+" da lista de responsáveis? Os leads dela continuam no quadro.")) return;
   if(NUVEM){
@@ -1872,6 +1904,7 @@ function atualizarBotaoRotaLead(){
   btn.insertAdjacentHTML("afterbegin", na ? "" : ICONE_PIN+" ");
 }
 function alternarRotaLead(){
+  if(bloqueado()) return;
   if(!editandoId || !window.__rota) return;
   const l = leads.find(x=>x.id===editandoId) || {};
   const entrou = window.__rota.alternar(editandoId);
@@ -2774,7 +2807,9 @@ $("#ctCorpo").addEventListener("click", e=>{
   if(ex) excluirAvulso(ex.dataset.ctExcluir);
 });
 // SULTS toggle in the panel.
-$("#btnSults").addEventListener("click", ()=>{ sultsForm = !sultsForm; atualizarBotaoSults(); });
+$("#btnSults").addEventListener("click", ()=>{ if(bloqueado()) return; sultsForm = !sultsForm; atualizarBotaoSults(); });
+// Read-only users: lock the condo panel's fields again whenever its content is redrawn (contacts, notes…).
+if(typeof MutationObserver === "function") new MutationObserver(() => travarPainel()).observe($("#painel"), {childList:true, subtree:true});
 // Visit route button in the panel; mapa.js fires "rota-mudou" whenever the route changes.
 $("#btnRotaLead").addEventListener("click", alternarRotaLead);
 document.addEventListener("rota-mudou", atualizarBotaoRotaLead);
