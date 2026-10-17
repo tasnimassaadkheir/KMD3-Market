@@ -500,6 +500,7 @@
   }
   // Adds a condo to the route, or removes it if it's already there.
   function alternarNaRota(id){
+    if(typeof bloqueado === "function" && bloqueado()) return;
     const i = rota.indexOf(id);
     if(i >= 0) rota.splice(i, 1);
     else {

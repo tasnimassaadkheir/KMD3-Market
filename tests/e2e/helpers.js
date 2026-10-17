@@ -122,8 +122,9 @@ function normalizar(s) {
  * opened with openApp(env, {nuvem}). Pages are logged in as the same user (like one
  * person on a laptop and a phone). After each write, the other pages get a Realtime event.
  * nuvem.tabelas.condominios = [...] pre-loads rows (database format).
+ * criarNuvem(usuario, {leitor: true}) = a read-only user (the database answers "no" to create/edit/delete).
  */
-function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }) {
+function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, opcoes = {}) {
   const tabelas = {};
   const paginas = [];
   const tab = (t) => (tabelas[t] = tabelas[t] || []);
@@ -165,7 +166,8 @@ function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }) {
       await context.route("**/supabase-js@2*", (route) =>
         route.fulfill({ contentType: "text/javascript", path: path.join(__dirname, "fake-supabase.js") }));
       await context.exposeBinding("__fakeDb", (_src, q) => executar(q));
-      await context.addInitScript((u) => { window.__fakeSessao = { user: u }; }, usuario);
+      await context.addInitScript(([u, leitor]) => { window.__fakeSessao = { user: u }; window.__fakeLeitor = leitor; },
+        [usuario, !!opcoes.leitor]);
     },
   };
 }

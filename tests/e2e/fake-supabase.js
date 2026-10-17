@@ -39,7 +39,8 @@
     createClient() {
       return {
         from: consulta,
-        rpc: async (nome) => ({ data: nome === "posso", error: null }),     // can do everything; not an admin
+        // "posso" (can I?): yes, unless the test made this user read-only (window.__fakeLeitor); never an admin
+        rpc: async (nome) => ({ data: nome === "posso" ? !window.__fakeLeitor : false, error: null }),
         auth: {
           getSession: async () => ({ data: { session: window.__fakeSessao || null } }),
           signInWithPassword: async () => ({ data: { session: window.__fakeSessao }, error: null }),

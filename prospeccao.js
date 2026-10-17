@@ -364,6 +364,7 @@
              : '<button type="button" class="pr-rota" data-pr-rota="'+escapar(l.id)+'" title="Adicionar à rota de visitas">+ Rota</button>';
   }
   function alternarRota(id){
+    if(typeof bloqueado === "function" && bloqueado()) return;
     if(!window.__rota){ avisar("A rota não está disponível agora.", true); return; }
     const l = resultados.find(x => x.id === id); if(!l) return;
     const ja = leadDoFunil(l);

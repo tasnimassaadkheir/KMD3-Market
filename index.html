@@ -217,6 +217,8 @@
     <h2 id="tituloPainel">Novo condomínio</h2>
     <!-- SULTS toggle: when on, the card shows a green "S" next to the name of who edited last. -->
     <button type="button" class="btn-sults" id="btnSults" aria-pressed="false">SULTS</button>
+    <!-- Shown only to read-only users (role "leitor"). -->
+    <span class="selo-leitura">Somente leitura</span>
     <button class="fechar" id="btnFechar" aria-label="Fechar">✕</button>
   </div>
   <div class="corpo">
@@ -512,7 +514,7 @@
   <div class="corpo">
     <p class="dica" style="margin-bottom:16px">Quem pode ser responsável por um lead. Todo mundo que usa o quadro vê a mesma lista.</p>
     <ul class="lista-equipe" id="listaEquipe"></ul>
-    <fieldset>
+    <fieldset class="eq-cadastro">
       <legend>Cadastrar responsável</legend>
       <div class="linha">
         <label class="campo"><span>Nome</span><input class="txt" id="eq_nome"></label>
