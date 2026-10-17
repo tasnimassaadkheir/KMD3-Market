@@ -88,8 +88,8 @@ describe("Templates page", () => {
     assert.deepEqual(await page.locator(".tp-cartao h3").allTextContents(), ["Apresentação", "Visita"]);
     await page.fill("#tpBusca", "amanha");
     assert.deepEqual(await page.locator(".tp-cartao h3").allTextContents(), ["Visita"], "searches the text, accents ignored");
-    await page.reload(); await page.waitForSelector(".coluna");
-    await abrir(page);
+    await page.reload();
+    await page.waitForSelector("#telaTemplates.aberta");   // the page comes back by itself after a reload
     assert.equal(await page.locator(".tp-cartao").count(), 2);
     await context.close();
   });

@@ -2157,6 +2157,46 @@ async function iniciarQuadro(){
   }
   desenhar();
   verificarLembretes();
+  restaurarTela();
+}
+
+/* ================= página aberta no endereço (#dashboard, #mapa…) ================= */
+// REMEMBER THE OPEN PAGE: the page on screen is kept in the address (e.g. ".../#prospeccao"),
+// so refreshing (or opening that link) comes back to the same page instead of the board.
+// Watching the pages' "open" class means no open/close function needs to know about this.
+const TELAS = [
+  {hash:"dashboard",  aberta:() => dashboardAberto(),                         abrir:() => $("#btnDashboard").click()},
+  {hash:"prospeccao", aberta:() => !!(window.Prospeccao && Prospeccao.aberto()), abrir:() => $("#btnProspeccao").click()},
+  {hash:"lembretes",  aberta:() => lembretesAberto(),                         abrir:() => $("#btnLembretes").click()},
+  {hash:"contatos",   aberta:() => contatosAberto(),                          abrir:() => $("#btnContatos").click()},
+  {hash:"templates",  aberta:() => templatesAberto(),                         abrir:() => $("#btnTemplates").click()},
+  {hash:"equipe",     aberta:() => $("#painelEquipe").classList.contains("aberto"), abrir:() => $("#btnEquipe").click()},
+  {hash:"mapa",       aberta:() => document.body.classList.contains("vista-mapa"), abrir:() => $("#btnVista").click()}
+];
+let telaRestaurada = false;
+function lembrarTela(){
+  if(!telaRestaurada) return;                       // don't erase the address before it's been used
+  const t = TELAS.find(x => x.aberta());
+  const novo = t ? "#" + t.hash : "";
+  if(location.hash !== novo) history.replaceState(null, "", novo || location.pathname + location.search);
+}
+// Called once the board has loaded: opens the page named in the address, if any.
+// Waits until every script has loaded (mapa.js and prospeccao.js handle some of the buttons).
+function restaurarTela(){
+  if(telaRestaurada) return;
+  const fazer = () => {
+    telaRestaurada = true;
+    const t = TELAS.find(x => "#" + x.hash === location.hash);
+    if(t && !t.aberta()) t.abrir();
+  };
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", fazer, {once:true});
+  else setTimeout(fazer, 0);
+}
+if(typeof MutationObserver === "function"){
+  const vigia = new MutationObserver(() => lembrarTela());
+  ["#telaDashboard", "#telaProspeccao", "#telaLembretes", "#telaContatos", "#telaTemplates", "#painelEquipe"]
+    .forEach(sel => { const el = $(sel); if(el && el.nodeType) vigia.observe(el, {attributes:true, attributeFilter:["class"]}); });
+  vigia.observe(document.body, {attributes:true, attributeFilter:["class"]});
 }
 
 // Entry point of the app (called at the very end of this file).

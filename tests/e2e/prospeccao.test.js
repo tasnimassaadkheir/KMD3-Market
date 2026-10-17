@@ -119,8 +119,8 @@ describe("Prospecção page", () => {
     const pos = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:prospGeo") || "{}"));
     assert.deepEqual(Object.keys(pos).sort(), ["009012-013", "010020-021", "030040-055"]);
     assert.equal(pos["030040-055"].lat, null, "not found is remembered too");
-    await page.reload(); await page.waitForSelector(".coluna");
-    await abrir(page);
+    await page.reload();
+    await page.waitForSelector("#telaProspeccao.aberta");  // the page comes back by itself after a reload
     await page.selectOption("#prMinimo", "0");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
     await page.waitForTimeout(1500);
