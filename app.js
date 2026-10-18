@@ -513,7 +513,9 @@ function filtrar(){
   const dataDe = $("#filtroDataDe").value, dataAte = $("#filtroDataAte").value;
   $("#btnLimparData").hidden = !dataDe && !dataAte;
   return leads.filter(l => {
-    if(st && (l.status||"nenhum") !== st) return false;
+    if(st === "sults:sim"){ if(!l.sults) return false; }           // registered in SULTS
+    else if(st === "sults:nao"){ if(l.sults) return false; }       // not in SULTS yet
+    else if(st && (l.status||"nenhum") !== st) return false;
     if(resp && (l.responsavel||"") !== resp) return false;
     if(!dataNoIntervalo(l.criadoEm, dataDe, dataAte)) return false;
     if(!termo) return true;

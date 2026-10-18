@@ -137,6 +137,26 @@ describe("Filters", () => {
     assert.deepEqual(await page.locator(".cartao h3").allTextContents(), ["Aurora"]);
     await context.close();
   });
+
+  test("the situation filter has 'No SULTS' and 'Fora do SULTS', and turning SULTS on moves a card between them", async () => {
+    const { page, context } = await openApp(env, { leads: [lead({ id: "a", nome: "Aurora", sults: true }),
+      lead({ id: "b", nome: "Bosque Verde" }), lead({ id: "c", nome: "Mirante", sults: false })] });
+    const nomes = async () => (await page.locator(".cartao h3").allTextContents()).sort();
+    await page.selectOption("#filtroStatus", "sults:sim");
+    assert.deepEqual(await nomes(), ["Aurora"]);
+    await page.selectOption("#filtroStatus", "sults:nao");
+    assert.deepEqual(await nomes(), ["Bosque Verde", "Mirante"]);
+    // marking Mirante as registered in SULTS takes it out of "Fora do SULTS"
+    await page.click('.cartao:has-text("Mirante")');
+    await page.waitForSelector("#painel.aberto");
+    await page.click("#btnSults");
+    await page.click("#btnSalvar");
+    await page.waitForFunction(() => !document.querySelector("#painel.aberto"));
+    assert.deepEqual(await nomes(), ["Bosque Verde"]);
+    await page.selectOption("#filtroStatus", "");
+    assert.equal(await page.locator(".cartao").count(), 3);
+    await context.close();
+  });
 });
 
 describe("CSV export", () => {
