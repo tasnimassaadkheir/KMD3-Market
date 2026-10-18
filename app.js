@@ -2104,6 +2104,7 @@ async function entrar(){
   $("#btnEntrar").textContent = "Entrar";
   if(error){ mostrarEntrada("E-mail ou senha incorretos."); return; }
   sessao = data.session;
+  entrouAgora = true;                     // the activity log says "Entrou no app" (not just "Abriu")
   $("#entrada").classList.remove("aberta");
   await iniciarQuadro();
 }
@@ -2138,6 +2139,7 @@ async function iniciarQuadro(){
     $("#btnSair").style.display = "";
     await carregarPermissoes();
     verificarAdmin();
+    registrarAcesso();
     $("#sinal").className = "sinal";
     // Realtime: whenever ANYONE changes the 'condominios' table, reload and redraw,
     // except while this user has the panel open or has unsaved changes.
@@ -2619,6 +2621,7 @@ $("#semaforo").addEventListener("change", marcarSemaforo);
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(menuAberto()){ fecharMenu(true); return; }
+    if(atividadeAberta()){ fecharAtividade(); return; }
     // Contacts page: Esc closes its form first, then the page (if no condo panel is open on top)
     if(window.Prospeccao && Prospeccao.aberto() && !$("#painel").classList.contains("aberto")){ Prospeccao.fechar(); return; }
     if(dashboardAberto() && !$("#painel").classList.contains("aberto")){
@@ -2861,7 +2864,7 @@ document.addEventListener("rota-mudou", atualizarBotaoRotaLead);
 // Roles and their default permissions, in the order: see all, create, edit, delete (1 = yes, 0 = no).
 const ADM_PAPEIS = {admin:[1,1,1,1], editor:[1,1,1,0], vendedor:[0,1,1,0], leitor:[1,0,0,0]}; // vê todos, cria, edita, exclui
 // admOrgs = organizations list, admSel = selected organization id, admSuper = is super-admin.
-let admOrgs = [], admSel = null, admSuper = false;
+let admOrgs = [], admSel = null, admSuper = false, admMembros = [];
 
 // Calls a database function (RPC) and shows an error message if it fails.
 async function admRpc(nome, args){
@@ -2910,11 +2913,11 @@ async function admCarregarMembros(){
   $("#admBloco").hidden = !org;
   $("#admTitulo").textContent = org ? "Membros de " + org.nome : "Selecione uma organização";
   if(!org) return;
-  const ms = await admRpc("admin_membros", {p_org: org.id});
+  const ms = admMembros = await admRpc("admin_membros", {p_org: org.id});
   const ck = (c, v) => `<td class="c"><input type="checkbox" class="${c}"${v?" checked":""}></td>`;
   $("#admCorpo").innerHTML = ms.map(m => `
     <tr data-u="${m.user_id}">
-      <td>${escapar(m.email)}<span class="adm-dica">${escapar(m.usuario)}</span></td>
+      <td><button type="button" class="adm-pessoa" data-ativ="${escapar(m.user_id)}" title="Ver o que ${escapar(m.usuario || m.email)} tem feito">${escapar(m.email)}</button><span class="adm-dica">${escapar(m.usuario)}</span></td>
       <td><select class="papel">${Object.keys(ADM_PAPEIS).map(p => `<option${p===m.papel?" selected":""}>${p}</option>`).join("")}</select></td>
       ${ck("ativo",m.ativo)}${ck("ver",m.ver_todos)}${ck("criar",m.pode_criar)}${ck("editar",m.pode_editar)}${ck("excluir",m.pode_excluir)}
       <td style="white-space:nowrap"><button class="adm-b admSalvar">Salvar</button> <button class="adm-b adm-x admRemover">Remover</button></td>
@@ -2922,7 +2925,7 @@ async function admCarregarMembros(){
 }
 // Admin screen events.
 $("#btnAdmin").addEventListener("click", admAbrir);
-$("#admFechar").addEventListener("click", () => { $("#admTela").hidden = true; });
+$("#admFechar").addEventListener("click", () => { fecharAtividade(); $("#admTela").hidden = true; });
 // Clicks inside the admin screen: enter an organization, select one,
 // save a member's permissions, or remove a member.
 $("#admTela").addEventListener("click", async e => {
@@ -2935,6 +2938,8 @@ $("#admTela").addEventListener("click", async e => {
       if(!pendentes.size && !paraExcluir.size){ await buscarTudo(); desenhar(); }   // recarrega o quadro na nova organização
       return;
     }
+    const pessoa = t.closest("[data-ativ]");
+    if(pessoa){ await abrirAtividade(pessoa.dataset.ativ); return; }
     const org = t.closest(".adm-org");
     if(org){ admSel = org.dataset.org; admDesenharOrgs(); await admCarregarMembros(); return; }
     const tr = t.closest("tr[data-u]");
@@ -2967,6 +2972,170 @@ $("#admAdd").addEventListener("click", async () => {
   if(!org || !email) return;
   try{ await admRpc("adicionar_membro", {p_email: email, p_papel: $("#admPapelNovo").value, p_org: org.nome});
        $("#admEmail").value = ""; avisar("Membro adicionado."); await admCarregarOrgs(true); }catch(_){}
+});
+
+/* ================= atividade de cada pessoa (Administração → clicar no e-mail) ================= */
+// =============================================================================
+// MEMBER ACTIVITY: in the admin screen, clicking a person shows what they have been doing.
+// Two sources:
+//  1. the "atividades" table (database/atividades.sql): the database itself writes a line for every
+//     condo / template / contact created, changed or deleted, and the app writes when someone logs in;
+//  2. the condos' own "Registro de atualizações" (historico), matched by the person's name. It works
+//     even before atividades.sql is installed, and fills in the time before the table existed.
+// =============================================================================
+let entrouAgora = false, atividadeSemTabela = false;
+const ATIV_ABRIU_MIN = 30;   // "Abriu o app" is written at most once every 30 minutes per device
+
+// Writes "Entrou no app" (after typing the password) or "Abriu o app" (session already open).
+async function registrarAcesso(){
+  if(!NUVEM || !sb || !sessao || atividadeSemTabela) return;
+  const acao = entrouAgora ? "entrou" : "abriu";
+  entrouAgora = false;
+  try{
+    const ult = Number(localStorage.getItem("quitandinha:ultimoAcessoLog") || 0);
+    if(acao === "abriu" && Date.now() - ult < ATIV_ABRIU_MIN * 60000) return;
+    const {error} = await sb.from("atividades").insert({acao, tipo:"app", usuario:sessao.user.id, email:sessao.user.email});
+    if(error){ if(tabelaFaltando(error)) atividadeSemTabela = true; return; }
+    localStorage.setItem("quitandinha:ultimoAcessoLog", String(Date.now()));
+  }catch(e){}
+}
+// "relation does not exist" (Postgres) or "table not found" (PostgREST): atividades.sql not run yet.
+function tabelaFaltando(error){
+  return !!error && (error.code === "42P01" || error.code === "PGRST205" || /does not exist|could not find the table/i.test(error.message || ""));
+}
+
+// Plain-language sentence for one line of the "atividades" table.
+const ATIV_TIPOS = {condominio:["o condomínio","Cadastrou o condomínio"], template:["o template","Criou o template"], contato:["o contato","Adicionou o contato"]};
+function textoAtividade(a){
+  if(a.tipo === "app") return a.acao === "entrou" ? "Entrou no app" : "Abriu o app";
+  const [o, criou] = ATIV_TIPOS[a.tipo] || ["o item", "Criou o item"];
+  if(a.acao === "criou") return criou;
+  if(a.acao === "excluiu") return "Excluiu " + o;
+  if(a.detalhe) return a.detalhe;
+  return "Alterou " + o;
+}
+// Turns rows of "atividades" into the list format: {quando, texto, alvo, alvoId, tipo, acao}.
+function atividadesDoBanco(linhas){
+  return (linhas || []).map(a => ({quando:a.quando, texto:textoAtividade(a), alvo:a.alvo || "", alvoId:a.alvo_id || "",
+    tipo:a.tipo || "", acao:a.acao || ""}));
+}
+// The person's changes taken from every condo's "Registro de atualizações", matched by name (accents/case ignored).
+function atividadesDoHistorico(lista, nomes){
+  const quem = new Set((nomes || []).filter(Boolean).map(n => normalizarNome(n)));
+  if(!quem.size) return [];
+  const out = [];
+  (lista || []).forEach(l => (l.historico || []).forEach(h => {
+    if(h && h.por && quem.has(normalizarNome(h.por)))
+      out.push({quando:h.quando, texto:h.o_que || "Alterou o condomínio", alvo:l.nome || "", alvoId:l.id, tipo:"condominio",
+        acao:/cadastrado/i.test(h.o_que || "") ? "criou" : "alterou"});
+  }));
+  return out;
+}
+// Joins both sources, newest first. History lines are only used for the time BEFORE the oldest line
+// of the table (after that the table already has the same change, so it would show up twice).
+function juntarAtividades(doBanco, doHistorico){
+  const ms = x => new Date(x.quando).getTime() || 0;
+  const banco = (doBanco || []).slice();
+  const inicio = banco.length ? Math.min(...banco.map(ms)) : Infinity;
+  const antigas = (doHistorico || []).filter(h => ms(h) < inicio);
+  return banco.concat(antigas).sort((a, b) => ms(b) - ms(a));
+}
+// Only what happened in the last 'dias' days (0 = everything), and that matches the search text.
+function filtrarAtividades(lista, dias, busca, hoje = new Date()){
+  const desde = dias ? hoje.getTime() - dias * 86400000 : -Infinity;
+  const q = normalizarNome(busca || "");
+  return (lista || []).filter(a => new Date(a.quando).getTime() >= desde &&
+    (!q || normalizarNome(a.texto + " " + a.alvo).includes(q)));
+}
+// Numbers at the top: changes (logins don't count), different condos touched, new condos, last time in the app.
+function resumoAtividades(lista){
+  const trabalho = (lista || []).filter(a => a.tipo !== "app");
+  const condos = new Set(trabalho.filter(a => a.tipo === "condominio").map(a => a.alvoId || a.alvo));
+  const ultimo = (lista || []).reduce((m, a) => (!m || new Date(a.quando) > new Date(m)) ? a.quando : m, null);
+  return {acoes:trabalho.length, condominios:condos.size,
+    novos:trabalho.filter(a => a.tipo === "condominio" && a.acao === "criou").length, ultimo};
+}
+// Day heading: "Hoje", "Ontem" or "sexta, 16 de outubro".
+function rotuloDia(iso, hoje = new Date()){
+  const d = new Date(iso), zero = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dif = Math.round((zero(hoje) - zero(d)) / 86400000);
+  if(dif === 0) return "Hoje";
+  if(dif === 1) return "Ontem";
+  const txt = d.toLocaleDateString("pt-BR", {weekday:"long", day:"numeric", month:"long"}).replace("-feira", "");
+  return txt + (d.getFullYear() !== hoje.getFullYear() ? " de " + d.getFullYear() : "");
+}
+
+let ativPessoa = null, ativLista = [];
+const atividadeAberta = () => !$("#admAtiv").hidden;
+// Opens the activity drawer for one member (user id from the admin table).
+async function abrirAtividade(userId){
+  const m = admMembros.find(x => x.user_id === userId); if(!m) return;
+  ativPessoa = m;
+  $("#admAtivNome").textContent = m.usuario || m.email;
+  $("#admAtivSub").textContent = [m.email, m.papel].filter(Boolean).join(", ");
+  $("#admAtivBusca").value = "";
+  $("#admAtivLista").innerHTML = '<p class="adm-dica">Carregando…</p>';
+  $("#admAtivResumo").innerHTML = ""; $("#admAtivAviso").hidden = true;
+  $("#admAtiv").hidden = $("#admAtivFundo").hidden = false;
+  $("#admAtivFechar").focus();
+
+  let doBanco = [], semTabela = false;
+  try{
+    const {data, error} = await sb.from("atividades").select("*").eq("usuario", userId)
+      .order("quando", {ascending:false}).limit(500);
+    if(error){ semTabela = tabelaFaltando(error); if(!semTabela) avisar(error.message, true); }
+    else doBanco = atividadesDoBanco(data);
+  }catch(e){ semTabela = true; }
+  if(ativPessoa !== m) return;              // another person was clicked meanwhile
+  // the condos on the board belong to the organization you're in, so their history only counts for it
+  const org = admOrgs.find(o => o.id === admSel), mesmaOrg = !org || org.ativa;
+  const eq = equipe.find(p => p.email && m.email && p.email.toLowerCase() === m.email.toLowerCase());
+  const nomes = [m.usuario, eq && eq.nome, m.email && m.email.split("@")[0]];
+  ativLista = juntarAtividades(doBanco, mesmaOrg ? atividadesDoHistorico(leads, nomes) : []);
+  $("#admAtivAviso").hidden = !semTabela;
+  desenharAtividade();
+}
+function fecharAtividade(){
+  if(!$("#admAtiv")) return;
+  $("#admAtiv").hidden = $("#admAtivFundo").hidden = true;
+  ativPessoa = null;
+}
+function desenharAtividade(){
+  const dias = Number($("#admAtivPeriodo").value);
+  const lista = filtrarAtividades(ativLista, dias, $("#admAtivBusca").value);
+  const r = resumoAtividades(filtrarAtividades(ativLista, dias, ""));
+  const ultimo = resumoAtividades(ativLista).ultimo;
+  const num = (n, um, varios) => `<div><b>${n}</b><span>${n === 1 ? um : varios}</span></div>`;
+  $("#admAtivResumo").innerHTML =
+    num(r.acoes, "ação", "ações") + num(r.condominios, "condomínio mexido", "condomínios mexidos") +
+    num(r.novos, "cadastrado", "cadastrados") +
+    `<p class="adm-ativ-ult">Última atividade: ${ultimo ? escapar(dataHoraBR(ultimo)) + " (" + textoDias(diasDesde(ultimo)) + ")" : "nenhuma registrada"}</p>`;
+  if(!lista.length){
+    $("#admAtivLista").innerHTML = `<p class="adm-ativ-vazio">${ativLista.length ? "Nada neste período." : "Nenhuma atividade registrada ainda."}</p>`;
+    return;
+  }
+  let html = "", dia = "";
+  lista.forEach(a => {
+    const d = rotuloDia(a.quando);
+    if(d !== dia){ html += (dia ? "</ul>" : "") + `<h4>${escapar(d)}</h4><ul>`; dia = d; }
+    const hora = new Date(a.quando).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+    const existe = a.tipo === "condominio" && a.alvoId && leads.some(l => l.id === a.alvoId);
+    const alvo = !a.alvo ? "" : existe
+      ? `<button type="button" class="adm-ativ-alvo" data-ativ-lead="${escapar(a.alvoId)}">${escapar(a.alvo)}</button>`
+      : `<span class="adm-ativ-alvo">${escapar(a.alvo)}</span>`;
+    html += `<li class="ativ-${escapar(a.acao)}${a.tipo === "app" ? " ativ-app" : ""}"><time>${hora}</time><span>${escapar(a.texto)}${alvo ? ", " + alvo : ""}</span></li>`;
+  });
+  $("#admAtivLista").innerHTML = html + "</ul>";
+}
+$("#admAtivFechar").addEventListener("click", fecharAtividade);
+$("#admAtivFundo").addEventListener("click", fecharAtividade);
+$("#admAtivPeriodo").addEventListener("change", desenharAtividade);
+$("#admAtivBusca").addEventListener("input", desenharAtividade);
+// Clicking a condo name closes the admin screen and opens that condo's card.
+$("#admAtivLista").addEventListener("click", e => {
+  const b = e.target.closest("[data-ativ-lead]"); if(!b) return;
+  fecharAtividade(); $("#admTela").hidden = true;
+  abrirPainel(b.dataset.ativLead);
 });
 
 

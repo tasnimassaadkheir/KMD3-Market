@@ -40,7 +40,11 @@
       return {
         from: consulta,
         // "posso" (can I?): yes, unless the test made this user read-only (window.__fakeLeitor); never an admin
-        rpc: async (nome) => ({ data: nome === "posso" ? !window.__fakeLeitor : false, error: null }),
+        // window.__fakeRpc = {nome: data} answers other functions (e.g. sou_admin, admin_membros) for admin tests.
+        rpc: async (nome) => {
+          if (window.__fakeRpc && nome in window.__fakeRpc) return { data: window.__fakeRpc[nome], error: null };
+          return { data: nome === "posso" ? !window.__fakeLeitor : false, error: null };
+        },
         auth: {
           getSession: async () => ({ data: { session: window.__fakeSessao || null } }),
           signInWithPassword: async () => ({ data: { session: window.__fakeSessao }, error: null }),
