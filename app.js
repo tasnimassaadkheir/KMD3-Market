@@ -828,7 +828,13 @@ function renderContatos(){
             '<button type="button" class="btn-ligar" data-ligar-contato="'+i+'" title="Ligar" aria-label="Ligar para este número">'+ICONE_TELEFONE+'</button>'+
           '</span>'+
         '</label>'+
-        '<label class="campo"><span>E-mail</span><input class="txt contato-email" type="email" data-i="'+i+'" value="'+escapar(c.email||"")+'"></label>'+
+        '<label class="campo"><span>E-mail</span>'+
+          '<span class="tel-com-whats">'+
+            '<input class="txt contato-email" type="email" data-i="'+i+'" value="'+escapar(c.email||"")+'">'+
+            // "Copiar": copies the e-mail typed right now
+            '<button type="button" class="btn-copiar" data-copiar-email="'+i+'" title="Copiar e-mail" aria-label="Copiar e-mail">'+ICONE_COPIAR+'</button>'+
+          '</span>'+
+        '</label>'+
       '</div>'+
     '</div>'
   ).join("");
@@ -1452,7 +1458,8 @@ function renderContatosPagina(){
       // number + WhatsApp + call stay together on one line (.ct-numero = no wrapping)
       '<td data-label="Número">'+(c.telefone ? '<span class="ct-numero">'+escapar(c.telefone)+(wa ? ' <a class="ct-zap" href="'+escapar(wa)+'" target="_blank" rel="noopener" title="Abrir no WhatsApp" aria-label="Abrir no WhatsApp">'+zap+'</a>' : '')+
         (tel ? '<a class="ct-ligar" href="'+escapar(tel)+'" title="Ligar" aria-label="Ligar para '+escapar(c.nome||"este contato")+'">'+ICONE_TELEFONE+'</a>' : '')+'</span>' : '<span class="ct-vazio">—</span>')+'</td>'+
-      '<td data-label="E-mail">'+(c.email ? '<a href="mailto:'+escapar(c.email)+'">'+escapar(c.email)+'</a>' : '<span class="ct-vazio">—</span>')+'</td>'+
+      '<td data-label="E-mail">'+(c.email ? '<span class="ct-email"><a href="mailto:'+escapar(c.email)+'">'+escapar(c.email)+'</a>'+
+        '<button type="button" class="ct-copiar" data-ct-copiar="'+escapar(c.email)+'" title="Copiar e-mail" aria-label="Copiar o e-mail de '+escapar(c.nome||"este contato")+'">'+ICONE_COPIAR+'</button></span>' : '<span class="ct-vazio">—</span>')+'</td>'+
       '<td data-label="Condomínio">'+(c.leadId
         ? '<button type="button" class="ct-condo" data-ct-abrir="'+escapar(c.leadId)+'" title="Abrir o condomínio">'+escapar(c.condominio)+'</button>'
         : '<span class="ct-avulso">Avulso</span>')+'</td>'+
@@ -1667,17 +1674,33 @@ async function excluirTemplate(id){
 }
 // Copies the text exactly as written (line breaks included). Falls back to a hidden
 // textarea on browsers without the Clipboard API. The button shows "✓ Copiado" for 2 s.
-async function copiarTemplate(id, botao){
-  const t = templates.find(x => x.id === id); if(!t) return;
-  let ok = true;
-  try{ await navigator.clipboard.writeText(t.texto); }
+async function copiarTexto(texto){
+  try{ await navigator.clipboard.writeText(texto); return true; }
   catch(e){
     const ta = document.createElement("textarea");
-    ta.value = t.texto; ta.style.position = "fixed"; ta.style.opacity = "0";
+    ta.value = texto; ta.style.position = "fixed"; ta.style.opacity = "0";
     document.body.appendChild(ta); ta.select();
+    let ok;
     try{ ok = document.execCommand("copy"); }catch(_){ ok = false; }
     ta.remove();
+    return ok;
   }
+}
+// Copies an e-mail (condo panel or Contatos page); the button turns green with a ✓ for 1.5 s.
+async function copiarEmail(email, botao){
+  email = String(email || "").trim();
+  if(!email){ avisar("Não há e-mail para copiar"); return; }
+  if(!(await copiarTexto(email))){ avisar("Não consegui copiar. Selecione o e-mail e copie manualmente.", true); return; }
+  avisar("E-mail copiado: " + email);
+  if(botao){
+    botao.classList.add("copiado");
+    clearTimeout(botao._t);
+    botao._t = setTimeout(() => botao.classList.remove("copiado"), 1500);
+  }
+}
+async function copiarTemplate(id, botao){
+  const t = templates.find(x => x.id === id); if(!t) return;
+  const ok = await copiarTexto(t.texto);
   if(!ok){ avisar("Não consegui copiar. Selecione o texto e copie manualmente.", true); return; }
   avisar('Texto de "'+(t.titulo||"template")+'" copiado');
   if(botao){
@@ -2680,6 +2703,12 @@ document.addEventListener("click", e=>{
     if(link) window.open(link, "_blank");
     else avisar("Telefone inválido para abrir o WhatsApp");
   }
+  const btnCopiarEmail = e.target.closest("[data-copiar-email]");
+  if(btnCopiarEmail){
+    e.preventDefault();                   // inside a <label>: don't send the click to the input
+    const item = btnCopiarEmail.closest(".contato-item");
+    copiarEmail(item ? item.querySelector(".contato-email").value : "", btnCopiarEmail);
+  }
   // "Ligar": reads the number typed right now and opens the phone's keypad.
   const btnLigar = e.target.closest("[data-ligar-contato]");
   if(btnLigar){
@@ -2844,6 +2873,8 @@ $("#ct_tipo").addEventListener("change", ()=>{
   if(outro) $("#ct_tipoOutro").focus();
 });
 $("#ctCorpo").addEventListener("click", e=>{
+  const cp = e.target.closest("[data-ct-copiar]");
+  if(cp){ copiarEmail(cp.dataset.ctCopiar, cp); return; }
   const abrir = e.target.closest("[data-ct-abrir]");
   if(abrir){ abrirPainel(abrir.dataset.ctAbrir); return; }   // the panel opens on top of the page
   const ed = e.target.closest("[data-ct-editar]");
