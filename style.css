@@ -499,6 +499,15 @@
   .btn-ligar{flex:none;border:0;border-radius:8px;background:#0E627D;color:#fff;width:38px;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
   .btn-ligar:hover{background:#093E4F}
+  /* "Copiar e-mail": a small grey icon INSIDE the e-mail box, on the right; the icon turns green after copying.
+     The input gets room on the right so long e-mails don't run under the icon. */
+  label.campo > span.email-com-copiar,.email-com-copiar{display:block;position:relative}
+  .email-com-copiar input{padding-right:34px}
+  .btn-copiar{position:absolute;top:50%;right:6px;transform:translateY(-50%);width:24px;height:24px;padding:0;
+    border:0;border-radius:6px;background:transparent;color:#8A938C;display:grid;place-items:center;cursor:pointer}
+  .btn-copiar svg{width:14px;height:14px}
+  .btn-copiar:hover{color:#0E627D;background:rgba(14,98,125,.08)}
+  .btn-copiar.copiado{color:var(--ok);background:transparent}
   /* phones: phone and e-mail one below the other, so the number isn't cut off */
   @media (max-width:520px){
     .contato-item .linha{flex-direction:column;gap:0}
@@ -924,6 +933,12 @@ body.vista-mapa #quadro{display:none}
 .ct-ligar{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:4px;border-radius:6px;background:#0E627D;color:#fff;vertical-align:middle}
 .ct-ligar:hover{background:#093E4F}
 .ct-ligar svg{width:13px;height:13px}
+.ct-email{display:inline-flex;align-items:center;gap:6px;max-width:100%}
+.ct-email a{min-width:0;overflow-wrap:anywhere}
+.ct-copiar{display:inline-grid;place-items:center;width:22px;height:22px;flex:none;border:1px solid #D6D9D0;border-radius:6px;background:#fff;color:#0E627D;cursor:pointer;padding:0}
+.ct-copiar svg{width:12px;height:12px}
+.ct-copiar:hover{border-color:#0E627D}
+.ct-copiar.copiado{color:var(--ok);border-color:var(--ok)}
 .ct-tabela a[href^="mailto"]{color:#0E627D}
 .ct-condo{border:0;background:none;padding:0;color:#0E627D;font-weight:600;text-align:left;text-decoration:underline;text-underline-offset:2px}
 .ct-condo:hover{color:#093E4F}
