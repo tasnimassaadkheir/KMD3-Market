@@ -574,9 +574,30 @@
           <button class="btn-salvar" id="admAdd">Adicionar</button>
         </div>
         <p class="adm-dica">O login precisa existir antes: Supabase → Authentication → Users → Add user (marque “Auto Confirm User”).</p>
+        <p class="adm-dica">Clique no e-mail de alguém para ver o que a pessoa tem feito.</p>
       </div>
     </section>
   </div>
+  <!-- One member's activity: opens from the right when an e-mail in the table is clicked (app.js abrirAtividade). -->
+  <div class="adm-ativ-fundo" id="admAtivFundo" hidden></div>
+  <aside class="adm-ativ" id="admAtiv" hidden role="dialog" aria-labelledby="admAtivNome">
+    <div class="adm-ativ-topo">
+      <div><h3 id="admAtivNome"></h3><span class="adm-dica" id="admAtivSub"></span></div>
+      <button type="button" class="btn" id="admAtivFechar">Fechar</button>
+    </div>
+    <div class="adm-ativ-filtros">
+      <select class="txt" id="admAtivPeriodo" aria-label="Período">
+        <option value="7">Últimos 7 dias</option>
+        <option value="30" selected>Últimos 30 dias</option>
+        <option value="90">Últimos 90 dias</option>
+        <option value="0">Tudo</option>
+      </select>
+      <input class="txt" id="admAtivBusca" type="search" placeholder="Buscar condomínio ou ação" aria-label="Buscar na atividade">
+    </div>
+    <div class="adm-ativ-resumo" id="admAtivResumo"></div>
+    <div class="adm-ativ-lista" id="admAtivLista"></div>
+    <p class="adm-dica adm-ativ-aviso" id="admAtivAviso" hidden>Mostrando só o “Registro de atualizações” dos condomínios. Para ver também quando a pessoa entrou no app, o que ela excluiu e os templates e contatos, rode <b>database/atividades.sql</b> no SQL Editor do Supabase.</p>
+  </aside>
 </div>
 
 <!-- Toast message area (small pop-up messages at the bottom), used by avisar() in app.js. -->

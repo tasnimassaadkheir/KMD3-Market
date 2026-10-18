@@ -123,6 +123,8 @@ function normalizar(s) {
  * person on a laptop and a phone). After each write, the other pages get a Realtime event.
  * nuvem.tabelas.condominios = [...] pre-loads rows (database format).
  * criarNuvem(usuario, {leitor: true}) = a read-only user (the database answers "no" to create/edit/delete).
+ * {rpc: {sou_admin: true, admin_membros: [...]}} = answers for database functions (admin screen tests).
+ * {semTabela: ["atividades"]} = that table doesn't exist (the database answers with an error, like Supabase).
  */
 function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, opcoes = {}) {
   const tabelas = {};
@@ -139,6 +141,9 @@ function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, o
     return true;
   });
   function executar(q) {
+    // a table that "wasn't created yet" in the real database (e.g. atividades.sql not run)
+    if ((opcoes.semTabela || []).includes(q.tabela))
+      return { data: null, error: { code: "PGRST205", message: `Could not find the table 'public.${q.tabela}' in the schema cache` } };
     const linhas = tab(q.tabela);
     const chave = q.onConflict || (q.tabela === "rotas" ? "usuario" : "id");
     let data = null, mudou = false;
@@ -166,8 +171,8 @@ function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, o
       await context.route("**/supabase-js@2*", (route) =>
         route.fulfill({ contentType: "text/javascript", path: path.join(__dirname, "fake-supabase.js") }));
       await context.exposeBinding("__fakeDb", (_src, q) => executar(q));
-      await context.addInitScript(([u, leitor]) => { window.__fakeSessao = { user: u }; window.__fakeLeitor = leitor; },
-        [usuario, !!opcoes.leitor]);
+      await context.addInitScript(([u, leitor, rpc]) => { window.__fakeSessao = { user: u }; window.__fakeLeitor = leitor; window.__fakeRpc = rpc; },
+        [usuario, !!opcoes.leitor, opcoes.rpc || null]);
     },
   };
 }

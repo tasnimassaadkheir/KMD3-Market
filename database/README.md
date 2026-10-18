@@ -4,6 +4,12 @@
 Security policies and Realtime. It is safe to run more than once, and it adds
 any missing columns to an existing database without touching your data.
 
+`atividades.sql` creates the activity log behind "what each person has been
+doing" in Administração: the `atividades` table, its security rules, and a
+trigger on `condominios`, `templates` and `contatos_avulsos`. Run it once in the
+SQL Editor (it is safe to run again). It needs the live functions
+`minha_org_id()`, `sou_admin()` and `sou_super()`.
+
 ## Keeping this folder in sync with Supabase
 
 The live Supabase project also has things this file does not cover:
