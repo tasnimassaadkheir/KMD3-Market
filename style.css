@@ -304,12 +304,18 @@
     font-weight:600}
   .obs-item .obs-meta b{color:#093E4F}
   .obs-item .obs-editado{font-style:normal;font-weight:400;color:var(--tinta-suave)}
-  .obs-item .obs-texto{white-space:pre-wrap;word-break:break-word;padding-right:44px}
+  .obs-item .obs-texto{white-space:pre-wrap;word-break:break-word;padding-right:66px}
   .obs-item .obs-acoes{position:absolute;top:6px;right:6px;display:flex;gap:1px}
   .obs-item .obs-editar,.obs-item .obs-remover{border:0;background:none;
     color:var(--tinta-suave);font-size:13px;line-height:1;padding:3px 5px;border-radius:6px}
   .obs-item .obs-editar:hover{background:#E2E5DB;color:#093E4F}
   .obs-item .obs-remover:hover{background:#E2E5DB;color:#963029}
+  /* copy icon (same as inside the e-mail box): grey, green for a moment after copying */
+  .obs-item .obs-copiar{border:0;background:none;color:var(--tinta-suave);padding:3px 5px;border-radius:6px;
+    display:grid;place-items:center;cursor:pointer}
+  .obs-item .obs-copiar svg{width:13px;height:13px}
+  .obs-item .obs-copiar:hover{background:#E2E5DB;color:#093E4F}
+  .obs-item .obs-copiar.copiado{color:var(--ok);background:none}
   .obs-item-editando{background:#fff;border:1px solid #093E4F}
   .obs-item-editando .obs-editar-texto{width:100%;margin-top:4px;resize:vertical;min-height:70px;
     padding:8px 9px;border-radius:8px;border:1px solid #D6D9D0;font:inherit;color:var(--tinta);outline:none}

@@ -1,4 +1,4 @@
-// E2E tests: the small "copy e-mail" button, in the condo panel and on the Contatos page.
+// E2E tests: the small copy icon: inside the e-mail box, on the Contatos page, and on each note of the Timeline.
 const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { setup, openApp, lead, irPeloMenu } = require("./helpers");
@@ -70,6 +70,38 @@ describe("Copy e-mail button", () => {
     const b = await page.locator('[data-copiar-email="0"]').boundingBox();
     assert.ok(b.x + b.width <= 390, "button inside the screen");
     assert.equal(await page.locator("#painel").evaluate((e) => e.scrollWidth <= e.clientWidth), true);
+    await context.close();
+  });
+});
+
+describe("Copy icon on the Timeline (notes)", () => {
+  test("each note has the copy icon at its top right, next to edit and delete; it copies the note's text exactly", async () => {
+    const texto = "Síndico pediu proposta.\nLigar de novo na segunda.";
+    const app = await openApp(env, { leads: [lead({ id: "c1", nome: "Aurora", observacoes: [
+      { texto, quando: "2026-10-16T14:00:00Z", por: "Karen" },
+      { texto: "Primeira visita", quando: "2026-10-10T09:00:00Z", por: "Karen" }] })] });
+    const { page, context, errors } = app;
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.click(".cartao");
+    await page.waitForSelector("#painel.aberto");
+    await page.waitForTimeout(300);
+    const item = await page.locator(".obs-item").first().boundingBox();
+    const btn = page.locator('[data-copiar-obs="0"]');
+    const b = await btn.boundingBox(), ed = await page.locator('[data-editar-obs="0"]').boundingBox();
+    assert.ok(b.y - item.y < 14 && item.x + item.width - (b.x + b.width) < 80, "top right of the note");
+    assert.ok(Math.abs(b.y - ed.y) < 4 && b.x < ed.x, "same row, before the edit button");
+    assert.ok(b.width <= 26 && b.height <= 26, "small icon");
+
+    await btn.click();
+    assert.equal(await area(page), texto, "line breaks kept");
+    assert.match(await page.textContent("#aviso"), /Observação copiada/);
+    assert.equal(await btn.evaluate((e) => e.classList.contains("copiado")), true);
+    await page.click('[data-copiar-obs="1"]');
+    assert.equal(await area(page), "Primeira visita");
+    // the text doesn't run under the three icons
+    const t = await page.locator(".obs-item .obs-texto").first().boundingBox();
+    assert.ok(t.x + t.width <= b.x + 2 || t.y > b.y + b.height, "text clear of the icons");
+    assert.deepEqual(errors, []);
     await context.close();
   });
 });

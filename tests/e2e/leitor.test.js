@@ -46,6 +46,7 @@ describe("Read-only users (leitor)", () => {
     assert.match(await page.textContent("#obsLista"), /Visitamos o síndico/);
     assert.match(await page.textContent("#lemLista"), /Ligar de novo/);
     assert.equal(await page.locator(".selo-leitura").isVisible(), true, "says 'Somente leitura'");
+    assert.equal(await page.locator(".obs-copiar").first().isVisible(), true, "notes can still be copied");
     assert.equal((await page.textContent("#btnCancelar")).trim(), "Fechar");
     // nothing can be changed
     for (const sel of ["#btnSalvar", "#btnExcluir", "#btnAddContato", ".obs-nova", ".lem-novo", "#btnRotaLead", ".obs-editar", ".lem-ok"])
