@@ -911,6 +911,8 @@ function renderObservacoes(){
     }
     return '<div class="obs-item">'+
       '<div class="obs-acoes">'+
+        // copy this note's text (same small icon as the e-mail box); stays available to read-only users
+        '<button type="button" class="obs-copiar" data-copiar-obs="'+i+'" title="Copiar observação" aria-label="Copiar observação">'+ICONE_COPIAR+'</button>'+
         '<button type="button" class="obs-editar" data-editar-obs="'+i+'" title="Editar observação">✎</button>'+
         '<button type="button" class="obs-remover" data-remover-obs="'+i+'" title="Remover observação">✕</button>'+
       '</div>'+
@@ -1690,8 +1692,12 @@ async function copiarTexto(texto){
 async function copiarEmail(email, botao){
   email = String(email || "").trim();
   if(!email){ avisar("Não há e-mail para copiar"); return; }
-  if(!(await copiarTexto(email))){ avisar("Não consegui copiar. Selecione o e-mail e copie manualmente.", true); return; }
-  avisar("E-mail copiado: " + email);
+  await copiarComAviso(email, botao, "E-mail copiado: " + email);
+}
+// Copies a text, shows 'mensagem' and turns the small copy icon green for 1.5 s.
+async function copiarComAviso(texto, botao, mensagem){
+  if(!(await copiarTexto(texto))){ avisar("Não consegui copiar. Selecione o texto e copie manualmente.", true); return; }
+  avisar(mensagem);
   if(botao){
     botao.classList.add("copiado");
     clearTimeout(botao._t);
@@ -2684,6 +2690,8 @@ document.addEventListener("click", e=>{
   if(rem) removerEquipe(rem.dataset.remover);
   const remObs = e.target.closest("[data-remover-obs]");
   if(remObs) removerObservacaoForm(parseInt(remObs.dataset.removerObs,10));
+  const copObs = e.target.closest("[data-copiar-obs]");
+  if(copObs){ const o = observacoesForm[parseInt(copObs.dataset.copiarObs,10)]; if(o) copiarComAviso(o.texto, copObs, "Observação copiada"); }
   const editObs = e.target.closest("[data-editar-obs]");
   if(editObs) editarObservacao(parseInt(editObs.dataset.editarObs,10));
   const cancelObs = e.target.closest("[data-cancelar-obs]");
