@@ -20,7 +20,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 
 **Condo details**
 - Name, address, number of apartments, zone, and a highlighted "Importante" warning.
-- Multiple contacts per condo, each with one-click **WhatsApp** and **Ligar** (call: opens the phone keypad with the number) buttons, a small **copy** button next to the e-mail, and a **Quem é** dropdown (Síndico, ADM, Zelador, Morador, Gerente predial, or **Outro…** to type a new type, which then appears in every card's dropdown).
+- Multiple contacts per condo, each with one-click **WhatsApp** and **Ligar** (call: opens the phone keypad with the number) buttons, a small **copy** icon inside the e-mail box, and a **Quem é** dropdown (Síndico, ADM, Zelador, Morador, Gerente predial, or **Outro…** to type a new type, which then appears in every card's dropdown).
 
 **Prospecção page (☰ → Prospecção)**
 - Finds condos in São Paulo that aren't in the funnel yet, **with the number of apartments**, from the city's IPTU (property tax) register — about 24,500 buildings with 10+ apartments.

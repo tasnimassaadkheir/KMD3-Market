@@ -829,9 +829,9 @@ function renderContatos(){
           '</span>'+
         '</label>'+
         '<label class="campo"><span>E-mail</span>'+
-          '<span class="tel-com-whats">'+
+          '<span class="email-com-copiar">'+
             '<input class="txt contato-email" type="email" data-i="'+i+'" value="'+escapar(c.email||"")+'">'+
-            // "Copiar": copies the e-mail typed right now
+            // "Copiar": small icon inside the e-mail box (right side); copies the e-mail typed right now
             '<button type="button" class="btn-copiar" data-copiar-email="'+i+'" title="Copiar e-mail" aria-label="Copiar e-mail">'+ICONE_COPIAR+'</button>'+
           '</span>'+
         '</label>'+
@@ -1686,7 +1686,7 @@ async function copiarTexto(texto){
     return ok;
   }
 }
-// Copies an e-mail (condo panel or Contatos page); the button turns green with a ✓ for 1.5 s.
+// Copies an e-mail (condo panel or Contatos page); the icon turns green for 1.5 s.
 async function copiarEmail(email, botao){
   email = String(email || "").trim();
   if(!email){ avisar("Não há e-mail para copiar"); return; }

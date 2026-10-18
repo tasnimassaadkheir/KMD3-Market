@@ -18,7 +18,7 @@ async function abrir(viewport) {
 const area = (page) => page.evaluate(() => navigator.clipboard.readText());
 
 describe("Copy e-mail button", () => {
-  test("in the condo panel: next to the e-mail, copies what is typed right now, and confirms", async () => {
+  test("in the condo panel: a small icon inside the e-mail box, copies what is typed right now, and confirms", async () => {
     const { page, context, errors } = await abrir();
     await page.click(".cartao");
     await page.waitForSelector("#painel.aberto");
@@ -26,13 +26,18 @@ describe("Copy e-mail button", () => {
     const campo = await page.locator(".contato-email").first().boundingBox();
     const btn = page.locator('[data-copiar-email="0"]');
     const b = await btn.boundingBox();
-    assert.ok(Math.abs(b.y - campo.y) < 4 && b.x > campo.x + campo.width - 2, "same row, right of the e-mail");
-    assert.ok(b.width <= 40 && b.height <= 44, "small button");
+    assert.ok(b.x >= campo.x && b.x + b.width <= campo.x + campo.width && b.y >= campo.y && b.y + b.height <= campo.y + campo.height,
+      "inside the e-mail box");
+    assert.ok(b.x > campo.x + campo.width / 2, "on the right side of the box");
+    assert.ok(b.width <= 26 && b.height <= 26, "small icon");
+    assert.equal(await btn.evaluate((e) => getComputedStyle(e).backgroundColor), "rgba(0, 0, 0, 0)", "no colored background");
+    const pad = await page.locator(".contato-email").first().evaluate((e) => parseFloat(getComputedStyle(e).paddingRight));
+    assert.ok(pad >= b.width, "the text doesn't run under the icon");
 
     await btn.click();
     assert.equal(await area(page), "paulo@aurora.com.br");
     assert.match(await page.textContent("#aviso"), /E-mail copiado: paulo@aurora\.com\.br/);
-    assert.equal(await btn.evaluate((e) => e.classList.contains("copiado")), true, "turns green for a moment");
+    assert.equal(await btn.evaluate((e) => e.classList.contains("copiado")), true, "the icon turns green for a moment");
     assert.equal(await page.evaluate(() => document.activeElement.classList.contains("contato-email")), false,
       "clicking the button doesn't jump into the field");
 
