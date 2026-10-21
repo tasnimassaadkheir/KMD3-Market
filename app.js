@@ -2955,13 +2955,14 @@ async function admCarregarMembros(){
   $("#admTitulo").textContent = org ? "Membros de " + org.nome : "Selecione uma organização";
   if(!org) return;
   const ms = admMembros = await admRpc("admin_membros", {p_org: org.id});
-  const ck = (c, v) => `<td class="c"><input type="checkbox" class="${c}"${v?" checked":""}></td>`;
+  // each checkbox has its own label: hidden on the laptop (the table header says it), shown on phones (one card per person)
+  const ck = (c, v, rot) => `<td class="c"><label class="adm-ck"><input type="checkbox" class="${c}"${v?" checked":""}><span>${rot}</span></label></td>`;
   $("#admCorpo").innerHTML = ms.map(m => `
     <tr data-u="${m.user_id}">
-      <td><button type="button" class="adm-pessoa" data-ativ="${escapar(m.user_id)}" title="Ver o que ${escapar(m.usuario || m.email)} tem feito">${escapar(m.email)}</button><span class="adm-dica">${escapar(m.usuario)}</span></td>
-      <td><select class="papel">${Object.keys(ADM_PAPEIS).map(p => `<option${p===m.papel?" selected":""}>${p}</option>`).join("")}</select></td>
-      ${ck("ativo",m.ativo)}${ck("ver",m.ver_todos)}${ck("criar",m.pode_criar)}${ck("editar",m.pode_editar)}${ck("excluir",m.pode_excluir)}
-      <td style="white-space:nowrap"><button class="adm-b admSalvar">Salvar</button> <button class="adm-b adm-x admRemover">Remover</button></td>
+      <td class="adm-quem"><button type="button" class="adm-pessoa" data-ativ="${escapar(m.user_id)}" title="Ver o que ${escapar(m.usuario || m.email)} tem feito">${escapar(m.email)}</button><span class="adm-dica">${escapar(m.usuario)}</span></td>
+      <td class="adm-papel"><select class="papel" aria-label="Papel">${Object.keys(ADM_PAPEIS).map(p => `<option${p===m.papel?" selected":""}>${p}</option>`).join("")}</select></td>
+      ${ck("ativo",m.ativo,"Ativo")}${ck("ver",m.ver_todos,"Vê todos")}${ck("criar",m.pode_criar,"Cria")}${ck("editar",m.pode_editar,"Edita")}${ck("excluir",m.pode_excluir,"Exclui")}
+      <td class="adm-botoes"><button class="adm-b admSalvar">Salvar</button> <button class="adm-b adm-x admRemover">Remover</button></td>
     </tr>`).join("") || '<tr><td colspan="8" class="adm-dica">Ninguém ainda.</td></tr>';
 }
 // Admin screen events.
