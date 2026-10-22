@@ -118,6 +118,20 @@ describe("SULTS flag", () => {
   });
 });
 
+describe("Contato quente flag", () => {
+  test("goes to and comes back from the database as a true/false 'quente' column (missing column = undefined)", () => {
+    assert.equal(app.json(`paraBanco({id:"a", quente:true})`).quente, true);
+    assert.equal(app.json(`paraBanco({id:"b"})`).quente, false, "missing = false");
+    assert.equal(app.json(`doBanco({id:"a", quente:true})`).quente, true);
+    assert.equal(app.json(`doBanco({id:"b"})`).quente, undefined);
+  });
+  test("turning it on or off is written in the history", () => {
+    assert.ok(app.json(`descreverAlteracoes({fase:"a"}, {fase:"a", quente:true})`).includes("Marcado como contato quente"));
+    assert.ok(app.json(`descreverAlteracoes({fase:"a", quente:true}, {fase:"a", quente:false})`).includes("Desmarcado de contato quente"));
+    assert.deepEqual(app.json(`descreverAlteracoes({fase:"a", quente:false}, {fase:"a"})`), []);
+  });
+});
+
 describe("Visitar flag", () => {
   test("is sent to and read from the database as a true/false 'visitar' column", () => {
     assert.equal(app.json(`paraBanco({id:"a", visitar:true})`).visitar, true);

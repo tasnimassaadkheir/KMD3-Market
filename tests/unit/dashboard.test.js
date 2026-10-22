@@ -90,7 +90,7 @@ describe("calcularDashboard()", () => {
   test("people, reminders, Visitar, SULTS and stale open deals", () => {
     const velho = "2026-08-01T12:00:00Z";
     const r = calc([
-      L({ id: "1", responsavel: "Tasnim", visitar: true, atualizadoEm: velho, status: "amarelo" }),
+      L({ id: "1", responsavel: "Tasnim", visitar: true, quente: true, atualizadoEm: velho, status: "amarelo" }),
       L({ id: "2", responsavel: "Tasnim", sults: true, atualizadoEm: velho, status: "verde" }),
       L({ id: "3", responsavel: "", lembretes: [{ texto: "ligar", quando: "2026-10-01T10:00", feito: false }] }),
       L({ id: "4", responsavel: "Karen", atualizadoEm: "2026-09-20T12:00:00Z" }),
@@ -100,6 +100,7 @@ describe("calcularDashboard()", () => {
     assert.equal(r.lembretesVencidos, 1);
     assert.equal(r.visitar, 1);
     assert.equal(r.sults, 1);
+    assert.equal(r.quentes, 1, "hot contacts");
     assert.deepEqual(r.parados.map((l) => l.id), ["1"], "closed deals and recent ones are not 'parados'");
   });
 

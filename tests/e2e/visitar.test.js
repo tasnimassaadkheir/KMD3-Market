@@ -78,8 +78,8 @@ describe("Visitar", () => {
     await page.click("#btnCancelar");
     const [download] = await Promise.all([page.waitForEvent("download"), page.click("#btnExportar")]);
     const linhas = fs.readFileSync(await download.path(), "utf8").slice(1).split("\r\n");
-    assert.match(linhas[0], /"Visitar"$/);
-    assert.match(linhas[1], /"Sim"$/);
+    assert.match(linhas[0], /"Visitar";"Contato quente"$/);
+    assert.match(linhas[1], /"Sim";"Não"$/, "Visitar = Sim, Contato quente = Não");
     await context.close();
   });
   test("regression: the route and Visitar buttons stay button-sized (the pin icon once made them huge)", async () => {
