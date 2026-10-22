@@ -36,6 +36,10 @@
   const LIMITE = 100;                 // max rows shown (and placed on the map) at once, biggest first
   const CHAVE_ADICIONADOS = "quitandinha:prospAdicionados";
   const CHAVE_GEO = "quitandinha:prospGeo";   // positions, when the Supabase table doesn't exist
+  // "Não quero": buildings the team ticked as not interesting. Shared through the Supabase table
+  // "prospeccao_descartes" (database/prospeccao_descartes.sql); kept in this browser until it exists.
+  const TABELA_DESC = "prospeccao_descartes";
+  const CHAVE_DESC = "quitandinha:prospDescartados";
 
   // ---------- state ----------
   let todos = null;                   // every building from the list (objects), biggest first
@@ -45,6 +49,9 @@
   let resultados = [], totalFiltrado = 0;
   let adicionados = {};               // building id -> condo id, for rows added to the funnel here
   try{ adicionados = JSON.parse(localStorage.getItem(CHAVE_ADICIONADOS) || "{}") || {}; }catch(e){ adicionados = {}; }
+  let descartados = new Map();       // building id -> {por, quando}
+  let SEM_TABELA_DESC = false;
+  const descartado = l => descartados.has(l.id);
   let geoLocal = {};
   try{ geoLocal = JSON.parse(localStorage.getItem(CHAVE_GEO) || "{}") || {}; }catch(e){ geoLocal = {}; }
 
@@ -180,14 +187,72 @@
     try{ localStorage.setItem(CHAVE_GEO, JSON.stringify(geoLocal)); }catch(e){}
   }
 
+  /* ---------- "Não quero" marks ---------- */
+  const usarNuvemDesc = () => NUVEM && !SEM_TABELA_DESC;
+  function lerDescartesLocais(){
+    try{ return JSON.parse(localStorage.getItem(CHAVE_DESC) || "{}") || {}; }catch(e){ return {}; }
+  }
+  function gravarDescartesLocais(){
+    try{ localStorage.setItem(CHAVE_DESC, JSON.stringify(Object.fromEntries(descartados))); }catch(e){}
+  }
+  // Loaded every time the page opens, so marks made by the rest of the team show up.
+  async function carregarDescartes(){
+    if(usarNuvemDesc()){
+      let lista = [], ok = true;
+      for(let de = 0; ; de += 1000){
+        const r = await sb.from(TABELA_DESC).select("id,por,quando").range(de, de + 999);
+        if(r.error){ ok = false; if(tabelaNaoExiste(r.error, TABELA_DESC)) SEM_TABELA_DESC = true; else console.warn("prospecção: não quero", r.error); break; }
+        lista = lista.concat(r.data || []);
+        if(!r.data || r.data.length < 1000) break;
+      }
+      if(ok){ descartados = new Map(lista.map(d => [String(d.id), {por: d.por || "", quando: d.quando || ""}])); return; }
+      if(!SEM_TABELA_DESC) return;               // network error: keep what we had
+    }
+    descartados = new Map(Object.entries(lerDescartesLocais()));
+  }
+  // Ticks / unticks "Não quero" on one building. The list and the map update right away;
+  // if the database refuses, the tick goes back and a message explains.
+  async function alternarDescarte(id, marcar){
+    if(typeof bloqueado === "function" && bloqueado()){ refiltrar(); return; }
+    const antes = descartados.get(id);
+    if(marcar) descartados.set(id, {por: meuNome || "", quando: new Date().toISOString()});
+    else descartados.delete(id);
+    refiltrar();
+    avisar(marcar ? "Marcado como “não quero”." + ($p("#prMarcados").value === "nao" ? " Para ver de novo, escolha “Marcados: não quero” no filtro." : "")
+                  : "Desmarcado: voltou para a lista.");
+    let erro = null;
+    if(usarNuvemDesc()){
+      const r = marcar
+        ? await sb.from(TABELA_DESC).insert({id, por: meuNome || null})
+        : await sb.from(TABELA_DESC).delete().eq("id", id);
+      erro = r.error && r.error.code !== "23505" ? r.error : null;     // 23505 = someone already marked it
+      if(erro && tabelaNaoExiste(erro, TABELA_DESC)){ SEM_TABELA_DESC = true; erro = null; }
+    }
+    if(!usarNuvemDesc()){ const loc = lerDescartesLocais(); if(marcar) loc[id] = descartados.get(id); else delete loc[id];
+      try{ localStorage.setItem(CHAVE_DESC, JSON.stringify(loc)); }catch(e){} }
+    if(erro){
+      if(antes) descartados.set(id, antes); else descartados.delete(id);     // back to how it was
+      refiltrar();
+      avisar("Não foi possível salvar a marcação: " + erro.message, true);
+    }
+  }
+  // Filter labels with how many are marked, e.g. "Marcados: não quero (12)".
+  function rotularFiltroMarcados(){
+    const n = (todos || []).filter(descartado).length;
+    const sel = $p("#prMarcados");
+    sel.options[0].textContent = "Não marcados";
+    sel.options[1].textContent = "Marcados: não quero (" + num(n) + ")";
+    sel.options[2].textContent = "Todos";
+  }
+
   // Search: every word must appear (street, number, neighborhood or CEP); minimum apartments; region;
-  // optionally only buildings already placed inside an area of the map (area = {s, n, w, e}).
-  function buscar(texto, minimo, area, regiao, cidade){
+  // "Não quero" marks: marcados = "nao" (hide them), "sim" (only them) or "todos".
+  function buscar(texto, minimo, marcados, regiao, cidade){
     const palavras = normalizarNome(texto).split(" ").filter(Boolean);
     const achados = (todos || []).filter(l => (!minimo || l.apartamentos >= minimo) && (!regiao || l.regiao === regiao) &&
       (!cidade || l.cidade === cidade) &&
       palavras.every(w => l.busca.includes(w)) &&
-      (!area || (l.lat != null && l.lat >= area.s && l.lat <= area.n && l.lng >= area.w && l.lng <= area.e)));
+      (marcados === "todos" || (marcados === "sim" ? descartado(l) : !descartado(l))));
     totalFiltrado = achados.length;
     resultados = achados.slice(0, LIMITE);
   }
@@ -278,7 +343,6 @@
     camada = L.layerGroup().addTo(mapa);
     mapa.on("dragstart", () => { movidoPeloUsuario = true; });
     mapa.on("zoomstart", () => { if(!programatico) movidoPeloUsuario = true; });
-    mapa.on("moveend", () => { if($p("#prArea").checked && !programatico) agendarBusca(); });
     mapa.on("popupopen", e => {
       const el = e.popup.getElement && e.popup.getElement(); if(!el) return;
       el.querySelectorAll("[data-pr-add]").forEach(b => b.onclick = () => { mapa.closePopup(); adicionarAoFunil(b.dataset.prAdd); });
@@ -310,9 +374,9 @@
     camada.clearLayers(); marcadores.clear();
     resultados.forEach(l => {
       if(l.lat == null || l.lng == null) return;
-      const ja = !!leadDoFunil(l);
-      const m = L.circleMarker([l.lat, l.lng], {radius: raio(l.apartamentos), color: ja ? "#1d6e40" : "#8a6424", weight: 2,
-        fillColor: ja ? "#2FA45F" : "#D4A85C", fillOpacity: l.geo_precisao === "rua" ? .45 : .85, dashArray: l.geo_precisao === "rua" ? "3 3" : null})
+      const ja = !!leadDoFunil(l), nao = descartado(l);
+      const m = L.circleMarker([l.lat, l.lng], {radius: raio(l.apartamentos), color: nao ? "#7d8580" : ja ? "#1d6e40" : "#8a6424", weight: 2,
+        fillColor: nao ? "#B9BFBA" : ja ? "#2FA45F" : "#D4A85C", fillOpacity: l.geo_precisao === "rua" ? .45 : .85, dashArray: l.geo_precisao === "rua" ? "3 3" : null})
         .bindPopup(popupHtml(l)).addTo(camada);
       marcadores.set(l.id, m);
     });
@@ -456,12 +520,18 @@
       : geoFalhaRede ? '<span class="pr-loc-esperando">sem mapa agora</span>'
       : '<span class="pr-loc-esperando">localizando…</span>';
     const estadoLoc = l.lat != null ? "ok" : l.geo_em ? "nao-achado" : "esperando";
-    return '<li class="pr-item'+(ja ? " no-funil" : "")+'" data-pr-id="'+escapar(l.id)+'">'+
+    const nao = descartado(l), d = descartados.get(l.id) || {};
+    const leitura = typeof somenteLeitura !== "undefined" && somenteLeitura;
+    return '<li class="pr-item'+(ja ? " no-funil" : "")+(nao ? " descartado" : "")+'" data-pr-id="'+escapar(l.id)+'">'+
       '<div class="pr-item-topo"><button type="button" class="pr-end" data-pr-ver="'+escapar(l.id)+'" title="Ver no mapa">'+
         escapar(nomeRua(l))+'</button>'+
         '<span class="pr-aptos"><strong>'+num(l.apartamentos)+'</strong> aptos</span></div>'+
       (info ? '<div class="pr-item-info">'+info+'</div>' : '')+
-      '<div class="pr-item-acoes"><span class="pr-loc" data-loc="'+estadoLoc+'">'+loc+'</span>'+botaoRota(l)+
+      '<div class="pr-item-acoes">'+
+        // "Não quero" tick: hides the building from the default list (see the filter at the top)
+        '<label class="pr-nao-quero" title="'+(nao && d.por ? "Marcado por " + escapar(d.por) : "Marcar que não temos interesse")+'">'+
+          '<input type="checkbox" data-pr-desc="'+escapar(l.id)+'"'+(nao ? " checked" : "")+(leitura ? " disabled" : "")+'> Não quero</label>'+
+        '<span class="pr-loc" data-loc="'+estadoLoc+'">'+loc+'</span>'+botaoRota(l)+
         (ja ? '<button type="button" class="pr-no-funil" data-pr-abrir="'+escapar(ja.id)+'" title="Abrir o cartão">No funil</button>'
             : '<button type="button" class="pr-add" data-pr-add="'+escapar(l.id)+'">+ Funil</button>')+
       '</div></li>';
@@ -481,31 +551,30 @@
     $p("#prSplit").hidden = vazio;
     $p("#btnPrExportar").hidden = vazio;
     if(vazio) return;
-    const area = $p("#prArea").checked;
+    const marc = $p("#prMarcados").value;
     const reg = REGIOES.find(r => r.id === $p("#prRegiao").value) ||
       ($p("#prCidade").value ? {em: "em " + $p("#prCidade").value, de: "de " + $p("#prCidade").value} : null);
     $p("#prResumo").textContent = totalFiltrado > resultados.length
-      ? "Os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (reg ? " " + reg.de : "") + (area ? " nesta área" : "")
-      : plural(totalFiltrado, "condomínio", "condomínios") + (reg ? " " + reg.em : "") + (area ? " já localizados nesta área do mapa" : "");
+      ? "Os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (reg ? " " + reg.de : "") + (marc === "sim" ? " marcados como “não quero”" : "")
+      : plural(totalFiltrado, "condomínio", "condomínios") + (reg ? " " + reg.em : "") + (marc === "sim" ? " marcados como “não quero”" : "");
     $p("#prLista").innerHTML = resultados.map(itemHtml).join("") ||
-      '<li class="pr-nada">'+(area ? "Nenhum condomínio localizado nesta área ainda."
-                                    : "Nenhum condomínio encontrado. Tente outro bairro, rua ou CEP.")+'</li>';
+      '<li class="pr-nada">'+(marc === "sim" ? "Nenhum condomínio marcado como “não quero” aqui."
+                                         : "Nenhum condomínio encontrado. Tente outro bairro, rua ou CEP.")+'</li>';
     desenharMarcadores();
     renderGeoStatus();
   }
-  // Area of the map currently on screen (for "Só nesta área do mapa").
-  function areaDoMapa(){
-    if(!mapa || !$p("#prArea").checked) return null;
-    const b = mapa.getBounds();
-    return {s: b.getSouth(), n: b.getNorth(), w: b.getWest(), e: b.getEast()};
+  // Same search again without moving the map (after ticking "Não quero").
+  function refiltrar(){
+    buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, $p("#prMarcados").value, $p("#prRegiao").value, $p("#prCidade").value);
+    rotularFiltroMarcados(); renderInfo(); renderResultados();
   }
   let tBusca = null;
   const agendarBusca = () => { clearTimeout(tBusca); tBusca = setTimeout(atualizarBusca, 300); };
   async function atualizarBusca(){
     atualizarFiltroRegiao();
-    buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, areaDoMapa(), $p("#prRegiao").value, $p("#prCidade").value);
-    renderInfo(); renderResultados();
-    if(!$p("#prArea").checked){ movidoPeloUsuario = false; enquadrar(); }
+    buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, $p("#prMarcados").value, $p("#prRegiao").value, $p("#prCidade").value);
+    rotularFiltroMarcados(); renderInfo(); renderResultados();
+    movidoPeloUsuario = false; enquadrar();
     localizar(resultados);
   }
   const aberto = () => $p("#telaProspeccao").classList.contains("aberta");
@@ -517,6 +586,7 @@
       catch(e){ erroDados = true; }
       $p("#prStatus").textContent = "";
     }
+    if(todos){ try{ await carregarDescartes(); }catch(e){} }
     renderInfo(); renderResultados();
     if(!meta || !meta.total) return;
     if(!(await iniciarMapa())) avisar("Não foi possível carregar o mapa. A lista funciona normalmente.", true);
@@ -528,9 +598,9 @@
 
   function exportar(){
     if(!resultados.length){ avisar("Não há condomínios para exportar"); return; }
-    const cab = ["Endereço","Bairro","CEP","Apartamentos","Andares","Ano de construção","Padrão","Latitude","Longitude","No funil"];
+    const cab = ["Endereço","Bairro","CEP","Apartamentos","Andares","Ano de construção","Padrão","Latitude","Longitude","No funil","Não quero"];
     const linhas = resultados.map(l => [expandirLogradouro(l.logradouro) + (l.numero ? ", " + l.numero : ""), l.bairro, l.cep, l.apartamentos,
-      l.pavimentos ?? "", l.ano_construcao ?? "", l.padrao, l.lat ?? "", l.lng ?? "", leadDoFunil(l) ? "Sim" : "Não"]);
+      l.pavimentos ?? "", l.ano_construcao ?? "", l.padrao, l.lat ?? "", l.lng ?? "", leadDoFunil(l) ? "Sim" : "Não", descartado(l) ? "Sim" : "Não"]);
     const csv = [cab, ...linhas].map(r => r.map(x => '"' + String(x ?? "").replace(/"/g, '""') + '"').join(";")).join("\r\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob(["﻿" + csv], {type:"text/csv;charset=utf-8"}));
@@ -545,7 +615,11 @@
   $p("#prMinimo").addEventListener("change", atualizarBusca);
   $p("#prRegiao").addEventListener("change", atualizarBusca);
   $p("#prCidade").addEventListener("change", atualizarBusca);
-  $p("#prArea").addEventListener("change", atualizarBusca);
+  $p("#prMarcados").addEventListener("change", atualizarBusca);
+  $p("#prLista").addEventListener("change", e => {
+    const c = e.target.closest("[data-pr-desc]");
+    if(c) alternarDescarte(c.dataset.prDesc, c.checked);
+  });
   $p("#btnPrTentar").addEventListener("click", () => { fechar(); abrir(); });
   $p("#btnPrExportar").addEventListener("click", exportar);
   $p("#prLista").addEventListener("click", e => {
