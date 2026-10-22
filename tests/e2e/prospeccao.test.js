@@ -128,7 +128,7 @@ describe("Prospecção page", () => {
     await context.close();
   });
 
-  test("'+ Funil' creates a card in Futura Prospecção with address and apartments, and marks the building", async () => {
+  test("'+ Funil' creates a card in Cadastro de Oportunidade with address and apartments, and marks the building", async () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
     await page.waitForSelector(".pr-item .pr-add");
@@ -140,9 +140,10 @@ describe("Prospecção page", () => {
     const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios")).find((l) => /Neto de Araujo/.test(l.nome)));
     assert.equal(salvo.nome, "Condomínio Rua Doutor Neto de Araujo, 320");
     assert.equal(salvo.aptos, 250);
-    assert.equal(salvo.fase, "futura");
+    assert.equal(salvo.fase, "cadastro");
     assert.equal(salvo.endereco, "Rua Doutor Neto de Araujo, 320 - Vila Mariana - São Paulo - SP - 04111-000");
-    assert.equal(salvo.zona, "Vila Mariana");
+    assert.equal(salvo.zona, "", "Zona is typed by hand only");
+    assert.match(salvo.endereco, /Vila Mariana/, "the neighborhood is in the address");
     assert.match(salvo.historico[0].o_que, /Prospecção \(IPTU 2026\)/);
     // the marker turns green and the main map already knows where it is
     assert.equal((await circulos(page))[0].cor, "#2FA45F");
@@ -152,9 +153,11 @@ describe("Prospecção page", () => {
     await page.click(".pr-item .pr-no-funil");
     await page.waitForSelector("#painel.aberto");
     assert.equal(await page.inputValue("#f_nome"), "Condomínio Rua Doutor Neto de Araujo, 320");
+    assert.equal(await page.inputValue("#f_zona"), "", "the Zona field opens empty");
+    assert.equal(await page.inputValue("#f_bairro"), "Vila Mariana", "the neighborhood goes in the address fields");
     await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
-    assert.equal(await page.locator('.coluna[data-fase="futura"] .cartao', { hasText: "Neto de Araujo" }).count(), 1);
+    assert.equal(await page.locator('.coluna[data-fase="cadastro"] .cartao', { hasText: "Neto de Araujo" }).count(), 1);
     assert.deepEqual(errors, []);
     await context.close();
   });

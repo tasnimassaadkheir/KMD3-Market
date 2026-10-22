@@ -19,7 +19,7 @@
 //  4. Neighboring cities (Osasco…) come from IBGE's 2022 Census address register
 //     (scripts/cnefe.mjs -> dados/prospeccao-vizinhas.json), which already has each
 //     building's position, so they appear on the map right away.
-//  5. "+ Funil" turns a building into a card in "Futura Prospecção";
+//  5. "+ Funil" turns a building into a card in "Cadastro de Oportunidade";
 //     "+ Rota" puts it in the visit route without creating a card.
 // Owner names and CPF/CNPJ are never in the list.
 //
@@ -419,8 +419,8 @@
       criadoEm: agora(), atualizadoEm: agora(), criadoPor: meuNome || "", ordem: leads.length,
       historico: [{quando:agora(), o_que:"Cadastrado pela Prospecção (" + (l.fonte || "IPTU " + (l.ano_iptu || "")) + ")", por:meuNome || ""}],
       nome: "Condomínio " + rua + (l.numero ? ", " + l.numero : ""),
-      endereco: enderecoCompleto(l), aptos: l.apartamentos, fase: "futura", status: "nenhum",
-      zona: l.bairro || "", importante: "", contatos: [], concorrente: "", fimContrato: "", perfil: "", notas: "",
+      endereco: enderecoCompleto(l), aptos: l.apartamentos, fase: "cadastro", status: "nenhum",
+      zona: "", importante: "", contatos: [], concorrente: "", fimContrato: "", perfil: "", notas: "",
       responsavel: "", observacoes: [], lembretes: [], sults: false, visitar: false
     };
     leads.push(novo);
@@ -431,7 +431,7 @@
     if(window.__rota) window.__rota.trocarEndereco(l.id, novo.id);   // a route stop for this building now points to the card
     desenhar();
     renderResultados();
-    if(ok !== false) avisar(novo.nome + " entrou no funil (Futura Prospecção)");
+    if(ok !== false) avisar(novo.nome + " entrou no funil (Cadastro de Oportunidade)");
   }
 
   /* ---------- the page ---------- */
