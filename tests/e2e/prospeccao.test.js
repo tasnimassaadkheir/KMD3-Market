@@ -5,7 +5,7 @@ const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const { Readable } = require("node:stream");
-const { setup, openApp, irPeloMenu } = require("./helpers");
+const { setup, openApp, irPeloMenu, criarNuvem } = require("./helpers");
 
 let env, LISTA;
 before(async () => {
@@ -288,18 +288,92 @@ describe("Prospecção page", () => {
     await context.close();
   });
 
-  test("'Só nesta área do mapa' lists only buildings already placed inside the visible area", async () => {
-    const { page, context } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
+  test("'Não quero': ticking hides the building; the filter shows only the ticked ones (faded, gray on the map) or all", async () => {
+    const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
     await page.waitForSelector(".pr-item");
     await page.selectOption("#prMinimo", "0");
-    await page.waitForFunction(() => document.querySelectorAll(".pr-loc a").length === 1, null, { timeout: 15000 });
-    // visible area around Av. Paulista only
-    await page.evaluate(() => { window.__leaflet.bounds = { getSouth: () => -23.57, getNorth: () => -23.56, getWest: () => -46.66, getEast: () => -46.64 }; });
-    await page.check("#prArea");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    const antes = await nomes(page);
+    assert.equal(await page.inputValue("#prMarcados"), "nao", "by default the ticked ones are hidden");
+    // the tick sits at the left of the row's buttons, before + Rota
+    const caixa = page.locator('.pr-item:has-text("Avenida Paulista") .pr-nao-quero');
+    const tick = await caixa.boundingBox(), rota = await page.locator('.pr-item:has-text("Avenida Paulista") [data-pr-rota]').boundingBox();
+    assert.ok(tick.x < rota.x && Math.abs((tick.y + tick.height / 2) - (rota.y + rota.height / 2)) < 8, "left of + Rota, same line");
+    assert.match(await caixa.textContent(), /Não quero/);
+
+    await caixa.locator("input").click();                              // (the row is redrawn right away)
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 2);
+    assert.ok(!(await nomes(page)).includes("Avenida Paulista, 1000"), "hidden from the list");
+    assert.match(await page.textContent("#aviso"), /não quero/);
+    assert.match(await page.locator("#prMarcados option[value=sim]").textContent(), /\(1\)/, "the filter counts them");
+    const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:prospDescartados")));
+    assert.equal(Object.keys(salvo).length, 1, "kept in this browser (local mode)");
+
+    await page.selectOption("#prMarcados", "sim");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
     assert.deepEqual(await nomes(page), ["Avenida Paulista, 1000"]);
-    assert.match(await page.textContent("#prResumo"), /já localizados nesta área/);
+    assert.equal(await page.locator(".pr-item.descartado input[data-pr-desc]").isChecked(), true);
+    assert.match(await page.textContent("#prResumo"), /marcados como .não quero./);
+
+    await page.selectOption("#prMarcados", "todos");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    assert.deepEqual((await nomes(page)).sort(), antes.slice().sort());
+    assert.equal(await page.locator(".pr-item.descartado").count(), 1, "the ticked one looks faded");
+    await page.waitForFunction(() => window.__leaflet.groups.flatMap((g) => g.layers).some((l) => l.o && l.o.fillColor === "#B9BFBA"),
+      null, { timeout: 15000 });
+    const cinza = (await circulos(page)).filter((c) => c.cor === "#B9BFBA");
+    assert.equal(cinza.length, 1, "gray circle on the map");
+    assert.match(cinza[0].popup, /Paulista/);
+
+    // unticking brings it back
+    await page.locator('.pr-item:has-text("Avenida Paulista") input[data-pr-desc]').click();
+    await page.selectOption("#prMarcados", "nao");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    // still marked after closing and opening the page again
+    await page.locator('.pr-item:has-text("Avenida Paulista") input[data-pr-desc]').click();
+    await page.click("#btnFecharProspeccao");
+    await abrir(page);
+    await page.selectOption("#prMinimo", "0");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 2);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+
+  test("'Não quero' is shared with the team (Supabase table), and read-only users can't change it", async () => {
+    const n = criarNuvem();
+    const a = await openApp(env, { nuvem: n, fakeLeaflet: true, nominatim: GEO });
+    await abrir(a.page);
+    await a.page.selectOption("#prMinimo", "0");
+    await a.page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    await a.page.locator('.pr-item:has-text("Avenida Paulista") input[data-pr-desc]').click();
+    for (let i = 0; i < 50 && !(n.tabelas.prospeccao_descartes || []).length; i++) await a.page.waitForTimeout(50);
+    assert.equal(n.tabelas.prospeccao_descartes.length, 1, "saved in the database");
+    assert.equal(n.tabelas.prospeccao_descartes[0].por, "tasnim");
+    await a.context.close();
+
+    // a colleague (read-only) opens the page: the building is already hidden, and the ticks are locked
+    const n2 = criarNuvem(undefined, { leitor: true });
+    n2.tabelas.prospeccao_descartes = n.tabelas.prospeccao_descartes;
+    const b = await openApp(env, { nuvem: n2, fakeLeaflet: true, nominatim: GEO });
+    await abrir(b.page);
+    await b.page.selectOption("#prMinimo", "0");
+    await b.page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 2);
+    assert.equal(await b.page.locator("input[data-pr-desc]").first().isDisabled(), true);
+    await b.context.close();
+  });
+
+  test("'Não quero' without the Supabase table: kept in this browser, no error", async () => {
+    const n = criarNuvem(undefined, { semTabela: ["prospeccao_descartes"] });
+    const { page, context, errors } = await openApp(env, { nuvem: n, fakeLeaflet: true, nominatim: GEO });
+    await abrir(page);
+    await page.selectOption("#prMinimo", "0");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
+    await page.locator('.pr-item:has-text("Avenida Paulista") input[data-pr-desc]').click();
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 2);
+    await page.waitForFunction(() => Object.keys(JSON.parse(localStorage.getItem("quitandinha:prospDescartados") || "{}")).length === 1);
+    assert.doesNotMatch(await page.textContent("#aviso"), /Não foi possível/);
+    assert.deepEqual(errors, []);
     await context.close();
   });
 

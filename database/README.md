@@ -10,6 +10,11 @@ trigger on `condominios`, `templates` and `contatos_avulsos`. Run it once in the
 SQL Editor (it is safe to run again). It needs the live functions
 `minha_org_id()`, `sou_admin()` and `sou_super()`.
 
+`prospeccao_descartes.sql` creates the table behind the Prospecção page's
+"Não quero" ticks (shared by the whole organization). Run it once in the SQL
+Editor (safe to run again). It needs the live functions `minha_org_id()` and
+`posso(acao)`.
+
 ## Keeping this folder in sync with Supabase
 
 The live Supabase project also has things this file does not cover:
