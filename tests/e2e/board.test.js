@@ -39,7 +39,8 @@ describe("Condo panel", () => {
     const { page, context, errors } = await openApp(env);
     await page.click("#btnNovo");
     await page.fill("#f_nome", "Residencial Novo Horizonte");
-    await page.fill("#f_endereco", "Av. Paulista, 1000");
+    await page.fill("#f_rua", "Av. Paulista");
+    await page.fill("#f_numero", "1000");
     await page.click("#btnSalvar");
     await page.waitForSelector("#aviso.on");
     assert.match(await page.textContent("#aviso"), /cadastrado/i);
@@ -48,6 +49,8 @@ describe("Condo panel", () => {
     await page.reload();
     await page.waitForSelector(".cartao");
     assert.equal(await page.locator(".cartao h3").textContent(), "Residencial Novo Horizonte", "saved in localStorage");
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios"))[0].endereco), "Av. Paulista, 1000",
+      "the address fields are saved as one line");
     assert.deepEqual(errors, []);
     await context.close();
   });

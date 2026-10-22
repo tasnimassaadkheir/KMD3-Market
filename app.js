@@ -1169,6 +1169,273 @@ function leadAtualDoForm(){
   return Object.assign({}, base, {id:editandoId||"novo", nome:$("#f_nome").value.trim(), endereco:$("#f_endereco").value.trim(),
     importante:$("#f_importante").value.trim(), contatos:lerContatosForm()});
 }
+// =============================================================================
+// ADDRESS IN SEPARATE FIELDS (CEP, street, number, complement, neighborhood, city, state)
+// -----------------------------------------------------------------------------
+// The condo keeps ONE address text (column "endereco"), exactly as before, so the map, the
+// visit route, the search, the calendar links and Prospecção keep working without any database
+// change. The panel splits that text into fields (separarEndereco) and, when a field is edited,
+// rebuilds it (montarEndereco) as "Rua X, 155, Bloco B - Bairro - Cidade - UF - 00000-000".
+// An old address that nobody edits is kept exactly as it was typed.
+// Lookups use ViaCEP (free, no key): CEP -> address, and street (+ city/UF) -> list of CEPs.
+// =============================================================================
+const UFS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+// Cities we expect around here: a lone last part like "Osasco" is read as the city, not the neighborhood.
+const CIDADES_CONHECIDAS = ["sao paulo","osasco","barueri","carapicuiba","cotia","guarulhos","santo andre","sao bernardo do campo",
+  "sao caetano do sul","diadema","taboao da serra","embu das artes","santana de parnaiba","jandira","itapevi","maua","campinas"];
+const CIDADE_PADRAO_CEP = "São Paulo", UF_PADRAO_CEP = "SP";
+
+// "01310100" -> "01310-100" (keeps only digits, at most 8).
+function formatarCep(v){
+  const d = String(v || "").replace(/\D/g, "").slice(0, 8);
+  return d.length > 5 ? d.slice(0, 5) + "-" + d.slice(5) : d;
+}
+// Splits a one-line address into its parts. Understands the format written by montarEndereco,
+// the Prospecção format ("Rua X, 155 - Bairro - Osasco - SP - 06000-000") and common hand-typed ones.
+function separarEndereco(texto){
+  const r = {cep:"", rua:"", numero:"", complemento:"", bairro:"", cidade:"", uf:""};
+  let t = String(texto || "").replace(/\s+/g, " ").trim();
+  if(!t) return r;
+  const m = t.match(/\b(\d{5})-?(\d{3})\b/);
+  if(m){ r.cep = m[1] + "-" + m[2]; t = t.replace(m[0], " ").replace(/\bCEP:?\s*/i, " "); }
+  const limpar = x => x.replace(/^[\s,\-–/]+|[\s,\-–/]+$/g, "").trim();
+  let segs = t.split(/\s+[-–]\s+/).map(limpar).filter(Boolean);
+  if(!segs.length) return r;
+  // state: a last part that is a UF ("SP"), or a ", SP" / "/SP" at the end of the last part
+  const ult = segs[segs.length - 1];
+  if(UFS.includes(ult.toUpperCase()) && segs.length > 1){ r.uf = ult.toUpperCase(); segs.pop(); }
+  else {
+    const fim = ult.match(/^(.*?)\s*[,/]\s*([A-Za-z]{2})$/);
+    if(fim && UFS.includes(fim[2].toUpperCase())){ r.uf = fim[2].toUpperCase(); segs[segs.length - 1] = limpar(fim[1]); segs = segs.filter(Boolean); }
+  }
+  const ehNumero = x => /^(\d+[A-Za-z]?|s\/?n\.?)$/i.test(x || "");
+  const ehCidade = x => CIDADES_CONHECIDAS.includes(normalizarNome(x));
+  const partes0 = segs[0].split(/\s*,\s*/).filter(Boolean);
+  r.rua = partes0.shift() || "";
+  if(ehNumero(partes0[0])) r.numero = partes0.shift();
+  let resto = segs.slice(1).flatMap(x => x.split(/\s*,\s*/)).filter(Boolean);
+  if(segs.length === 1){
+    // everything was separated by commas: "Rua X, 100, Consolação, São Paulo"
+    resto = partes0.splice(0);
+    if(resto.length && (r.uf || ehCidade(resto[resto.length - 1]))) r.cidade = resto.pop();
+    if(r.cidade && resto.length) r.bairro = resto.pop();
+    r.complemento = resto.join(", ");
+    return r;
+  }
+  r.complemento = partes0.join(", ");
+  if(resto.length && (r.uf || resto.length >= 2 || ehCidade(resto[resto.length - 1]))) r.cidade = resto.pop();
+  r.bairro = resto.join(", ");
+  return r;
+}
+// The opposite: builds the one-line address from the parts (empty parts are skipped).
+function montarEndereco(p){
+  p = p || {};
+  const tr = x => String(x || "").trim();
+  const linha = [tr(p.rua), tr(p.numero), tr(p.complemento)].filter(Boolean).join(", ");
+  return [linha, tr(p.bairro), tr(p.cidade), tr(p.uf).toUpperCase(), formatarCep(p.cep).length === 9 ? formatarCep(p.cep) : ""]
+    .filter(Boolean).join(" - ");
+}
+// What to send to ViaCEP for a typed street: without "Rua", "Av."... (ViaCEP searches the name).
+function termoRua(rua){
+  return String(rua || "").trim()
+    .replace(/^(rua|r\.|avenida|av\.?|alameda|al\.?|travessa|tv\.?|tr\.?|pra[cç]a|p[cç]a\.?|estrada|estr?\.?|rodovia|rod\.?|largo|lgo\.?|viela|passagem|vila)\s+/i, "")
+    .trim();
+}
+// Does this CEP cover this building number? ViaCEP writes the range in "complemento":
+// "até 600 - lado par", "de 601 a 1299 - lado ímpar", "de 1301 ao fim". Returns true / false,
+// or null when the CEP covers the whole street (or the number is unknown).
+function cepCombinaNumero(complemento, numero){
+  const n = parseInt(String(numero || "").replace(/\D/g, ""), 10);
+  const c = normalizarNome(complemento);
+  if(!n || !c) return null;
+  let regra = false;
+  if(/lado par/.test(c)){ regra = true; if(n % 2) return false; }
+  if(/lado impar/.test(c)){ regra = true; if(!(n % 2)) return false; }
+  // "602/603" = the first number on each side of the street: from the smaller, up to the larger
+  const N = "(\\d+)(?:\\/(\\d+))?";
+  const menor = (a, b) => Math.min(+a, b ? +b : +a), maior = (a, b) => Math.max(+a, b ? +b : +a);
+  let m;
+  if((m = c.match(new RegExp("de " + N + " a " + N)))){ regra = true; if(n < menor(m[1], m[2]) || n > maior(m[3], m[4])) return false; }
+  else if((m = c.match(new RegExp("de " + N + " ao fim")))){ regra = true; if(n < menor(m[1], m[2])) return false; }
+  else if((m = c.match(new RegExp("ate " + N)))){ regra = true; if(n > maior(m[1], m[2])) return false; }
+  return regra ? true : null;
+}
+
+// ---- ViaCEP ----
+async function viacepPorCep(cep){
+  const d = String(cep || "").replace(/\D/g, "");
+  if(d.length !== 8) return null;
+  const r = await fetch("https://viacep.com.br/ws/" + d + "/json/");
+  if(!r.ok) throw new Error("http " + r.status);
+  const j = await r.json();
+  return j && !j.erro ? j : null;
+}
+async function viacepPorRua(uf, cidade, termo){
+  const r = await fetch("https://viacep.com.br/ws/" + encodeURIComponent(uf) + "/" + encodeURIComponent(cidade) + "/" + encodeURIComponent(termo) + "/json/");
+  if(!r.ok) throw new Error("http " + r.status);
+  const j = await r.json();
+  return Array.isArray(j) ? j : [];
+}
+
+// ---- the fields in the panel ----
+const CAMPOS_END = {cep:"#f_cep", rua:"#f_rua", numero:"#f_numero", complemento:"#f_complemento", bairro:"#f_bairro", cidade:"#f_cidade", uf:"#f_uf"};
+let endSugestoes = [], endSugIndex = -1, endBuscaN = 0, endTimer = null, endUltimoCep = "", endOpcoesRua = [];
+function lerPartesEndereco(){
+  const p = {};
+  Object.entries(CAMPOS_END).forEach(([k, sel]) => { p[k] = $(sel).value.trim(); });
+  return p;
+}
+function statusEndereco(txt, tipo){
+  const el = $("#endStatus");
+  el.textContent = txt || "";
+  el.className = "end-status" + (tipo ? " " + tipo : "");
+}
+// Opens the panel: shows the saved address split into fields (the saved text stays as is until edited).
+function preencherEndereco(texto){
+  const p = separarEndereco(texto);
+  Object.entries(CAMPOS_END).forEach(([k, sel]) => { $(sel).value = p[k] || ""; });
+  $("#f_endereco").value = texto || "";
+  endUltimoCep = (p.cep || "").replace(/\D/g, "");
+  endOpcoesRua = [];
+  fecharSugestoesEndereco();
+  statusEndereco("");
+}
+// Any address field edited: rebuild the one-line address.
+function atualizarEnderecoCompleto(){ $("#f_endereco").value = montarEndereco(lerPartesEndereco()); }
+// Puts a ViaCEP result into the fields (keeps number and complement typed by the person).
+function aplicarViacep(j){
+  if(j.logradouro) $("#f_rua").value = j.logradouro;
+  if(j.bairro) $("#f_bairro").value = j.bairro;
+  if(j.localidade) $("#f_cidade").value = j.localidade;
+  if(j.uf) $("#f_uf").value = j.uf;
+  if(j.bairro && !$("#f_zona").value.trim()) $("#f_zona").value = j.bairro;   // "Zona" empty: use the neighborhood
+  if(j.cep){ $("#f_cep").value = formatarCep(j.cep); endUltimoCep = j.cep.replace(/\D/g, ""); }
+  atualizarEnderecoCompleto();
+}
+// CEP typed: when it has 8 digits, fill in the rest.
+async function buscarPorCep(){
+  const d = $("#f_cep").value.replace(/\D/g, "");
+  if(d.length !== 8 || d === endUltimoCep) return;
+  endUltimoCep = d;
+  const n = ++endBuscaN;
+  statusEndereco("Buscando o CEP…");
+  try{
+    const j = await viacepPorCep(d);
+    if(n !== endBuscaN) return;
+    if(!j){ statusEndereco("CEP não encontrado. Confira os números ou preencha à mão.", "erro"); return; }
+    aplicarViacep(j);
+    statusEndereco("Endereço preenchido pelo CEP", "ok");
+    if(!$("#f_numero").value.trim()) $("#f_numero").focus();
+  }catch(e){
+    if(n === endBuscaN) statusEndereco("Sem conexão para buscar o CEP agora. Dá para preencher à mão.", "erro");
+  }
+}
+// Street typed: after a short pause, ask ViaCEP for the matching streets in the city (São Paulo if empty).
+function agendarBuscaRua(){
+  clearTimeout(endTimer);
+  const termo = termoRua($("#f_rua").value);
+  if(termo.length < 3){ fecharSugestoesEndereco(); statusEndereco(""); return; }
+  endTimer = setTimeout(buscarPorRua, 400);
+}
+async function buscarPorRua(){
+  const termo = termoRua($("#f_rua").value);
+  if(termo.length < 3) return;
+  const uf = ($("#f_uf").value.trim() || UF_PADRAO_CEP).toUpperCase(), cidade = $("#f_cidade").value.trim() || CIDADE_PADRAO_CEP;
+  const n = ++endBuscaN;
+  statusEndereco("Procurando a rua em " + cidade + "…");
+  try{
+    const lista = await viacepPorRua(uf, cidade, termo);
+    if(n !== endBuscaN || document.activeElement !== $("#f_rua")) return;
+    endOpcoesRua = lista;
+    if(!lista.length){ fecharSugestoesEndereco(); statusEndereco("Nenhuma rua encontrada em " + cidade + ". Confira a cidade ou digite o CEP.", "erro"); return; }
+    statusEndereco("");
+    mostrarSugestoesEndereco(lista);
+  }catch(e){
+    if(n === endBuscaN){ fecharSugestoesEndereco(); statusEndereco("Sem conexão para buscar a rua agora. Dá para preencher à mão.", "erro"); }
+  }
+}
+// The list under the street field: street, neighborhood, CEP and its number range.
+// The CEPs that cover the number already typed come first.
+function mostrarSugestoesEndereco(lista){
+  const num = $("#f_numero").value;
+  const peso = j => { const c = cepCombinaNumero(j.complemento, num); return c === true ? 0 : c === null ? 1 : 2; };
+  endSugestoes = lista.slice().sort((a, b) => peso(a) - peso(b)).slice(0, 8);
+  endSugIndex = -1;
+  const box = $("#endSugestoes");
+  box.innerHTML = endSugestoes.map((j, i) => {
+    const combina = cepCombinaNumero(j.complemento, num) === true;
+    return '<button type="button" role="option" class="end-sug" data-end-sug="'+i+'" id="endSug'+i+'">'+
+      '<b>'+escapar(j.logradouro || "")+'</b>'+
+      '<span>'+escapar([j.bairro, j.localidade + (j.uf ? " - " + j.uf : "")].filter(Boolean).join(", "))+'</span>'+
+      '<span class="end-sug-cep">'+escapar(formatarCep(j.cep))+(j.complemento ? ' <i>'+escapar(j.complemento)+'</i>' : '')+
+        (combina ? ' <em>combina com o nº '+escapar(num.trim())+'</em>' : '')+'</span>'+
+    '</button>';
+  }).join("");
+  box.hidden = false;
+  $("#f_rua").setAttribute("aria-expanded", "true");
+}
+function fecharSugestoesEndereco(){
+  const box = $("#endSugestoes");
+  if(!box) return;
+  box.hidden = true; box.innerHTML = ""; endSugestoes = []; endSugIndex = -1;
+  $("#f_rua").setAttribute("aria-expanded", "false");
+  $("#f_rua").removeAttribute("aria-activedescendant");
+}
+function escolherSugestaoEndereco(i){
+  const j = endSugestoes[i]; if(!j) return;
+  aplicarViacep(j);
+  fecharSugestoesEndereco();
+  statusEndereco("CEP " + formatarCep(j.cep) + " preenchido" + (j.complemento ? " (" + j.complemento + ")" : ""), "ok");
+  $(!$("#f_numero").value.trim() ? "#f_numero" : "#f_complemento").focus();
+}
+// A street with several CEPs (one per stretch of numbers): when the number is typed after
+// choosing the street, switch to the CEP that covers that number.
+function ajustarCepPeloNumero(){
+  if(!endOpcoesRua.length) return;
+  const rua = normalizarNome($("#f_rua").value), num = $("#f_numero").value;
+  const mesmas = endOpcoesRua.filter(j => normalizarNome(j.logradouro) === rua && normalizarNome(j.bairro || "") === normalizarNome($("#f_bairro").value));
+  if(mesmas.length < 2) return;
+  const certo = mesmas.find(j => cepCombinaNumero(j.complemento, num) === true);
+  if(certo && certo.cep.replace(/\D/g, "") !== $("#f_cep").value.replace(/\D/g, "")){
+    $("#f_cep").value = formatarCep(certo.cep); endUltimoCep = certo.cep.replace(/\D/g, "");
+    atualizarEnderecoCompleto();
+    statusEndereco("CEP ajustado para o nº " + num.trim() + ": " + formatarCep(certo.cep), "ok");
+  }
+}
+Object.values(CAMPOS_END).forEach(sel => $(sel).addEventListener("input", atualizarEnderecoCompleto));
+$("#f_cep").addEventListener("input", e => {
+  const f = formatarCep(e.target.value);
+  if(f !== e.target.value) e.target.value = f;
+  atualizarEnderecoCompleto();
+  buscarPorCep();
+});
+$("#f_uf").addEventListener("input", e => { e.target.value = e.target.value.toUpperCase(); atualizarEnderecoCompleto(); });
+$("#f_rua").addEventListener("input", agendarBuscaRua);
+$("#f_numero").addEventListener("input", () => {
+  ajustarCepPeloNumero();
+  if(!$("#endSugestoes").hidden) mostrarSugestoesEndereco(endOpcoesRua);
+});
+$("#f_rua").addEventListener("keydown", e => {
+  if($("#endSugestoes").hidden || !endSugestoes.length) return;
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    endSugIndex = (endSugIndex + (e.key === "ArrowDown" ? 1 : -1) + endSugestoes.length) % endSugestoes.length;
+    document.querySelectorAll("#endSugestoes .end-sug").forEach((b, i) => b.classList.toggle("ativa", i === endSugIndex));
+    $("#f_rua").setAttribute("aria-activedescendant", "endSug" + endSugIndex);
+  } else if(e.key === "Enter" && endSugIndex >= 0){
+    e.preventDefault(); escolherSugestaoEndereco(endSugIndex);
+  } else if(e.key === "Escape"){
+    e.preventDefault(); e.stopPropagation();          // closes only the list, not the panel
+    fecharSugestoesEndereco();
+  }
+});
+$("#f_rua").addEventListener("blur", () => setTimeout(fecharSugestoesEndereco, 180));
+// mousedown (not click) so the street field doesn't lose focus and close the list first
+$("#endSugestoes").addEventListener("mousedown", e => {
+  const b = e.target.closest("[data-end-sug]"); if(!b) return;
+  e.preventDefault(); escolherSugestaoEndereco(parseInt(b.dataset.endSug, 10));
+});
+
 // Draws the reminders inside the panel: open ones first, sorted by date, done ones last.
 // data-lid is replaced by data-form="1" so clicks change the form copy, not the saved data.
 function renderLembretesForm(){
@@ -1844,7 +2111,7 @@ function abrirPainel(id, faseInicial){
   if(id){
     const l = leads.find(x=>x.id===id); if(!l) return;
     $("#tituloPainel").textContent = l.nome || "Condomínio sem nome";
-    $("#f_nome").value=l.nome||""; $("#f_endereco").value=l.endereco||"";
+    $("#f_nome").value=l.nome||""; preencherEndereco(l.endereco||"");
     $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML=""; delete $("#avisoNomeDuplicado").dataset.fechadoPara;
     $("#f_aptos").value=l.aptos??""; $("#f_fase").value=l.fase||"cadastro";
     $("#f_zona").value=l.zona||""; $("#f_importante").value=l.importante||"";
@@ -1867,9 +2134,10 @@ function abrirPainel(id, faseInicial){
     $("#btnExcluir").style.display="";
   } else {
     $("#tituloPainel").textContent = "Novo condomínio";
-    ["f_nome","f_endereco","f_aptos","f_zona","f_importante",
+    ["f_nome","f_aptos","f_zona","f_importante",
      "f_concorrente","f_fimContrato","f_perfil"]
       .forEach(x => $("#"+x).value = "");
+    preencherEndereco("");
     $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML=""; delete $("#avisoNomeDuplicado").dataset.fechadoPara;
     contatosForm = [];
     tipoOutroAberto = null;
