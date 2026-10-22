@@ -243,7 +243,23 @@
         <!-- Dropdown that warns about condos with a similar name (filled by verificarNomeDuplicado). -->
         <div class="dropdown-duplicados" id="avisoNomeDuplicado" hidden></div>
       </label>
-      <label class="campo"><span>Endereço completo</span><input class="txt" id="f_endereco"></label>
+      <!-- ADDRESS in separate fields. Typing the street suggests the CEP and neighborhood (ViaCEP);
+           typing a CEP fills street, neighborhood, city and state. The full address is kept in the hidden
+           #f_endereco (one text, as before), so the map, route, search and calendar keep working. -->
+      <div class="campo end-bloco">
+        <span class="end-titulo">Endereço <small id="endStatus" class="end-status" aria-live="polite"></small></span>
+        <input type="hidden" id="f_endereco">
+        <div class="end-grade">
+          <label class="end-cep"><span>CEP</span><input class="txt" id="f_cep" inputmode="numeric" autocomplete="off" placeholder="00000-000" maxlength="9"></label>
+          <label class="end-rua"><span>Rua</span><input class="txt" id="f_rua" autocomplete="off" placeholder="Comece a digitar a rua…" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="endSugestoes"></label>
+          <div class="end-sugestoes" id="endSugestoes" role="listbox" hidden></div>
+          <label class="end-num"><span>Número</span><input class="txt" id="f_numero" autocomplete="off"></label>
+          <label class="end-comp"><span>Complemento</span><input class="txt" id="f_complemento" autocomplete="off" placeholder="Bloco, torre…"></label>
+          <label class="end-bairro"><span>Bairro</span><input class="txt" id="f_bairro" autocomplete="off"></label>
+          <label class="end-cidade"><span>Cidade</span><input class="txt" id="f_cidade" autocomplete="off" placeholder="São Paulo"></label>
+          <label class="end-uf"><span>UF</span><input class="txt" id="f_uf" autocomplete="off" placeholder="SP" maxlength="2"></label>
+        </div>
+      </div>
       <!-- Only shown for condos that are already saved:
            - "Adicionar à rota": adds/removes this condo from the visit route of the Map view (mapa.js)
            - "Visitar": marks the condo to be visited; the card then shows a small car on its corner.

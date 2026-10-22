@@ -191,7 +191,11 @@
     lista.forEach(l => {
       const k = chave(l);
       if(!k || !precisaBuscar(k) || fila.some(x => x.k === k)) return;
-      fila.push({k, q:consulta(l), curto:String(l.endereco).split(",")[0].trim()+", "+CIDADE_PADRAO+", Brasil"});
+      // second try: just street + number + the address's own city (São Paulo if it has none)
+      const p = typeof separarEndereco === "function" ? separarEndereco(l.endereco) : {};
+      const curto = p.rua ? [p.rua + (p.numero ? ", " + p.numero : ""), p.cidade ? p.cidade + (p.uf ? ", " + p.uf : "") : CIDADE_PADRAO].join(", ")
+                          : String(l.endereco).split(",")[0].trim() + ", " + CIDADE_PADRAO;
+      fila.push({k, q:consulta(l), curto:curto+", Brasil"});
     });
     totalFila = feitos + fila.length;
     rodar();
