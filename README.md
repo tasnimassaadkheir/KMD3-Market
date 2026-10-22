@@ -35,7 +35,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - Search by street, neighborhood or CEP, with a minimum size (50+, 100+ — the default —, 200+, 300+ apartments). Biggest first, up to 100 at a time. The register's neighborhood field is often empty, so street or CEP finds more.
 - Results show on a **list and a map**. The register has no coordinates, so each building is looked up once by its address (OpenStreetMap, 1 per second) and the position is saved for the whole team. Buildings found only by street are marked "aproximado"; ones not found get a Google Maps link.
 - **Só nesta área do mapa**: lists only buildings already placed inside the part of the map on screen.
-- **+ Funil** creates a card in *Futura Prospecção* with the address and apartments filled in (and its map position, so the main map doesn't look it up again). Buildings already in the funnel show **✓ No funil** and a green dot.
+- **+ Funil** creates a card in *Cadastro de Oportunidade* with the address and apartments filled in (Zona is left empty, to be typed by hand) (and its map position, so the main map doesn't look it up again). Buildings already in the funnel show **✓ No funil** and a green dot.
 - **+ Rota** puts a building in the visit route (☰ → Mapa → Rota) without creating a card — handy to visit a whole area and only register the ones that work out. The button shows **✓ Rota (n)** with its stop number; clicking again takes it out. If the building later becomes a card, its stop keeps its place and points to the card.
 - On phones, **Lista / Mapa** tabs switch between the two.
 
