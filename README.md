@@ -16,7 +16,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - Drag and drop cards between columns and reorder them inside a column.
 - Each column can be reversed with one click.
 - Color-coded status on each card: 🟢 closed · 🟡 in progress · 🔴 lost · ⚪ undefined.
-- Filters by text search, status, person responsible and registration date. The status filter also has **No SULTS** and **Fora do SULTS** (condos already registered in SULTS or not); it applies to the map too.
+- Filters by text search, status, person responsible and registration date. The status filter also has **No SULTS** and **Fora do SULTS** (condos already registered in SULTS or not) and **Contatos quentes** / **Não quentes**; it applies to the map too.
 
 **Condo details**
 - Name, address, number of apartments, zone, and a highlighted "Importante" warning.
@@ -39,7 +39,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - Count per **stage**, per **situation** and per **responsible person**.
 - **Size**: P (fewer than 200 apartments), M (200–300), G (more than 300) and "sem nº de aptos".
 - **Competitor minimarket**: how many condos each competitor has (spelling differences grouped together) and how many have none, plus the list of competitor contracts ending in the next 90 days (or already ended).
-- Follow-up: Visitar and SULTS counts, and open deals with no change for 30+ days.
+- Follow-up: Visitar, hot contacts and SULTS counts, and open deals with no change for 30+ days.
 - **Click any number** (a big number, a stage, a size, a competitor, a person…) to open the list of the condos behind it, each with its stage, situation, apartments, responsible person, contact and competitor. Click a name to open the condo; for stages, situations, people and competitors, **Ver no quadro** applies that filter on the board.
 
 **Templates page (☰ → Templates)**
@@ -56,6 +56,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - An automatic change log with update frequency statistics.
 - A duplicate warning while typing a name that looks like an existing condo.
 - A green **SULTS** toggle in the panel header. When on, the card shows a green **S** badge next to the name of whoever edited it last.
+- An orange **Quente** (hot contact) toggle with a flame, next to SULTS. When on, the card shows a small orange flame right after the condo's name. Saved with "Salvar", written in the history, and exported in the CSV.
 - A **Visitar** button next to "Adicionar à rota". It saves right away, and the card shows a small car on its top-right corner.
 
 **Reminders (Lembretes)**
@@ -160,8 +161,8 @@ The project has three layers of automated tests. All of them run in **local mode
 
 | Layer | What it checks | Tool | Count |
 |---|---|---|---|
-| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters, dashboard numbers and the condo list behind each number (size bands, contacts, competitors, expiring contracts, stale deals), the IPTU robot and the IBGE (CNEFE) robot for nearby cities (columns, quotes, Latin-1 files, grouping units into buildings, neighborhood chosen by majority, garages / small buildings / older years left out, no owner data kept, GeoSampa download link), reading the list in the page and the street names sent to the map lookup, a member's activity (plain-language lines, matching history by name, joining the two sources without duplicates, period / search, summary numbers, day headings). Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 131 |
-| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, editing reminders, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the Templates page (create, copy, edit, delete, search), the Dashboard page (numbers, the condo list behind each number, "Ver no quadro", live update), the Prospecção page (list loaded from the robot's file or a clear error with "Tentar de novo", search, map positions looked up once and saved, "+ Funil", "+ Rota" and the stop turning into the card, Osasco with the city filter and positions from the Census, "Só nesta área do mapa", phone tabs), the copy icon (inside the e-mail box, on the Contatos page, and on each Timeline note), the SULTS toggle and badge, the "No SULTS" / "Fora do SULTS" filter, the Visitar button and car badge, the map's Visitar filter, read-only users (role "leitor": everything visible, nothing editable), each member's activity in Administração (logins, changes and deletions by day, summary, period and search, opening a condo from it, the condos' history before `atividades.sql` is run, phone layout), staying on the same page after a refresh (every page and the map), the visit route (synced between two devices of the same person through a fake Supabase, newest change wins, adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones, Administração cut off on phones) | Playwright (Chromium) | 145 |
+| **Unit** | The app's logic in isolation: XSS escaping, name normalization and duplicate detection, WhatsApp links, Brazilian date formats, date-range filter, reminder states (overdue / today / upcoming), calendar exports, database ↔ app conversion, legacy data migration, change history, board filters, dashboard numbers and the condo list behind each number (size bands, contacts, competitors, expiring contracts, stale deals), the IPTU robot and the IBGE (CNEFE) robot for nearby cities (columns, quotes, Latin-1 files, grouping units into buildings, neighborhood chosen by majority, garages / small buildings / older years left out, no owner data kept, GeoSampa download link), reading the list in the page and the street names sent to the map lookup, a member's activity (plain-language lines, matching history by name, joining the two sources without duplicates, period / search, summary numbers, day headings). Also static checks: HTML ↔ JS wiring, script order, duplicate ids, and that no secret key is ever shipped to the browser | Node's built-in test runner (`node:test`) | 134 |
+| **End-to-end** | The real app in a real browser: board renders, create / edit / delete a condo, duplicate-name warning, drag and drop between columns (and that it's saved), search and filters, CSV export, overdue reminders turning cards red, the reminders page, editing reminders, XSS protection, the ☰ side menu (order, opening and closing, keyboard access, each item), contact types with "Outro…", the Contacts page (list, search, filter, standalone contacts, export, phone layout), the Templates page (create, copy, edit, delete, search), the Dashboard page (numbers, the condo list behind each number, "Ver no quadro", live update), the Prospecção page (list loaded from the robot's file or a clear error with "Tentar de novo", search, map positions looked up once and saved, "+ Funil", "+ Rota" and the stop turning into the card, Osasco with the city filter and positions from the Census, "Só nesta área do mapa", phone tabs), the copy icon (inside the e-mail box, on the Contatos page, and on each Timeline note), the SULTS toggle and badge, the "No SULTS" / "Fora do SULTS" filter, the hot-contact flame (toggle, card, filter, Dashboard, read-only, phone header), the Visitar button and car badge, the map's Visitar filter, read-only users (role "leitor": everything visible, nothing editable), each member's activity in Administração (logins, changes and deletions by day, summary, period and search, opening a condo from it, the condos' history before `atividades.sql` is run, phone layout), staying on the same page after a refresh (every page and the map), the visit route (synced between two devices of the same person through a fake Supabase, newest change wins, adding from the condo panel, starting point by address and GPS, typed-address stops, sorting by proximity, the Google Maps link, and all four exports), plus regression tests for fixed layout bugs (reminders count overflow, map legend scrolling with a mouse, no sideways scroll on phones, Administração cut off on phones) | Playwright (Chromium) | 151 |
 | **API** | The Supabase API the app depends on: login, CRUD on `condominios`, team list, permission functions, and that nothing is readable or writable without a login (Row Level Security) | Postman collection run by Newman | 19 requests |
 
 ### Run the tests
@@ -219,10 +220,11 @@ The app expects the following objects in the `public` schema.
 | `observacoes` | `jsonb` | Timeline notes |
 | `lembretes` | `jsonb` | Reminders (optional, see below) |
 | `sults` | `boolean` | Green SULTS flag (optional, see below) |
+| `quente` | `boolean` | Hot contact flag: the flame on the card (optional, see below) |
 | `visitar` | `boolean` | "Visitar" flag, the car on the card (optional, see below) |
 | `sindico`, `sindico_tel`, `sindico_email`, `admin_nome`, `admin_contato`, `admin_tel`, `admin_email` | `text` | Legacy columns. The app clears them and migrates old data to `contatos` |
 
-If the `lembretes`, `sults` or `visitar` column doesn't exist, the app still works, but that information is kept only on each person's device. A warning appears until the column is created. `database/schema.sql` adds them safely.
+If the `lembretes`, `sults`, `visitar` or `quente` column doesn't exist, the app still works, but that information is kept only on each person's device. A warning appears until the column is created. `database/schema.sql` adds them safely.
 
 ### Table `contatos_avulsos`
 
@@ -303,7 +305,7 @@ The page you have open (Dashboard, Prospecção, Lembretes, Contatos, Templates,
 
 ### Read-only users (role "leitor")
 
-A person whose role can't create, edit or delete (the database's `posso` answers "no" to all three) gets a **read-only** app: they see the board, open cards and every page (Dashboard, Contatos, Templates, Prospecção, Lembretes, Mapa), but every button that changes data is hidden, the condo panel's fields are locked, the panel shows "Somente leitura", cards can't be dragged, and SULTS / Visitar only appear (as labels) when they're on. They can still copy templates, e-mails and notes, export lists, and open WhatsApp / call links. The real protection is the database's permissions (Row Level Security); the app just doesn't offer what the database would refuse.
+A person whose role can't create, edit or delete (the database's `posso` answers "no" to all three) gets a **read-only** app: they see the board, open cards and every page (Dashboard, Contatos, Templates, Prospecção, Lembretes, Mapa), but every button that changes data is hidden, the condo panel's fields are locked, the panel shows "Somente leitura", cards can't be dragged, and SULTS / Quente / Visitar only appear (as labels) when they're on. They can still copy templates, e-mails and notes, export lists, and open WhatsApp / call links. The real protection is the database's permissions (Row Level Security); the app just doesn't offer what the database would refuse.
 
 ### What each person has been doing (Administração)
 
@@ -360,6 +362,7 @@ The app keeps a local copy in `localStorage` so nothing is lost if the connectio
 | `quitandinha:equipe` | Team list (local mode) |
 | `quitandinha:lembretes` | Reminders backup |
 | `quitandinha:sults` | SULTS flags backup (only used if the database has no `sults` column) |
+| `quitandinha:quente` | Hot-contact flags backup (only used if the database has no `quente` column) |
 | `quitandinha:visitar` | Visitar flags backup (only used if the database has no `visitar` column) |
 | `quitandinha:tiposContato` | "Quem é" types created with "Outro…" (so they show up right away) |
 | `quitandinha:templates` | Copy of the templates (the only copy if the database has no `templates` table) |

@@ -38,7 +38,8 @@ create table if not exists public.condominios (
   observacoes   jsonb default '[]'::jsonb,
   lembretes     jsonb default '[]'::jsonb,
   sults         boolean default false,
-  visitar       boolean default false
+  visitar       boolean default false,
+  quente        boolean default false   -- contato quente (foguinho no cartão)
 );
 
 -- Para bancos que já existem: acrescenta as colunas que faltam (não mexe nos dados)
@@ -49,6 +50,7 @@ alter table public.condominios add column if not exists observacoes jsonb defaul
 alter table public.condominios add column if not exists lembretes   jsonb default '[]'::jsonb;
 alter table public.condominios add column if not exists sults       boolean default false;
 alter table public.condominios add column if not exists visitar     boolean default false;
+alter table public.condominios add column if not exists quente      boolean default false;
 
 -- Tabela da equipe (quem pode ser responsável por um lead)
 create table if not exists public.equipe (

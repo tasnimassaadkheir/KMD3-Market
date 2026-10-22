@@ -66,6 +66,11 @@
         <option value="sults:sim">No SULTS</option>
         <option value="sults:nao">Fora do SULTS</option>
       </optgroup>
+      <!-- Hot contact: the flame toggle on the card. -->
+      <optgroup label="Contato quente">
+        <option value="quente:sim">Contatos quentes</option>
+        <option value="quente:nao">Não quentes</option>
+      </optgroup>
     </select>
     <!-- Filter by person responsible. The names are added by JavaScript (atualizarFiltroResp). -->
     <select class="filtro" id="filtroResp" aria-label="Filtrar por responsável">
@@ -222,6 +227,8 @@
     <h2 id="tituloPainel">Novo condomínio</h2>
     <!-- SULTS toggle: when on, the card shows a green "S" next to the name of who edited last. -->
     <button type="button" class="btn-sults" id="btnSults" aria-pressed="false">SULTS</button>
+    <!-- Hot contact toggle: when on, the card shows an orange flame next to the condo's name. -->
+    <button type="button" class="btn-quente" id="btnQuente" aria-pressed="false">Quente</button>
     <!-- Shown only to read-only users (role "leitor"). -->
     <span class="selo-leitura">Somente leitura</span>
     <button class="fechar" id="btnFechar" aria-label="Fechar">✕</button>

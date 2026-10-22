@@ -19,12 +19,16 @@ beforeEach(() => {
   app.run(`leads = [
     {id:"1", nome:"Aurora", status:"verde", responsavel:"Ana", criadoEm:"2026-09-10T10:00:00", sults:true,
      contatos:[{nome:"Paulo Síndico", telefone:"11999990000"}]},
-    {id:"2", nome:"Bosque Verde", status:"amarelo", responsavel:"Bia", criadoEm:"2026-10-02T10:00:00", concorrente:"Hirota"},
+    {id:"2", nome:"Bosque Verde", status:"amarelo", responsavel:"Bia", criadoEm:"2026-10-02T10:00:00", concorrente:"Hirota", quente:true},
     {id:"3", nome:"Mirante", responsavel:"Ana", criadoEm:"2026-10-04T10:00:00", zona:"Moema", sults:true}
   ];`);
 });
 
 describe("filtrar()", () => {
+  test("Contato quente: 'Contatos quentes' -> only the flame ones; 'Não quentes' -> the rest", () => {
+    assert.deepEqual(filtrarCom({ status: "quente:sim" }), ["Bosque Verde"]);
+    assert.deepEqual(filtrarCom({ status: "quente:nao" }), ["Aurora", "Mirante"]);
+  });
   test("SULTS: 'No SULTS' -> only registered there; 'Fora do SULTS' -> the rest (missing flag = not in SULTS)", () => {
     assert.deepEqual(filtrarCom({ status: "sults:sim" }), ["Aurora", "Mirante"]);
     assert.deepEqual(filtrarCom({ status: "sults:nao" }), ["Bosque Verde"]);

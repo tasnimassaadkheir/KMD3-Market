@@ -44,11 +44,13 @@ const CHAVE_LEMBRETES = "quitandinha:lembretes";
 // Optional true/false columns on a condo:
 //   sults   = green SULTS mark (green "S" badge next to who edited last)
 //   visitar = "to visit" mark (small car badge on the card's corner)
+//   quente  = hot contact (orange flame next to the condo's name on the card)
 // If the database doesn't have one of these columns yet, the app keeps working:
 // the flag is kept in this browser under 'chave' and the 'aviso' warning is shown once.
 const FLAGS = {
   sults:   {chave:"quitandinha:sults",   aviso:"A marcação SULTS fica só neste aparelho até criar a coluna no Supabase (veja database/schema.sql)."},
-  visitar: {chave:"quitandinha:visitar", aviso:"A marcação Visitar fica só neste aparelho até criar a coluna no Supabase (veja database/schema.sql)."}
+  visitar: {chave:"quitandinha:visitar", aviso:"A marcação Visitar fica só neste aparelho até criar a coluna no Supabase (veja database/schema.sql)."},
+  quente:  {chave:"quitandinha:quente",  aviso:"A marcação Contato quente fica só neste aparelho até criar a coluna no Supabase (veja database/schema.sql)."}
 };
 
 // Which columns the user has reversed (e.g. {reuniao:true}).
@@ -131,7 +133,7 @@ let lembretesForm = [];
 let obsEditandoIndex = null;
 let contatosForm = [];
 // SULTS toggle in the panel: true/false while editing, saved with the condo on "Salvar".
-let sultsForm = false;
+let sultsForm = false, quenteForm = false;
 
 // ---------- SMALL HELPER FUNCTIONS ----------
 // $("#id") = shortcut for document.querySelector: finds an element on the page.
@@ -284,7 +286,8 @@ function doBanco(r){
     lembretes:Array.isArray(r.lembretes) ? r.lembretes : undefined,
     // flags: undefined when the column doesn't exist (then the browser backup is used)
     sults:typeof r.sults === "boolean" ? r.sults : undefined,
-    visitar:typeof r.visitar === "boolean" ? r.visitar : undefined
+    visitar:typeof r.visitar === "boolean" ? r.visitar : undefined,
+    quente:typeof r.quente === "boolean" ? r.quente : undefined
   };
 }
 
@@ -515,6 +518,8 @@ function filtrar(){
   return leads.filter(l => {
     if(st === "sults:sim"){ if(!l.sults) return false; }           // registered in SULTS
     else if(st === "sults:nao"){ if(l.sults) return false; }       // not in SULTS yet
+    else if(st === "quente:sim"){ if(!l.quente) return false; }     // hot contacts
+    else if(st === "quente:nao"){ if(l.quente) return false; }
     else if(st && (l.status||"nenhum") !== st) return false;
     if(resp && (l.responsavel||"") !== resp) return false;
     if(!dataNoIntervalo(l.criadoEm, dataDe, dataAte)) return false;
@@ -589,6 +594,8 @@ function desenhar(){
 // Builds ONE card element for a condo.
 // draggable = can be dragged; tabIndex = 0 makes it reachable with the Tab key.
 // Small car icon (drawn with SVG so it looks the same on every phone and computer).
+// Flame: "contato quente" (hot contact). Filled, so it reads well at 13px on the card.
+const ICONE_FOGO = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>';
 const ICONE_CARRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
   '<path d="M3.5 16.5V12l2.2-4.6A1.5 1.5 0 0 1 7.1 6.5h8.6a1.5 1.5 0 0 1 1.3.8l2.5 4.7h.5a1 1 0 0 1 1 1v3.5"/>'+
   '<path d="M3.5 12h17"/><circle cx="7.5" cy="16.5" r="1.9"/><circle cx="16.5" cy="16.5" r="1.9"/><path d="M9.4 16.5h5.2"/></svg>';
@@ -643,7 +650,8 @@ function montarCartao(l){
     ? '<span class="selo-visitar" title="Para visitar" aria-label="Para visitar">'+ICONE_CARRO+'</span>' : "";
   el.innerHTML =
     seloVisitar+
-    "<h3>"+escapar(l.nome||"Condomínio sem nome")+"</h3>"+
+    "<h3>"+escapar(l.nome||"Condomínio sem nome")+
+      (l.quente ? '<i class="selo-quente" title="Contato quente" aria-label="Contato quente">'+ICONE_FOGO+'</i>' : "")+"</h3>"+
     (l.importante?'<p class="aviso-importante">'+escapar(l.importante)+"</p>":"")+
     info.map(t => '<p class="cartao-info">'+t+'</p>').join("")+
     (etiquetas.length?'<div class="etiquetas">'+etiquetas.join("")+"</div>":"")+
@@ -1881,7 +1889,9 @@ function abrirPainel(id, faseInicial){
   // Slide the panel in, show the dark overlay, and focus the name field after the animation.
   $("#painel").classList.add("aberto"); $("#fundo").classList.add("aberto");
   sultsForm = id ? !!(leads.find(x=>x.id===id)||{}).sults : false;
+  quenteForm = id ? !!(leads.find(x=>x.id===id)||{}).quente : false;
   atualizarBotaoSults();
+  atualizarBotaoQuente();
   atualizarBotaoRotaLead();
   atualizarBotaoVisitar();
   setTimeout(()=>$("#f_nome").focus(), 180);
@@ -1918,6 +1928,15 @@ function atualizarBotaoSults(){
   b.setAttribute("aria-pressed", sultsForm ? "true" : "false");
   b.textContent = "SULTS";
   b.title = sultsForm ? "Marcado como SULTS. Clique para desmarcar." : "Marcar este condomínio como SULTS";
+}
+// Orange "Quente" toggle next to SULTS: a hot contact. On = an orange flame next to the condo's
+// name on the card. Like SULTS, the change is saved with the "Salvar" button.
+function atualizarBotaoQuente(){
+  const b = $("#btnQuente");
+  b.classList.toggle("ativo", quenteForm);
+  b.setAttribute("aria-pressed", quenteForm ? "true" : "false");
+  b.innerHTML = ICONE_FOGO + "<span>Quente</span>";
+  b.title = quenteForm ? "Contato quente. Clique para desmarcar." : "Marcar como contato quente";
 }
 // "Adicionar à rota" button in the panel. The route itself lives in mapa.js (window.__rota).
 // Shows "Adicionar à rota de visitas" (with a pin icon) or "Na rota, parada 2 de 5. Remover".
@@ -1961,7 +1980,7 @@ function abrirEquipe(){
 // Reads every field in the panel and returns a condo object with those values.
 function lerFormulario(){
   return {
-    sults:sultsForm,
+    sults:sultsForm, quente:quenteForm,
     nome:$("#f_nome").value.trim(), endereco:$("#f_endereco").value.trim(),
     aptos:$("#f_aptos").value.trim(), fase:$("#f_fase").value,
     zona:$("#f_zona").value.trim(), importante:$("#f_importante").value.trim(),
@@ -2000,6 +2019,9 @@ function descreverAlteracoes(antes, depois){
   }
   if(!!antes.sults !== !!depois.sults){
     partes.push(depois.sults ? "Marcado como SULTS" : "Desmarcado de SULTS");
+  }
+  if(!!antes.quente !== !!depois.quente){
+    partes.push(depois.quente ? "Marcado como contato quente" : "Desmarcado de contato quente");
   }
   Object.keys(RÓTULOS_CAMPO).forEach(campo => {
     const v1 = (antes[campo] ?? "").toString().trim();
@@ -2080,12 +2102,12 @@ function exportarCSV(){
   if(!leads.length){ avisar("Não há condomínios para exportar"); return; }
   const cab = ["Condomínio","Endereço","Zona","Apartamentos","Fase","Situação","Informação importante","Contatos",
     "Concorrente","Fim do contrato","Perfil dos moradores","Observações","Responsável","Cadastrado por",
-    "Data de cadastro","Última atualização","Nº de atualizações","SULTS","Visitar"];
+    "Data de cadastro","Última atualização","Nº de atualizações","SULTS","Visitar","Contato quente"];
   const linhas = leads.map(l => [
     l.nome,l.endereco,l.zona,l.aptos,(FASES.find(f=>f.id===l.fase)||{}).nome,ROTULO_STATUS[l.status||"nenhum"],l.importante,
     (l.contatos||[]).map(c=>[c.nome,c.telefone,c.email].filter(Boolean).join(" / ")).join(" | "),
     l.concorrente,l.fimContrato?dataBR(l.fimContrato):"",l.perfil,l.notas,l.responsavel,l.criadoPor,
-    dataBR(l.criadoEm),dataBR(l.atualizadoEm),(l.historico||[]).length,l.sults?"Sim":"Não",l.visitar?"Sim":"Não"
+    dataBR(l.criadoEm),dataBR(l.atualizadoEm),(l.historico||[]).length,l.sults?"Sim":"Não",l.visitar?"Sim":"Não",l.quente?"Sim":"Não"
   ]);
   const csv = [cab,...linhas].map(r=>r.map(c=>'"'+String(c??"").replace(/"/g,'""')+'"').join(";")).join("\r\n");
   const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
@@ -2300,7 +2322,7 @@ function calcularDashboard(lista){
     total: lista.length, fases: {}, status: {verde:0, amarelo:0, vermelho:0, nenhum:0},
     tamanho: {P:0, M:0, G:0, sem:0}, comContato: 0, semContato: 0, semInfo: [],
     concorrentes: [], semConcorrente: 0, vencendo: [], aptosTotal: 0, aptosFechados: 0,
-    lembretesVencidos: 0, visitar: 0, sults: 0, parados: [], responsaveis: [], conversao: null
+    lembretesVencidos: 0, visitar: 0, sults: 0, quentes: 0, parados: [], responsaveis: [], conversao: null
   };
   FASES.forEach(f => r.fases[f.id] = 0);
   const conc = new Map(), resp = new Map();
@@ -2329,6 +2351,7 @@ function calcularDashboard(lista){
     if(lembreteVencido(l)) r.lembretesVencidos++;
     if(l.visitar) r.visitar++;
     if(l.sults) r.sults++;
+    if(l.quente) r.quentes++;
     const t = new Date(l.atualizadoEm || l.criadoEm || 0).getTime();
     if(st !== "verde" && st !== "vermelho" && t && t < limiteParado) r.parados.push(l);
   });
@@ -2390,7 +2413,8 @@ function grupoDashboard(chave, lista){
       : g("Sem responsável", l => !String(l.responsavel||"").trim());
     case "lembrete": return g("Com lembrete vencido", lembreteVencido);
     case "visitar":  return g("Para visitar", l => !!l.visitar);
-    case "sults":    return g("No SULTS", l => !!l.sults);
+    case "sults":    return g("No SULTS", l => !!l.sults, {status: "sults:sim"});
+    case "quente":   return g("Contatos quentes", l => !!l.quente, {status: "quente:sim"});
     case "parados":  return g("Parados há mais de "+DIAS_PARADO+" dias (em aberto)", l => {
                          const t = new Date(l.atualizadoEm || l.criadoEm || 0).getTime();
                          return st(l) !== "verde" && st(l) !== "vermelho" && t && t < limiteParado;
@@ -2478,6 +2502,7 @@ function renderDashboard(){
   cartoes.push(cartaoDb("Acompanhamento",
     '<div class="db-mini">'+
       '<button type="button" '+attrGrupo("visitar")+'><b>'+r.visitar+'</b> para visitar</button>'+
+      '<button type="button" '+attrGrupo("quente")+'><b>'+r.quentes+'</b> '+(r.quentes === 1 ? "contato quente" : "contatos quentes")+'</button>'+
       '<button type="button" '+attrGrupo("sults")+'><b>'+r.sults+'</b> no SULTS</button>'+
       '<button type="button" '+attrGrupo("parados")+'><b>'+r.parados.length+'</b> parados há '+DIAS_PARADO+'+ dias</button>'+
     '</div>'+
@@ -2892,6 +2917,8 @@ $("#ctCorpo").addEventListener("click", e=>{
 });
 // SULTS toggle in the panel.
 $("#btnSults").addEventListener("click", ()=>{ if(bloqueado()) return; sultsForm = !sultsForm; atualizarBotaoSults(); });
+// "Quente" (hot contact) toggle in the panel.
+$("#btnQuente").addEventListener("click", ()=>{ if(bloqueado()) return; quenteForm = !quenteForm; atualizarBotaoQuente(); });
 // Read-only users: lock the condo panel's fields again whenever its content is redrawn (contacts, notes…).
 if(typeof MutationObserver === "function") new MutationObserver(() => travarPainel()).observe($("#painel"), {childList:true, subtree:true});
 // Visit route button in the panel; mapa.js fires "rota-mudou" whenever the route changes.

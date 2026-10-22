@@ -80,8 +80,8 @@ describe("SULTS", () => {
 
     const [download] = await Promise.all([page.waitForEvent("download"), page.click("#btnExportar")]);
     const linhas = fs.readFileSync(await download.path(), "utf8").slice(1).split("\r\n");
-    assert.match(linhas[0], /"SULTS";"Visitar"$/);
-    assert.match(linhas[1], /"Sim";"Não"$/, "SULTS = Sim");
+    assert.match(linhas[0], /"SULTS";"Visitar";"Contato quente"$/);
+    assert.match(linhas[1], /"Sim";"Não";"Não"$/, "SULTS = Sim, Visitar = Não, Contato quente = Não");
     await context.close();
   });
 });
