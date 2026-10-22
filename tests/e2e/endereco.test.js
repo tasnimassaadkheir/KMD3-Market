@@ -72,7 +72,7 @@ describe("Address in separate fields", () => {
     assert.equal(await page.inputValue("#f_rua"), "Avenida Manoel Pedro Pimentel");
     assert.equal(await page.inputValue("#f_cep"), "06020-194");
     assert.equal(await page.inputValue("#f_bairro"), "Continental");
-    assert.equal(await page.inputValue("#f_zona"), "Continental", "an empty Zona gets the neighborhood");
+    assert.equal(await page.inputValue("#f_zona"), "", "Zona is typed by hand only: choosing a street doesn't fill it");
     assert.equal(await page.locator("#endSugestoes").isHidden(), true);
     assert.match(await page.textContent("#endStatus"), /CEP 06020-194 preenchido/);
 
@@ -121,6 +121,7 @@ describe("Address in separate fields", () => {
     assert.equal(await page.inputValue("#f_cidade"), "São Paulo");
     assert.equal(await page.inputValue("#f_uf"), "SP");
     assert.equal(await page.evaluate(() => document.activeElement.id), "f_numero", "cursor goes to the number");
+    assert.equal(await page.inputValue("#f_zona"), "", "a CEP doesn't fill Zona either");
 
     await page.fill("#f_cep", "");
     await page.click("#f_cep");

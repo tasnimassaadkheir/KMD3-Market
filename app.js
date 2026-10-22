@@ -1308,7 +1308,7 @@ function aplicarViacep(j){
   if(j.bairro) $("#f_bairro").value = j.bairro;
   if(j.localidade) $("#f_cidade").value = j.localidade;
   if(j.uf) $("#f_uf").value = j.uf;
-  if(j.bairro && !$("#f_zona").value.trim()) $("#f_zona").value = j.bairro;   // "Zona" empty: use the neighborhood
+  // "Zona" is never filled automatically: it is typed by hand only
   if(j.cep){ $("#f_cep").value = formatarCep(j.cep); endUltimoCep = j.cep.replace(/\D/g, ""); }
   atualizarEnderecoCompleto();
 }
