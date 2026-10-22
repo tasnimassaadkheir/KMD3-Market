@@ -22,7 +22,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - Name, address, number of apartments, zone, and a highlighted "Importante" warning.
 - The **address in separate fields**: CEP, Rua, Número, Complemento, Bairro, Cidade and UF.
   - Typing the street (3+ letters) lists the matching streets of that city (São Paulo when empty) with their CEP and neighborhood, from [ViaCEP](https://viacep.com.br). When a street has one CEP per stretch of numbers, the one for the typed number comes first ("combina com o nº"), and changing the number later switches to the right CEP.
-  - Typing a CEP fills street, neighborhood, city and UF, and moves the cursor to the number. An empty Zona gets the neighborhood.
+  - Typing a CEP fills street, neighborhood, city and UF, and moves the cursor to the number. **Zona** is never filled automatically: it is typed by hand only.
   - Arrows + Enter choose a suggestion; Esc closes the list. Without internet the fields still work by hand.
   - It's still saved as one line in `endereco` ("Rua X, 155, Torre 2 - Bairro - Cidade - UF - 00000-000"), so the map, route, search and calendar links work as before and the database didn't change. Old addresses open split into fields and are kept exactly as typed unless edited.
 - Multiple contacts per condo, each with one-click **WhatsApp** and **Ligar** (call: opens the phone keypad with the number) buttons, a small **copy** icon inside the e-mail box, and a **Quem é** dropdown (Síndico, ADM, Zelador, Morador, Gerente predial, or **Outro…** to type a new type, which then appears in every card's dropdown).
