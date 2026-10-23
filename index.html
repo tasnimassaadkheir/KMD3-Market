@@ -77,7 +77,7 @@
       <option value="">Todos os responsáveis</option>
     </select>
     <!-- Filter by registration date (from – to). The ✕ button appears only when a date is set. -->
-    <div class="filtro-data" aria-label="Filtrar por data de cadastro">
+    <div class="filtro-data" role="group" aria-label="Filtrar por data de cadastro">
       <input type="date" id="filtroDataDe" title="Cadastrado a partir de">
       <span class="filtro-data-sep">–</span>
       <input type="date" id="filtroDataAte" title="Cadastrado até">
@@ -304,7 +304,7 @@
       <label class="campo" style="margin-bottom:6px"><span style="font-family:'Schibsted Grotesk',sans-serif;font-size:13px;font-weight:700;color:#093E4F">Timeline</span></label>
       <div class="obs-lista" id="obsLista"></div>
       <div class="obs-nova">
-        <textarea class="txt" id="obsTexto" style="min-height:70px"></textarea>
+        <textarea class="txt" id="obsTexto" style="min-height:70px" aria-label="Nova observação"></textarea>
         <button type="button" class="btn-add-obs" id="btnAddObs">+ Adicionar</button>
       </div>
     </fieldset>
@@ -608,7 +608,7 @@
     <section class="adm-card">
       <h3>Organizações</h3>
       <div id="admOrgs"></div>
-      <div id="admNova" hidden><div class="adm-linha"><input class="txt" id="admNomeOrg" placeholder="Nome da nova organização"><button class="btn-salvar" id="admCriarOrg">Criar</button></div></div>
+      <div id="admNova" hidden><div class="adm-linha"><input class="txt" id="admNomeOrg" placeholder="Nome da nova organização" aria-label="Nome da nova organização"><button class="btn-salvar" id="admCriarOrg">Criar</button></div></div>
     </section>
     <section class="adm-card">
       <h3 id="admTitulo">Selecione uma organização</h3>

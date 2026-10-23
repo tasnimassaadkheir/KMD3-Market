@@ -639,7 +639,7 @@ function montarCartao(l){
   const ultimaObs = ultimaObservacao(l);
   const quemObs = ultimaObs ? (ultimaObs.por||"") : "";
   const inicial = (quemObs||"?").trim().charAt(0).toUpperCase() || "?";
-  const seloSults = l.sults ? '<i class="selo-sults" title="SULTS" aria-label="SULTS">S</i>' : "";
+  const seloSults = l.sults ? '<i class="selo-sults" role="img" title="SULTS" aria-label="SULTS">S</i>' : "";
   const metaCartao = ultimaObs
     ? '<div class="meta-cartao"><span>Atualizado '+dataHoraBR(ultimaObs.quando)+(quemObs ? "" : seloSults)+"</span>"+
       (quemObs?'<span class="quem"><i class="inicial">'+escapar(inicial)+"</i>por "+escapar(quemObs)+seloSults+"</span>":"")+
@@ -647,11 +647,11 @@ function montarCartao(l){
     : (seloSults ? '<div class="meta-cartao"><span class="quem">'+seloSults+"</span></div>" : "");
   // "Visitar" mark: a small car on the card's top-right corner, sticking out of the card.
   const seloVisitar = l.visitar
-    ? '<span class="selo-visitar" title="Para visitar" aria-label="Para visitar">'+ICONE_CARRO+'</span>' : "";
+    ? '<span class="selo-visitar" role="img" title="Para visitar" aria-label="Para visitar">'+ICONE_CARRO+'</span>' : "";
   el.innerHTML =
     seloVisitar+
     "<h3>"+escapar(l.nome||"Condomínio sem nome")+
-      (l.quente ? '<i class="selo-quente" title="Contato quente" aria-label="Contato quente">'+ICONE_FOGO+'</i>' : "")+"</h3>"+
+      (l.quente ? '<i class="selo-quente" role="img" title="Contato quente" aria-label="Contato quente">'+ICONE_FOGO+'</i>' : "")+"</h3>"+
     (l.importante?'<p class="aviso-importante">'+escapar(l.importante)+"</p>":"")+
     info.map(t => '<p class="cartao-info">'+t+'</p>').join("")+
     (etiquetas.length?'<div class="etiquetas">'+etiquetas.join("")+"</div>":"")+
