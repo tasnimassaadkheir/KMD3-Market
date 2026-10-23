@@ -1154,7 +1154,8 @@ function itemLembreteHTML(l, lem, idx, doForm){
       (lem.feito
         ? '<button type="button" data-lem-reabrir="'+idx+'" data-lid="'+escapar(l.id)+'">Reabrir</button>'
         : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">Concluir</button>'+
-          '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>')+
+          '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>'+
+          '<button type="button" data-lem-semana="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar 7 dias, no mesmo horário">Adiar 1 semana</button>')+
       '<button type="button" data-lem-editar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Mudar data, horário ou texto">Editar</button>'+
       '<a class="lem-gcal" href="'+escapar(gcal)+'" target="_blank" rel="noopener">Google Agenda</a>'+
       '<button type="button" data-lem-ics="'+idx+'" data-lid="'+escapar(l.id)+'" title="Arquivo para Apple/Outlook, com alarme 10 min antes">.ics</button>'+
@@ -1472,16 +1473,21 @@ async function gravarLembretes(l, descricao){
   verificarLembretes(true);
   renderPainelLembretes();
 }
-// Runs an action on a saved reminder: feito (done), reabrir (reopen), adiar (+1 day), remover (delete), ics (download).
+// Moves a reminder N days later, same time.
+function adiarLembrete(lem, dias){
+  const d = dtLembrete(lem); d.setDate(d.getDate()+dias);
+  lem.quando = dataLocalInput(d)+"T"+horaCurta(d);
+}
+// Runs an action on a saved reminder: feito (done), reabrir (reopen), adiar (+1 day), semana (+7 days), remover (delete), ics (download).
 async function acaoLembrete(leadId, idx, acao){
   if(!perm.editar){ negar("editar"); return; }
   const l = leads.find(x=>x.id===leadId); if(!l || !l.lembretes || !l.lembretes[idx]) return;
   const lem = l.lembretes[idx];
   if(acao==="feito"){ lem.feito = true; lem.feitoEm = agora(); await gravarLembretes(l, "Lembrete concluído: "+(lem.texto||"retomar contato")); avisar("Lembrete concluído"); }
   else if(acao==="reabrir"){ lem.feito = false; lem.feitoEm = null; await gravarLembretes(l, "Lembrete reaberto"); }
-  else if(acao==="adiar"){
-    const d = dtLembrete(lem); d.setDate(d.getDate()+1);
-    lem.quando = dataLocalInput(d)+"T"+horaCurta(d);
+  else if(acao==="adiar" || acao==="semana"){
+    adiarLembrete(lem, acao==="semana" ? 7 : 1);
+    lemAvisados.delete(lem.id);          // if it becomes overdue again, it alerts again
     await gravarLembretes(l, "Lembrete adiado para "+quandoCurto(lem)); avisar("Adiado para "+quandoCurto(lem));
   }
   else if(acao==="remover"){
@@ -1543,7 +1549,8 @@ function linhaLembreteHTML(t){
   const acoes = (lem.feito
       ? '<button type="button" data-lem-reabrir="'+idx+'" data-lid="'+escapar(l.id)+'">Reabrir</button>'
       : '<button type="button" class="lem-ok" data-lem-feito="'+idx+'" data-lid="'+escapar(l.id)+'">Concluir</button>'+
-        '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>')+
+        '<button type="button" data-lem-adiar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar para amanhã no mesmo horário">Adiar 1 dia</button>'+
+        '<button type="button" data-lem-semana="'+idx+'" data-lid="'+escapar(l.id)+'" title="Adiar 7 dias, no mesmo horário">Adiar 1 semana</button>')+
     '<button type="button" data-lem-editar="'+idx+'" data-lid="'+escapar(l.id)+'" title="Mudar data, horário ou texto">Editar</button>'+
     '<a class="lem-gcal" href="'+escapar(linkGoogleAgenda(l, lem))+'" target="_blank" rel="noopener">Google Agenda</a>'+
     '<button type="button" data-lem-remover="'+idx+'" data-lid="'+escapar(l.id)+'" title="Excluir lembrete">Excluir</button>';
@@ -3092,7 +3099,7 @@ document.addEventListener("click", e=>{
   // ações dentro do formulário do condomínio (ainda não salvas)
   const doForm = e.target.closest('[data-form="1"]');
   if(doForm){
-    const idx = parseInt((doForm.dataset.lemFeito ?? doForm.dataset.lemReabrir ?? doForm.dataset.lemAdiar ?? doForm.dataset.lemIcs ??
+    const idx = parseInt((doForm.dataset.lemFeito ?? doForm.dataset.lemReabrir ?? doForm.dataset.lemAdiar ?? doForm.dataset.lemSemana ?? doForm.dataset.lemIcs ??
       doForm.dataset.lemRemover ?? doForm.dataset.lemEditar ?? doForm.dataset.lemSalvarEd ?? doForm.dataset.lemCancelarEd),10);
     const lem = lembretesForm[idx]; if(!lem) return;
     if(doForm.dataset.lemEditar !== undefined){ lemEditando = {onde:"form", idx}; renderLembretesForm(); return; }
@@ -3100,7 +3107,8 @@ document.addEventListener("click", e=>{
     if(doForm.dataset.lemCancelarEd !== undefined){ lemEditando = null; renderLembretesForm(); return; }
     if(doForm.dataset.lemFeito !== undefined){ lem.feito = true; lem.feitoEm = agora(); }
     else if(doForm.dataset.lemReabrir !== undefined){ lem.feito = false; lem.feitoEm = null; }
-    else if(doForm.dataset.lemAdiar !== undefined){ const d = dtLembrete(lem); d.setDate(d.getDate()+1); lem.quando = dataLocalInput(d)+"T"+horaCurta(d); }
+    else if(doForm.dataset.lemAdiar !== undefined) adiarLembrete(lem, 1);
+    else if(doForm.dataset.lemSemana !== undefined) adiarLembrete(lem, 7);
     else if(doForm.dataset.lemIcs !== undefined){ baixarICS(leadAtualDoForm(), lem); return; }
     else if(doForm.dataset.lemRemover !== undefined){ if(!confirm("Excluir este lembrete?")) return; lembretesForm.splice(idx,1); lemEditando = null; }
     else return;
@@ -3109,7 +3117,7 @@ document.addEventListener("click", e=>{
   }
   // ações no painel geral (já salvas)
   // Maps each data attribute (e.g. data-lem-feito) to an action name and runs it.
-  const mapa = [["lemFeito","feito"],["lemReabrir","reabrir"],["lemAdiar","adiar"],["lemIcs","ics"],["lemRemover","remover"],
+  const mapa = [["lemFeito","feito"],["lemReabrir","reabrir"],["lemAdiar","adiar"],["lemSemana","semana"],["lemIcs","ics"],["lemRemover","remover"],
     ["lemEditar","editar"],["lemSalvarEd","salvarEd"],["lemCancelarEd","cancelarEd"]];
   for(const [attr,acao] of mapa){
     const el = e.target.closest("[data-"+attr.replace(/[A-Z]/g,m=>"-"+m.toLowerCase())+"]");
