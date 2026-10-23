@@ -43,7 +43,11 @@ minha senha"** on the login screen sends Supabase's reset link.
 2. Name it exactly `admin-usuarios`.
 3. Delete the example code, paste the whole content of
    [`functions/admin-usuarios/para-colar.ts`](functions/admin-usuarios/para-colar.ts), and click **Deploy**.
-4. When this function changes in the repository later, paste the new `para-colar.ts` again.
+4. Open the function's **Details** tab, turn **off** "Verify JWT" (it may be called *Enforce JWT
+   verification* or *Verify JWT with legacy secret*) and save. The function checks the login itself
+   (it rejects anyone without a valid session). With this switch on, Supabase can block the app's
+   calls before they reach the function, and the app then says it can't reach the function.
+5. When this function changes in the repository later, paste the new `para-colar.ts` again.
 
 **B. Automatic, from GitHub**
 1. supabase.com → your avatar → **Account preferences → Access Tokens** → *Generate new token*.
@@ -53,7 +57,7 @@ minha senha"** on the login screen sends Supabase's reset link.
    by itself whenever the function changes on `main`.
 
 **C. Command line**: `npx supabase login`, then
-`npx supabase functions deploy admin-usuarios --project-ref yjpcjivkxvkvanzrhhnq`.
+`npx supabase functions deploy admin-usuarios --no-verify-jwt --project-ref yjpcjivkxvkvanzrhhnq`.
 
 ### 2. E-mail with the password (Resend)
 
@@ -86,5 +90,7 @@ Open **Administração**, choose the organization, fill in **Novo usuário** wit
 e-mail and click **Criar usuário**. You should see *"Usuário criado. Enviamos a senha…"* and get the
 e-mail. Log in with it: the app asks you to create a new password.
 
-If the screen says *"A função admin-usuarios ainda não está publicada"*, step 1 is missing. If it
+If the screen says *"A função admin-usuarios não foi encontrada"*, step 1 is missing, or the name isn't
+exactly `admin-usuarios`. If it says it *can't reach the function* or that Supabase *refused the request*,
+turn off "Verify JWT" (step 1, item 4); if it continues, check the function's **Logs** tab. If it
 says the e-mail wasn't sent, step 2 is missing, or `EMAIL_FROM` isn't on a verified domain.
