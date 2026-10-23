@@ -131,6 +131,8 @@
   <button type="button" class="menu-item" id="btnContatos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="15" height="18" rx="2"/><circle cx="11.5" cy="10" r="2.6"/><path d="M7.5 17c.6-2 2.2-3 4-3s3.4 1 4 3"/><path d="M19 7h2M19 11h2M19 15h2"/></svg><span class="menu-rot">Contatos</span></button>
   <!-- Templates page: ready-made texts with a "copy" button. -->
   <button type="button" class="menu-item" id="btnTemplates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg><span class="menu-rot">Templates</span></button>
+  <!-- Change your own password (cloud mode only). -->
+  <button type="button" class="menu-item" id="btnMinhaSenha" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="menu-rot">Minha senha</span></button>
 </nav>
 
 <!-- ==================== KANBAN BOARD ====================
@@ -578,7 +580,23 @@
       </button>
     </label>
     <button class="btn-salvar" id="btnEntrar" style="width:100%;margin-top:6px">Entrar</button>
+    <!-- Sends Supabase's password-reset link to the typed e-mail. -->
+    <button type="button" class="link-esqueci" id="btnEsqueci">Esqueci minha senha</button>
   </div>
+</div>
+
+<!-- MY PASSWORD: change your own password. Opens by itself (and can't be closed) after logging in with a
+     temporary password, or after opening a password-reset link; otherwise from ☰ → Minha senha. -->
+<div class="dlg-fundo dlg-senha" id="senhaDlg" hidden>
+  <form class="dlg" id="senhaForm" role="dialog" aria-modal="true" aria-labelledby="senhaTitulo" novalidate>
+    <h3 id="senhaTitulo">Minha senha</h3>
+    <p class="adm-dica" id="senhaTexto">Escolha uma senha nova, com pelo menos 8 caracteres.</p>
+    <label class="campo"><span>Nova senha</span><input class="txt" id="senhaNova" type="password" autocomplete="new-password" minlength="8"></label>
+    <label class="campo"><span>Repita a nova senha</span><input class="txt" id="senhaRepete" type="password" autocomplete="new-password" minlength="8"></label>
+    <label class="adm-ck"><input type="checkbox" id="senhaMostrar"><span>Mostrar senha</span></label>
+    <p class="erro" id="senhaErro" hidden></p>
+    <div class="dlg-botoes"><button type="button" class="adm-b" id="senhaCancelar">Cancelar</button><button type="submit" class="btn-salvar" id="senhaSalvar">Salvar senha</button></div>
+  </form>
 </div>
 
 <!-- painel de administração: organizações, membros e acessos -->
@@ -600,16 +618,36 @@
           <tbody id="admCorpo"></tbody>
         </table></div>
         <p class="adm-dica" style="margin-top:8px">Trocar o papel preenche as permissões sugeridas; depois ainda dá para ajustar cada caixinha. Clique em Salvar na linha. “Vê todos” desmarcado = a pessoa só vê os leads em que é responsável ou criadora.</p>
-        <h3 style="margin-top:18px">Adicionar membro</h3>
-        <div class="adm-linha adm-add">
-          <input class="txt" id="admEmail" type="email" placeholder="e-mail da pessoa">
-          <select class="txt" id="admPapelNovo" style="width:auto"></select>
-          <button class="btn-salvar" id="admAdd">Adicionar</button>
-        </div>
-        <p class="adm-dica">O login precisa existir antes: Supabase → Authentication → Users → Add user (marque “Auto Confirm User”).</p>
         <p class="adm-dica">Clique no e-mail de alguém para ver o que a pessoa tem feito.</p>
+        <!-- NEW USER: the login is created by the Edge Function "admin-usuarios" (the secret key stays in
+             Supabase). The person gets an e-mail with this temporary password and must change it at the first login. -->
+        <h3 style="margin-top:18px">Novo usuário</h3>
+        <form class="adm-novo" id="admNovoForm" autocomplete="off" novalidate>
+          <label><span>Nome</span><input class="txt" id="admNovoNome" required></label>
+          <label><span>E-mail</span><input class="txt" id="admEmail" type="email" required></label>
+          <label><span>Papel</span><select class="txt" id="admPapelNovo"></select></label>
+          <label class="adm-senha-campo"><span>Senha temporária</span>
+            <span class="adm-senha-linha"><input class="txt" id="admSenha" minlength="8" spellcheck="false" autocomplete="new-password">
+            <button type="button" class="adm-b" id="admGerarSenha">Gerar</button></span></label>
+          <label class="adm-ck adm-ck-email"><input type="checkbox" id="admEnviarEmail" checked><span>Enviar e-mail com a senha</span></label>
+          <button type="submit" class="btn-salvar" id="admAdd">Criar usuário</button>
+        </form>
+        <div class="adm-resultado" id="admResultado" hidden role="status"></div>
+        <p class="adm-dica">A pessoa recebe o e-mail com a senha e cria uma senha própria no primeiro acesso. Se o e-mail já tiver login, ele só é adicionado a esta organização.</p>
       </div>
     </section>
+  </div>
+  <!-- New temporary password for a member (admin). -->
+  <div class="dlg-fundo" id="admSenhaDlg" hidden>
+    <form class="dlg" id="admSenhaForm" role="dialog" aria-modal="true" aria-labelledby="admSenhaTitulo" novalidate>
+      <h3 id="admSenhaTitulo">Nova senha</h3>
+      <p class="adm-dica" id="admSenhaQuem"></p>
+      <label class="campo"><span>Senha temporária</span>
+        <span class="adm-senha-linha"><input class="txt" id="admSenhaNova" minlength="8" spellcheck="false" autocomplete="new-password">
+        <button type="button" class="adm-b" id="admSenhaGerar">Gerar</button></span></label>
+      <label class="adm-ck adm-ck-email"><input type="checkbox" id="admSenhaEmail" checked><span>Enviar e-mail com a senha</span></label>
+      <div class="dlg-botoes"><button type="button" class="adm-b" id="admSenhaCancelar">Cancelar</button><button type="submit" class="btn-salvar">Trocar senha</button></div>
+    </form>
   </div>
   <!-- One member's activity: opens from the right when an e-mail in the table is clicked (app.js abrirAtividade). -->
   <div class="adm-ativ-fundo" id="admAtivFundo" hidden></div>

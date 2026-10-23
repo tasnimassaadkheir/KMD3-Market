@@ -41,7 +41,7 @@ describe("Administração on a phone", () => {
     });
   }
 
-  test("each member is a card: e-mail, role, labeled permission boxes and full-width Salvar / Remover", async () => {
+  test("each member is a card: e-mail, role, labeled permission boxes and big Salvar / Nova senha / Remover buttons", async () => {
     const { page, context } = await abrirAdmin({ width: 390, height: 800 });
     assert.equal(await page.locator("#admTela thead").isVisible(), false, "no table header on the phone");
     const card = page.locator("#admCorpo tr[data-u]").first();
@@ -53,8 +53,10 @@ describe("Administração on a phone", () => {
     const exclui = page.locator("#admCorpo tr[data-u] >> nth=1").locator(".adm-ck:has-text('Exclui')");
     await exclui.click();
     assert.equal(await page.locator("#admCorpo tr[data-u] >> nth=1").locator("input.excluir").isChecked(), true);
-    const salvar = await card.locator(".admSalvar").boundingBox(), remover = await card.locator(".admRemover").boundingBox();
-    assert.ok(salvar.width > 120 && remover.width > 120 && Math.abs(salvar.y - remover.y) < 2, "two big buttons side by side");
+    const salvar = await card.locator(".admSalvar").boundingBox(), senha = await card.locator(".admNovaSenha").boundingBox();
+    const remover = await card.locator(".admRemover").boundingBox();
+    assert.ok(salvar.width > 120 && senha.width > 120 && Math.abs(salvar.y - senha.y) < 2, "big buttons, two per row");
+    assert.ok(remover.width > 120 && remover.x + remover.width <= 390, "Remover too, inside the screen");
     await card.locator(".admSalvar").click();
     assert.match(await page.textContent("#aviso"), /Acesso salvo/);
     // the e-mail still opens the person's activity

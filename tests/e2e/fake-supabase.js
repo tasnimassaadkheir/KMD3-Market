@@ -49,6 +49,29 @@
           getSession: async () => ({ data: { session: window.__fakeSessao || null } }),
           signInWithPassword: async () => ({ data: { session: window.__fakeSessao }, error: null }),
           signOut: async () => ({ error: null }),
+          // password change / reset: recorded in the test's database (table "_auth"); window.__fakeAuthErro forces an error
+          updateUser: async (o) => {
+            if (window.__fakeAuthErro) return { data: null, error: { message: window.__fakeAuthErro } };
+            await window.__fakeDb({ tabela: "_auth", op: "insert", linhas: [{ acao: "updateUser", ...o }], filtros: [] });
+            return { data: { user: window.__fakeSessao && window.__fakeSessao.user }, error: null };
+          },
+          resetPasswordForEmail: async (email, o) => {
+            await window.__fakeDb({ tabela: "_auth", op: "insert", linhas: [{ acao: "reset", email, redirectTo: o && o.redirectTo }], filtros: [] });
+            return { data: {}, error: null };
+          },
+          // window.__fakeRecuperacao = true -> fires PASSWORD_RECOVERY (like opening the e-mail's reset link)
+          onAuthStateChange: (cb) => { if (window.__fakeRecuperacao) setTimeout(() => cb("PASSWORD_RECOVERY", window.__fakeSessao), 50);
+            return { data: { subscription: { unsubscribe() {} } } }; },
+        },
+        // Edge Functions: answered by the test through window.__fakeFn (a Playwright binding) -> {status, json}.
+        // Like supabase-js, a non-2xx answer becomes error.context = the Response.
+        functions: {
+          invoke: async (nome, o) => {
+            const r = window.__fakeFn ? await window.__fakeFn(nome, (o && o.body) || {}) : { status: 404, json: { message: "Requested function was not found" } };
+            if (r.status >= 200 && r.status < 300) return { data: r.json, error: null };
+            return { data: null, error: { name: "FunctionsHttpError", message: "Edge Function returned a non-2xx status code",
+              context: new Response(JSON.stringify(r.json), { status: r.status, headers: { "Content-Type": "application/json" } }) } };
+          },
         },
         channel() {
           const ch = {

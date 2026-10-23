@@ -2461,6 +2461,9 @@ async function iniciarQuadro(){
     await carregarPermissoes();
     verificarAdmin();
     registrarAcesso();
+    $("#btnMinhaSenha").hidden = false;
+    // logged in with a temporary password (created or reset by an admin): must choose their own now
+    if(sessao.user && sessao.user.user_metadata && sessao.user.user_metadata.trocar_senha) abrirMinhaSenha(true);
     $("#sinal").className = "sinal";
     // Realtime: whenever ANYONE changes the 'condominios' table, reload and redraw,
     // except while this user has the panel open or has unsaved changes.
@@ -2529,6 +2532,8 @@ async function iniciar(){
     try{
       await carregarSDK();
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      // opened a "reset password" link from the e-mail: Supabase logs the person in; ask for the new password
+      sb.auth.onAuthStateChange(ev => { if(ev === "PASSWORD_RECOVERY") setTimeout(() => abrirMinhaSenha(true, "recuperar"), 0); });
       const {data} = await sb.auth.getSession();
       if(data.session){ sessao = data.session; await iniciarQuadro(); }
       else mostrarEntrada();
@@ -2945,6 +2950,8 @@ $("#semaforo").addEventListener("change", marcarSemaforo);
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(menuAberto()){ fecharMenu(true); return; }
+    if(minhaSenhaAberta()){ fecharMinhaSenha(); return; }       // (does nothing when it's mandatory)
+    if(!$("#admSenhaDlg").hidden){ fecharNovaSenhaAdmin(); return; }
     if(atividadeAberta()){ fecharAtividade(); return; }
     // Contacts page: Esc closes its form first, then the page (if no condo panel is open on top)
     if(window.Prospeccao && Prospeccao.aberto() && !$("#painel").classList.contains("aberto")){ Prospeccao.fechar(); return; }
@@ -3223,6 +3230,8 @@ async function admAbrir(){
   $("#admTela").hidden = false;
   $("#admNova").hidden = !admSuper;
   $("#admPapelNovo").innerHTML = Object.keys(ADM_PAPEIS).map(p => `<option${p==="editor"?" selected":""}>${p}</option>`).join("");
+  if(!$("#admSenha").value) $("#admSenha").value = gerarSenha();
+  $("#admResultado").hidden = true;
   await admCarregarOrgs();
 }
 // Loads organizations; keeps the current selection if 'manter' (keep) is true.
@@ -3253,11 +3262,16 @@ async function admCarregarMembros(){
   // each checkbox has its own label: hidden on the laptop (the table header says it), shown on phones (one card per person)
   const ck = (c, v, rot) => `<td class="c"><label class="adm-ck"><input type="checkbox" class="${c}"${v?" checked":""}><span>${rot}</span></label></td>`;
   $("#admCorpo").innerHTML = ms.map(m => `
-    <tr data-u="${m.user_id}">
-      <td class="adm-quem"><button type="button" class="adm-pessoa" data-ativ="${escapar(m.user_id)}" title="Ver o que ${escapar(m.usuario || m.email)} tem feito">${escapar(m.email)}</button><span class="adm-dica">${escapar(m.usuario)}</span></td>
+    <tr data-u="${m.user_id}"${m.ativo ? "" : ' class="adm-inativo"'}>
+      <td class="adm-quem"><button type="button" class="adm-pessoa" data-ativ="${escapar(m.user_id)}" title="Ver o que ${escapar(m.usuario || m.email)} tem feito">${escapar(m.email)}</button><span class="adm-dica">${escapar(m.usuario)}${m.ativo ? "" : ' <b class="adm-cancelado">Acesso cancelado</b>'}</span></td>
       <td class="adm-papel"><select class="papel" aria-label="Papel">${Object.keys(ADM_PAPEIS).map(p => `<option${p===m.papel?" selected":""}>${p}</option>`).join("")}</select></td>
       ${ck("ativo",m.ativo,"Ativo")}${ck("ver",m.ver_todos,"Vê todos")}${ck("criar",m.pode_criar,"Cria")}${ck("editar",m.pode_editar,"Edita")}${ck("excluir",m.pode_excluir,"Exclui")}
-      <td class="adm-botoes"><button class="adm-b admSalvar">Salvar</button> <button class="adm-b adm-x admRemover">Remover</button></td>
+      <td class="adm-botoes"><button class="adm-b admSalvar">Salvar</button>
+        <button class="adm-b admNovaSenha" title="Definir uma senha temporária e enviar por e-mail">Nova senha</button>
+        ${m.user_id === (sessao && sessao.user && sessao.user.id) ? "" : m.ativo
+          ? '<button class="adm-b adm-x admCancelar" title="Bloqueia o login: a pessoa não consegue mais entrar">Cancelar acesso</button>'
+          : '<button class="adm-b adm-ok admReativar" title="Libera o login de novo">Reativar</button>'}
+        <button class="adm-b adm-x admRemover" title="Tira a pessoa desta organização (o login continua existindo)">Remover</button></td>
     </tr>`).join("") || '<tr><td colspan="8" class="adm-dica">Ninguém ainda.</td></tr>';
 }
 // Admin screen events.
@@ -3280,6 +3294,17 @@ $("#admTela").addEventListener("click", async e => {
     const org = t.closest(".adm-org");
     if(org){ admSel = org.dataset.org; admDesenharOrgs(); await admCarregarMembros(); return; }
     const tr = t.closest("tr[data-u]");
+    if(t.classList.contains("admNovaSenha")){ abrirNovaSenhaAdmin(tr.dataset.u); return; }
+    if(t.classList.contains("admCancelar") || t.classList.contains("admReativar")){
+      const cancelar = t.classList.contains("admCancelar");
+      const m = admMembros.find(x => x.user_id === tr.dataset.u) || {};
+      if(cancelar && !confirm("Cancelar o acesso de " + (m.usuario || m.email) + "?\n\nO login fica bloqueado: a pessoa não consegue mais entrar. Os dados que ela cadastrou continuam. Dá para reativar depois.")) return;
+      t.disabled = true;
+      const r = await admFuncao({acao: cancelar ? "cancelar" : "reativar", org: admSel, user: tr.dataset.u});
+      t.disabled = false;
+      if(r){ avisar(cancelar ? "Acesso de " + (m.usuario || m.email) + " cancelado." : "Acesso de " + (m.usuario || m.email) + " reativado."); await admCarregarMembros(); }
+      return;
+    }
     if(t.classList.contains("admSalvar")){
       const v = c => tr.querySelector("." + c).checked;
       await admRpc("admin_definir_acesso", {p_user: tr.dataset.u, p_papel: tr.querySelector(".papel").value,
@@ -3298,17 +3323,174 @@ $("#admTela").addEventListener("change", e => {
   const tr = e.target.closest("tr"), p = ADM_PAPEIS[e.target.value];
   ["ver","criar","editar","excluir"].forEach((c,i) => tr.querySelector("." + c).checked = !!p[i]);
 });
-// Create a new organization (super-admin only).
+// Create a new organization (super-admin only), then select it so its first users can be created right away.
 $("#admCriarOrg").addEventListener("click", async () => {
   const nome = $("#admNomeOrg").value.trim(); if(!nome) return;
-  try{ await admRpc("criar_organizacao", {p_nome: nome}); $("#admNomeOrg").value = ""; avisar("Organização criada."); await admCarregarOrgs(true); }catch(_){}
+  try{
+    await admRpc("criar_organizacao", {p_nome: nome}); $("#admNomeOrg").value = "";
+    admOrgs = await admRpc("admin_organizacoes");
+    const nova = admOrgs.find(o => normalizarNome(o.nome) === normalizarNome(nome));
+    if(nova) admSel = nova.id;
+    admDesenharOrgs(); await admCarregarMembros();
+    avisar("Organização " + nome + " criada. Agora crie os usuários dela.");
+    $("#admNovoNome").focus();
+  }catch(_){}
 });
-// Add a member by email (the login must already exist in Supabase).
-$("#admAdd").addEventListener("click", async () => {
-  const org = admOrgs.find(o => o.id === admSel), email = $("#admEmail").value.trim();
-  if(!org || !email) return;
-  try{ await admRpc("adicionar_membro", {p_email: email, p_papel: $("#admPapelNovo").value, p_org: org.nome});
-       $("#admEmail").value = ""; avisar("Membro adicionado."); await admCarregarOrgs(true); }catch(_){}
+
+// =============================================================================
+// USERS (Administração): create, cancel / reactivate, new password.
+// All through the Edge Function "admin-usuarios" (supabase/functions/admin-usuarios): creating a
+// login needs Supabase's secret key, which never comes to the browser. The function checks that
+// you are a super-admin, or an admin of that organization, before doing anything.
+// =============================================================================
+const SENHA_MINIMA = 8;
+// Random temporary password, easy to read and type (no 0/O, 1/l/I), with upper, lower, digit and a symbol.
+function gerarSenha(tamanho = 12, aleatorio){
+  const MAI = "ABCDEFGHJKLMNPQRSTUVWXYZ", MIN = "abcdefghijkmnopqrstuvwxyz", NUM = "23456789", SIM = "-_.!@#";
+  const todos = MAI + MIN + NUM + SIM;
+  const rnd = aleatorio || (n => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; });
+  const pega = c => c[rnd(c.length)];
+  const out = [pega(MAI), pega(MIN), pega(NUM), pega(SIM)];
+  while(out.length < tamanho) out.push(pega(todos));
+  for(let i = out.length - 1; i > 0; i--){ const j = rnd(i + 1); [out[i], out[j]] = [out[j], out[i]]; }
+  return out.join("");
+}
+// Plain-language reason when the e-mail with the password didn't go out.
+function motivoEmailTexto(m){
+  return m === "sem_config" ? "o envio de e-mail ainda não está configurado no Supabase (RESEND_API_KEY / EMAIL_FROM)"
+    : m === "erro_envio" ? "o serviço de e-mail recusou o envio (confira o remetente EMAIL_FROM no Resend)"
+    : m === "nao_pedido" ? "você escolheu não enviar" : "";
+}
+// Calls the Edge Function. Returns the answer, or null after showing the error.
+async function admFuncao(corpo){
+  try{
+    const {data, error} = await sb.functions.invoke("admin-usuarios", {body: corpo});
+    if(!error) return data;
+    let msg = "", status = error.context && error.context.status;
+    try{ const j = await error.context.json(); msg = j && (j.erro || j.message || j.msg) || ""; }catch(_){}
+    if(status === 404 || /not found|failed to send a request|fetch/i.test(msg || error.message || ""))
+      msg = "A função “admin-usuarios” ainda não está publicada no Supabase. Veja o passo a passo em supabase/README.md.";
+    avisar(msg || error.message || "Não foi possível falar com o servidor.", true);
+  }catch(e){
+    avisar("Não foi possível falar com o servidor: " + (e && e.message || e), true);
+  }
+  return null;
+}
+// After creating: says what happened and, if the e-mail didn't go out, shows the password to pass on.
+function mostrarResultadoUsuario(r, email, senha){
+  const box = $("#admResultado");
+  let html;
+  if(r.jaExistia) html = "<b>"+escapar(email)+"</b> já tinha login: foi adicionado a esta organização com a senha que já usava.";
+  else if(r.emailEnviado) html = "Usuário criado. Enviamos a senha para <b>"+escapar(email)+"</b>. No primeiro acesso a pessoa cria uma senha própria.";
+  else html = "Usuário criado, mas o e-mail <b>não</b> foi enviado ("+escapar(motivoEmailTexto(r.motivoEmail))+"). "+
+    "Passe estes dados para a pessoa:<span class=\"adm-dados\">"+escapar(email)+" &nbsp;·&nbsp; senha <code>"+escapar(senha)+"</code>"+
+    " <button type=\"button\" class=\"adm-b\" data-copiar-acesso>Copiar</button></span>";
+  box.innerHTML = html;
+  box.className = "adm-resultado" + (r.jaExistia || r.emailEnviado ? "" : " atencao");
+  box.dataset.acesso = "E-mail: " + email + "\nSenha temporária: " + senha + "\nEndereço: " + location.origin + location.pathname;
+  box.hidden = false;
+}
+$("#admGerarSenha").addEventListener("click", () => { $("#admSenha").value = gerarSenha(); });
+$("#admResultado").addEventListener("click", e => {
+  const b = e.target.closest("[data-copiar-acesso]");
+  if(b) copiarComAviso($("#admResultado").dataset.acesso, b, "Dados de acesso copiados");
+});
+$("#admNovoForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const org = admOrgs.find(o => o.id === admSel); if(!org) return;
+  const nome = $("#admNovoNome").value.trim(), email = $("#admEmail").value.trim().toLowerCase(), senha = $("#admSenha").value;
+  if(!nome){ avisar("Escreva o nome da pessoa.", true); $("#admNovoNome").focus(); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ avisar("E-mail inválido.", true); $("#admEmail").focus(); return; }
+  if(senha.length < SENHA_MINIMA){ avisar("A senha precisa ter pelo menos " + SENHA_MINIMA + " caracteres. Use “Gerar”.", true); $("#admSenha").focus(); return; }
+  const b = $("#admAdd"); b.disabled = true; b.textContent = "Criando…";
+  const r = await admFuncao({acao: "criar", org: org.id, nome, email, papel: $("#admPapelNovo").value, senha, enviarEmail: $("#admEnviarEmail").checked});
+  b.disabled = false; b.textContent = "Criar usuário";
+  if(!r) return;
+  mostrarResultadoUsuario(r, email, senha);
+  $("#admNovoNome").value = ""; $("#admEmail").value = ""; $("#admSenha").value = gerarSenha();
+  await admCarregarOrgs(true);
+});
+// "Nova senha" for a member: small dialog with the temporary password.
+let admSenhaPara = null;
+function abrirNovaSenhaAdmin(userId){
+  const m = admMembros.find(x => x.user_id === userId); if(!m) return;
+  admSenhaPara = m;
+  $("#admSenhaQuem").textContent = (m.usuario ? m.usuario + ", " : "") + m.email + ". A pessoa vai precisar criar uma senha própria no próximo acesso.";
+  $("#admSenhaNova").value = gerarSenha();
+  $("#admSenhaEmail").checked = true;
+  $("#admSenhaDlg").hidden = false;
+  $("#admSenhaNova").select();
+}
+function fecharNovaSenhaAdmin(){ $("#admSenhaDlg").hidden = true; admSenhaPara = null; }
+$("#admSenhaGerar").addEventListener("click", () => { $("#admSenhaNova").value = gerarSenha(); });
+$("#admSenhaCancelar").addEventListener("click", fecharNovaSenhaAdmin);
+$("#admSenhaForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const m = admSenhaPara, senha = $("#admSenhaNova").value; if(!m) return;
+  if(senha.length < SENHA_MINIMA){ avisar("A senha precisa ter pelo menos " + SENHA_MINIMA + " caracteres.", true); return; }
+  const r = await admFuncao({acao: "nova_senha", org: admSel, user: m.user_id, senha, enviarEmail: $("#admSenhaEmail").checked});
+  if(!r) return;
+  fecharNovaSenhaAdmin();
+  mostrarResultadoUsuario({emailEnviado: r.emailEnviado, motivoEmail: r.motivoEmail}, m.email, senha);
+  if(r.emailEnviado) $("#admResultado").innerHTML = "Nova senha enviada para <b>"+escapar(m.email)+"</b>. No próximo acesso a pessoa cria uma senha própria.";
+});
+
+// =============================================================================
+// MY PASSWORD: anyone can change their own password (☰ → Minha senha). After logging in with a
+// temporary password (user_metadata.trocar_senha) or opening a reset link, it opens by itself
+// and can't be skipped.
+// =============================================================================
+let senhaObrigatoria = false;
+function abrirMinhaSenha(obrigatoria, motivo){
+  senhaObrigatoria = !!obrigatoria;
+  $("#senhaTitulo").textContent = obrigatoria ? "Crie sua senha" : "Minha senha";
+  $("#senhaTexto").textContent = motivo === "recuperar"
+    ? "Escolha uma senha nova para entrar no KMD3 Market (pelo menos " + SENHA_MINIMA + " caracteres)."
+    : obrigatoria
+      ? "Você entrou com uma senha temporária. Crie uma senha só sua para continuar (pelo menos " + SENHA_MINIMA + " caracteres)."
+      : "Escolha uma senha nova, com pelo menos " + SENHA_MINIMA + " caracteres.";
+  $("#senhaCancelar").hidden = !!obrigatoria;
+  $("#senhaNova").value = ""; $("#senhaRepete").value = ""; $("#senhaErro").hidden = true;
+  $("#senhaMostrar").checked = false; $("#senhaNova").type = $("#senhaRepete").type = "password";
+  $("#senhaDlg").hidden = false;
+  $("#senhaNova").focus();
+}
+function fecharMinhaSenha(){ if(senhaObrigatoria) return; $("#senhaDlg").hidden = true; }
+const minhaSenhaAberta = () => !$("#senhaDlg").hidden;
+function erroSenha(msg){ $("#senhaErro").textContent = msg; $("#senhaErro").hidden = false; }
+// Supabase's English messages, in Portuguese.
+function traduzirErroSenha(m){
+  m = String(m || "");
+  if(/different from the old/i.test(m)) return "A nova senha precisa ser diferente da anterior.";
+  if(/at least|too short|weak/i.test(m)) return "Senha fraca: use pelo menos " + SENHA_MINIMA + " caracteres, misturando letras e números.";
+  if(/reauthenticat|session/i.test(m)) return "Sua sessão expirou. Saia e entre de novo para trocar a senha.";
+  return m || "Não foi possível trocar a senha.";
+}
+$("#senhaMostrar").addEventListener("change", e => { $("#senhaNova").type = $("#senhaRepete").type = e.target.checked ? "text" : "password"; });
+$("#senhaCancelar").addEventListener("click", fecharMinhaSenha);
+$("#btnMinhaSenha").addEventListener("click", () => abrirMinhaSenha(false));
+$("#senhaForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const a = $("#senhaNova").value, b = $("#senhaRepete").value;
+  if(a.length < SENHA_MINIMA) return erroSenha("A senha precisa ter pelo menos " + SENHA_MINIMA + " caracteres.");
+  if(a !== b) return erroSenha("As duas senhas não são iguais.");
+  const btn = $("#senhaSalvar"); btn.disabled = true; btn.textContent = "Salvando…";
+  const {error} = await sb.auth.updateUser({password: a, data: {trocar_senha: false}});
+  btn.disabled = false; btn.textContent = "Salvar senha";
+  if(error) return erroSenha(traduzirErroSenha(error.message));
+  senhaObrigatoria = false;
+  $("#senhaDlg").hidden = true;
+  avisar("Senha alterada. Use a nova senha da próxima vez que entrar.");
+});
+// Login screen: "Esqueci minha senha" sends Supabase's reset link to the typed e-mail.
+$("#btnEsqueci").addEventListener("click", async () => {
+  const email = $("#in_email").value.trim();
+  if(!email){ mostrarEntrada("Escreva seu e-mail acima e clique de novo em “Esqueci minha senha”."); $("#in_email").focus(); return; }
+  if(!sb) return;
+  const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: location.origin + location.pathname});
+  if(error && /rate|seconds/i.test(error.message || "")){ mostrarEntrada("Aguarde um minuto antes de pedir outro link."); return; }
+  mostrarEntrada();
+  avisar("Se este e-mail tiver acesso, enviamos um link para criar uma senha nova. Confira a caixa de entrada.");
 });
 
 /* ================= atividade de cada pessoa (Administração → clicar no e-mail) ================= */

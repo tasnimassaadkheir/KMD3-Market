@@ -1,0 +1,31 @@
+# Publishes the Supabase Edge Function "admin-usuarios" (create / cancel users, temporary passwords)
+# whenever its code changes on main, or by hand (Actions → Publicar funções do Supabase → Run workflow).
+# Needs ONE repository secret: SUPABASE_ACCESS_TOKEN (supabase.com → Account → Access Tokens).
+# Without it the job just says what's missing and stops (nothing breaks).
+name: Publicar funções do Supabase
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/functions/**"]
+  workflow_dispatch:
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJETO: yjpcjivkxvkvanzrhhnq
+    steps:
+      - uses: actions/checkout@v4
+      - name: Falta o token?
+        if: env.SUPABASE_ACCESS_TOKEN == ''
+        run: |
+          echo "::warning::Crie o secret SUPABASE_ACCESS_TOKEN (Settings → Secrets and variables → Actions) para publicar a função automaticamente. Veja supabase/README.md."
+      - uses: supabase/setup-cli@v1
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        with:
+          version: latest
+      - name: Publicar admin-usuarios
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: supabase functions deploy admin-usuarios --project-ref "$PROJETO"

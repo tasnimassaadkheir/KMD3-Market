@@ -125,6 +125,9 @@ function normalizar(s) {
  * criarNuvem(usuario, {leitor: true}) = a read-only user (the database answers "no" to create/edit/delete).
  * {rpc: {sou_admin: true, admin_membros: [...]}} = answers for database functions (admin screen tests).
  * {semTabela: ["atividades"]} = that table doesn't exist (the database answers with an error, like Supabase).
+ * {funcoes: {"admin-usuarios": async (body) => ({status, json})}} = fake Edge Functions (calls in funcoesChamadas).
+ * {recuperacao: true} = the page was opened from a "reset password" link (PASSWORD_RECOVERY).
+ * usuario.user_metadata = {trocar_senha: true} -> logged in with a temporary password.
  */
 function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, opcoes = {}) {
   const tabelas = {};
@@ -165,14 +168,22 @@ function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, o
     if (q.unico) data = (data || [])[0] || null;
     return { data: JSON.parse(JSON.stringify(data)), error: null };
   }
+  const funcoesChamadas = [];
   return {
-    tabelas, paginas, usuario,
+    tabelas, paginas, usuario, funcoesChamadas,
     async ligar(context) {
       await context.route("**/supabase-js@2*", (route) =>
         route.fulfill({ contentType: "text/javascript", path: path.join(__dirname, "fake-supabase.js") }));
       await context.exposeBinding("__fakeDb", (_src, q) => executar(q));
-      await context.addInitScript(([u, leitor, rpc]) => { window.__fakeSessao = { user: u }; window.__fakeLeitor = leitor; window.__fakeRpc = rpc; },
-        [usuario, !!opcoes.leitor, opcoes.rpc || null]);
+      await context.addInitScript(([u, leitor, rpc, rec]) => { window.__fakeSessao = { user: u }; window.__fakeLeitor = leitor; window.__fakeRpc = rpc;
+        window.__fakeRecuperacao = rec; },
+        [usuario, !!opcoes.leitor, opcoes.rpc || null, !!opcoes.recuperacao]);
+      // Edge Functions: opcoes.funcoes = {nome: async (body) => ({status, json})}; every call is kept in funcoesChamadas
+      if (opcoes.funcoes) await context.exposeBinding("__fakeFn", async (_src, nome, corpo) => {
+        funcoesChamadas.push({ nome, corpo });
+        const f = opcoes.funcoes[nome];
+        return f ? f(corpo) : { status: 404, json: { message: "Requested function was not found" } };
+      });
     },
   };
 }

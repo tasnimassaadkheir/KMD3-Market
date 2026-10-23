@@ -44,6 +44,16 @@ describe("security", () => {
     assert.ok(!/sb_secret_/.test(config), "a Supabase SECRET key must never be in the browser");
     assert.ok(!/service_role/.test(config), "a service_role key must never be in the browser");
   });
+  test("no secret key is written anywhere in the code (the Edge Function reads it from Supabase's own secrets)", () => {
+    const fn = ["supabase/functions/admin-usuarios/index.ts", "supabase/functions/admin-usuarios/logica.mjs"].map(read).join("\n");
+    for (const txt of [fn, read("app.js"), read("index.html")]) {
+      assert.ok(!/sb_secret_[A-Za-z0-9]/.test(txt), "no sb_secret_ key");
+      assert.ok(!/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\./.test(txt), "no JWT (service_role) key");
+      assert.ok(!/re_[A-Za-z0-9]{16,}/.test(txt), "no Resend key");
+    }
+    assert.match(fn, /Deno\.env\.get\("SUPABASE_SERVICE_ROLE_KEY"\)/);
+    assert.ok(!/SERVICE_ROLE|service_role/i.test(read("app.js")), "the browser never asks for the service key");
+  });
   test("the Supabase URL uses HTTPS (or is empty for local mode)", () => {
     const url = (config.match(/SUPABASE_URL\s*=\s*"([^"]*)"/) || [])[1];
     assert.ok(url === "" || url.startsWith("https://"), `unexpected URL: ${url}`);
