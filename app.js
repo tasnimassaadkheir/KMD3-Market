@@ -3361,16 +3361,31 @@ function motivoEmailTexto(m){
     : m === "erro_envio" ? "o serviço de e-mail recusou o envio (confira o remetente EMAIL_FROM no Resend)"
     : m === "nao_pedido" ? "você escolheu não enviar" : "";
 }
+// Turns an error from sb.functions.invoke into a message that says what is really wrong:
+//  - our function answered with an error ({codigo, erro}) -> its own message;
+//  - 404 -> the function isn't published (or has another name);
+//  - Supabase refused the login BEFORE reaching the function ("Invalid JWT"), or the browser couldn't
+//    reach it at all (FunctionsFetchError) -> usually "Verify JWT" is on: the function checks the login itself.
+async function mensagemErroFuncao(error){
+  const ctx = error && error.context, status = ctx && typeof ctx.status === "number" ? ctx.status : 0;
+  let j = null;
+  try{ if(ctx && typeof ctx.json === "function") j = await ctx.json(); }catch(_){}
+  if(j && j.codigo && j.erro) return j.erro;                                   // our function's own message
+  const txt = (j && (j.message || j.msg || j.error)) || "";
+  if(status === 404)
+    return "A função “admin-usuarios” não foi encontrada no Supabase. Confira se ela foi publicada com esse nome exato (veja supabase/README.md).";
+  if(status === 401 || /jwt/i.test(txt))
+    return "O Supabase recusou o pedido antes de chegar à função (" + (txt || "401") + "). No Supabase, abra Edge Functions → admin-usuarios → Details e desligue “Verify JWT”: a função já confere o login sozinha.";
+  if(!status || (error && error.name === "FunctionsFetchError"))
+    return "Não consegui falar com a função “admin-usuarios”. Se ela já está publicada, desligue “Verify JWT” em Edge Functions → admin-usuarios → Details e tente de novo. Se continuar, veja a aba Logs da função.";
+  return (txt || (error && error.message) || "Erro na função") + " (código " + status + "). Veja a aba Logs da função no Supabase.";
+}
 // Calls the Edge Function. Returns the answer, or null after showing the error.
 async function admFuncao(corpo){
   try{
     const {data, error} = await sb.functions.invoke("admin-usuarios", {body: corpo});
     if(!error) return data;
-    let msg = "", status = error.context && error.context.status;
-    try{ const j = await error.context.json(); msg = j && (j.erro || j.message || j.msg) || ""; }catch(_){}
-    if(status === 404 || /not found|failed to send a request|fetch/i.test(msg || error.message || ""))
-      msg = "A função “admin-usuarios” ainda não está publicada no Supabase. Veja o passo a passo em supabase/README.md.";
-    avisar(msg || error.message || "Não foi possível falar com o servidor.", true);
+    avisar(await mensagemErroFuncao(error), true);
   }catch(e){
     avisar("Não foi possível falar com o servidor: " + (e && e.message || e), true);
   }

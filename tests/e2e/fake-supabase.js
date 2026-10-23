@@ -69,6 +69,7 @@
           invoke: async (nome, o) => {
             const r = window.__fakeFn ? await window.__fakeFn(nome, (o && o.body) || {}) : { status: 404, json: { message: "Requested function was not found" } };
             if (r.status >= 200 && r.status < 300) return { data: r.json, error: null };
+            if (!r.status) return { data: null, error: { name: "FunctionsFetchError", message: "Failed to send a request to the Edge Function", context: {} } };
             return { data: null, error: { name: "FunctionsHttpError", message: "Edge Function returned a non-2xx status code",
               context: new Response(JSON.stringify(r.json), { status: r.status, headers: { "Content-Type": "application/json" } }) } };
           },

@@ -89,7 +89,22 @@ describe("Administração: users", () => {
     const { page, context } = await openApp(env, { nuvem: n });
     await abrirAdmin(page);
     await page.fill("#admNovoNome", "Bia"); await page.fill("#admEmail", "bia@c.com"); await page.click("#admAdd");
-    await page.waitForFunction(() => /ainda não está publicada/.test(document.querySelector("#aviso").textContent));
+    await page.waitForFunction(() => /não foi encontrada no Supabase/.test(document.querySelector("#aviso").textContent));
+    await context.close();
+  });
+
+  test("published but blocked before reaching it (Verify JWT / network): says to turn off 'Verify JWT'; the function's own errors pass through", async () => {
+    const respostas = [{ status: 0 }, { status: 401, json: { code: 401, message: "Invalid JWT" } },
+      { status: 500, json: { message: "boom" } }, { status: 401, json: { ok: false, codigo: "sem_login", erro: "Sua sessão expirou. Faça login de novo." } }];
+    const n = nuvem({ resposta: () => respostas.shift() });
+    const { page, context } = await openApp(env, { nuvem: n });
+    await abrirAdmin(page);
+    await page.fill("#admNovoNome", "Bia"); await page.fill("#admEmail", "bia@c.com");
+    const tentar = async (re) => { await page.click("#admAdd"); await page.waitForFunction((r) => new RegExp(r).test(document.querySelector("#aviso").textContent), re.source); };
+    await tentar(/Não consegui falar com a função.*Verify JWT/);
+    await tentar(/recusou o pedido antes de chegar.*Invalid JWT.*Verify JWT/);
+    await tentar(/boom \(código 500\).*Logs/);
+    await tentar(/^Sua sessão expirou/);
     await context.close();
   });
 
