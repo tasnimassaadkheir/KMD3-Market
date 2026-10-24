@@ -36,7 +36,7 @@
   const LIMITE = 100;                 // max rows shown (and placed on the map) at once, biggest first
   const CHAVE_ADICIONADOS = "quitandinha:prospAdicionados";
   const CHAVE_GEO = "quitandinha:prospGeo";   // positions, when the Supabase table doesn't exist
-  // "Não quero": buildings the team ticked as not interesting. Shared through the Supabase table
+  // "Excluir": buildings the team ticked as not interesting. Shared through the Supabase table
   // "prospeccao_descartes" (database/prospeccao_descartes.sql); kept in this browser until it exists.
   const TABELA_DESC = "prospeccao_descartes";
   const CHAVE_DESC = "quitandinha:prospDescartados";
@@ -187,7 +187,7 @@
     try{ localStorage.setItem(CHAVE_GEO, JSON.stringify(geoLocal)); }catch(e){}
   }
 
-  /* ---------- "Não quero" marks ---------- */
+  /* ---------- "Excluir" marks ---------- */
   const usarNuvemDesc = () => NUVEM && !SEM_TABELA_DESC;
   function lerDescartesLocais(){
     try{ return JSON.parse(localStorage.getItem(CHAVE_DESC) || "{}") || {}; }catch(e){ return {}; }
@@ -201,7 +201,7 @@
       let lista = [], ok = true;
       for(let de = 0; ; de += 1000){
         const r = await sb.from(TABELA_DESC).select("id,por,quando").range(de, de + 999);
-        if(r.error){ ok = false; if(tabelaNaoExiste(r.error, TABELA_DESC)) SEM_TABELA_DESC = true; else console.warn("prospecção: não quero", r.error); break; }
+        if(r.error){ ok = false; if(tabelaNaoExiste(r.error, TABELA_DESC)) SEM_TABELA_DESC = true; else console.warn("prospecção: excluídos", r.error); break; }
         lista = lista.concat(r.data || []);
         if(!r.data || r.data.length < 1000) break;
       }
@@ -210,7 +210,7 @@
     }
     descartados = new Map(Object.entries(lerDescartesLocais()));
   }
-  // Ticks / unticks "Não quero" on one building. The list and the map update right away;
+  // Ticks / unticks "Excluir" on one building. The list and the map update right away;
   // if the database refuses, the tick goes back and a message explains.
   async function alternarDescarte(id, marcar){
     if(typeof bloqueado === "function" && bloqueado()){ refiltrar(); return; }
@@ -218,8 +218,8 @@
     if(marcar) descartados.set(id, {por: meuNome || "", quando: new Date().toISOString()});
     else descartados.delete(id);
     refiltrar();
-    avisar(marcar ? "Marcado como “não quero”." + ($p("#prMarcados").value === "nao" ? " Para ver de novo, escolha “Marcados: não quero” no filtro." : "")
-                  : "Desmarcado: voltou para a lista.");
+    avisar(marcar ? "Excluído da prospecção." + ($p("#prMarcados").value === "nao" ? " Para ver de novo, escolha “Excluídos” no filtro." : "")
+                  : "Voltou para a lista.");
     let erro = null;
     if(usarNuvemDesc()){
       const r = marcar
@@ -236,17 +236,17 @@
       avisar("Não foi possível salvar a marcação: " + erro.message, true);
     }
   }
-  // Filter labels with how many are marked, e.g. "Marcados: não quero (12)".
+  // Filter labels with how many are marked, e.g. "Excluídos (12)".
   function rotularFiltroMarcados(){
     const n = (todos || []).filter(descartado).length;
     const sel = $p("#prMarcados");
-    sel.options[0].textContent = "Não marcados";
-    sel.options[1].textContent = "Marcados: não quero (" + num(n) + ")";
+    sel.options[0].textContent = "Sem os excluídos";
+    sel.options[1].textContent = "Excluídos (" + num(n) + ")";
     sel.options[2].textContent = "Todos";
   }
 
   // Search: every word must appear (street, number, neighborhood or CEP); minimum apartments; region;
-  // "Não quero" marks: marcados = "nao" (hide them), "sim" (only them) or "todos".
+  // "Excluir" marks: marcados = "nao" (hide them), "sim" (only them) or "todos".
   function buscar(texto, minimo, marcados, regiao, cidade){
     const palavras = normalizarNome(texto).split(" ").filter(Boolean);
     const achados = (todos || []).filter(l => (!minimo || l.apartamentos >= minimo) && (!regiao || l.regiao === regiao) &&
@@ -348,6 +348,8 @@
       el.querySelectorAll("[data-pr-add]").forEach(b => b.onclick = () => { mapa.closePopup(); adicionarAoFunil(b.dataset.prAdd); });
       el.querySelectorAll("[data-pr-abrir]").forEach(b => b.onclick = () => { mapa.closePopup(); abrirPainel(b.dataset.prAbrir); });
       el.querySelectorAll("[data-pr-rota]").forEach(b => b.onclick = () => { mapa.closePopup(); alternarRota(b.dataset.prRota); });
+      // "Excluir" in the popup: same as in the list (the markers are redrawn, so the popup closes)
+      el.querySelectorAll("[data-pr-desc]").forEach(c => c.onchange = () => { mapa.closePopup(); alternarDescarte(c.dataset.prDesc, c.checked); });
     });
     return true;
   }
@@ -357,8 +359,8 @@
     const ja = leadDoFunil(l);
     const info = [l.cidade !== "São Paulo" ? l.cidade : "", l.bairro, l.pavimentos ? l.pavimentos + " andares" : "", l.ano_construcao ? "construído em " + l.ano_construcao : "", l.padrao, l.fonte]
       .filter(Boolean).map(escapar).join(", ");
-    return '<div class="pr-pop">'+
-      '<b>'+escapar(nomeRua(l))+'</b>'+
+    return '<div class="pr-pop'+(descartado(l) ? " descartado" : "")+'">'+
+      '<div class="pr-pop-topo"><b>'+escapar(nomeRua(l))+'</b>'+caixaExcluir(l)+'</div>'+
       '<span class="pr-pop-aptos">'+num(l.apartamentos)+' apartamentos</span>'+
       (info ? '<span>'+info+'</span>' : '')+
       (l.geo_precisao === "rua" ? '<span class="pr-pop-aprox">Posição aproximada (só a rua foi encontrada)</span>' : '')+
@@ -510,6 +512,13 @@
     const lista = partes.length > 1 ? partes.slice(0, -1).join(", ") + " e " + partes[partes.length - 1] : partes[0];
     info.textContent = lista + "." + (quando ? " Atualizado em " + quando + "." : "");
   }
+  // The "Excluir" tick (list row and map popup). Ticked = the team isn't interested in this building.
+  function caixaExcluir(l){
+    const nao = descartado(l), d = descartados.get(l.id) || {};
+    const leitura = typeof somenteLeitura !== "undefined" && somenteLeitura;
+    return '<label class="pr-nao-quero" title="'+(nao && d.por ? "Excluído por " + escapar(d.por) : "Excluir da prospecção (não temos interesse)")+'">'+
+      '<input type="checkbox" data-pr-desc="'+escapar(l.id)+'"'+(nao ? " checked" : "")+(leitura ? " disabled" : "")+'> Excluir</label>';
+  }
   function itemHtml(l){
     const ja = leadDoFunil(l);
     const info = [l.cidade !== "São Paulo" ? l.cidade : "", l.bairro, l.cep, l.pavimentos ? l.pavimentos + " andares" : "", l.ano_construcao ? "de " + l.ano_construcao : "", l.padrao]
@@ -528,9 +537,8 @@
         '<span class="pr-aptos"><strong>'+num(l.apartamentos)+'</strong> aptos</span></div>'+
       (info ? '<div class="pr-item-info">'+info+'</div>' : '')+
       '<div class="pr-item-acoes">'+
-        // "Não quero" tick: hides the building from the default list (see the filter at the top)
-        '<label class="pr-nao-quero" title="'+(nao && d.por ? "Marcado por " + escapar(d.por) : "Marcar que não temos interesse")+'">'+
-          '<input type="checkbox" data-pr-desc="'+escapar(l.id)+'"'+(nao ? " checked" : "")+(leitura ? " disabled" : "")+'> Não quero</label>'+
+        // "Excluir" tick: hides the building from the default list (see the filter at the top)
+        caixaExcluir(l)+
         '<span class="pr-loc" data-loc="'+estadoLoc+'">'+loc+'</span>'+botaoRota(l)+
         (ja ? '<button type="button" class="pr-no-funil" data-pr-abrir="'+escapar(ja.id)+'" title="Abrir o cartão">No funil</button>'
             : '<button type="button" class="pr-add" data-pr-add="'+escapar(l.id)+'">+ Funil</button>')+
@@ -555,15 +563,15 @@
     const reg = REGIOES.find(r => r.id === $p("#prRegiao").value) ||
       ($p("#prCidade").value ? {em: "em " + $p("#prCidade").value, de: "de " + $p("#prCidade").value} : null);
     $p("#prResumo").textContent = totalFiltrado > resultados.length
-      ? "Os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (reg ? " " + reg.de : "") + (marc === "sim" ? " marcados como “não quero”" : "")
-      : plural(totalFiltrado, "condomínio", "condomínios") + (reg ? " " + reg.em : "") + (marc === "sim" ? " marcados como “não quero”" : "");
+      ? "Os " + num(resultados.length) + " maiores de " + num(totalFiltrado) + " condomínios" + (reg ? " " + reg.de : "") + (marc === "sim" ? " excluídos" : "")
+      : plural(totalFiltrado, "condomínio", "condomínios") + (reg ? " " + reg.em : "") + (marc === "sim" ? " excluídos" : "");
     $p("#prLista").innerHTML = resultados.map(itemHtml).join("") ||
-      '<li class="pr-nada">'+(marc === "sim" ? "Nenhum condomínio marcado como “não quero” aqui."
+      '<li class="pr-nada">'+(marc === "sim" ? "Nenhum condomínio excluído aqui."
                                          : "Nenhum condomínio encontrado. Tente outro bairro, rua ou CEP.")+'</li>';
     desenharMarcadores();
     renderGeoStatus();
   }
-  // Same search again without moving the map (after ticking "Não quero").
+  // Same search again without moving the map (after ticking "Excluir").
   function refiltrar(){
     buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, $p("#prMarcados").value, $p("#prRegiao").value, $p("#prCidade").value);
     rotularFiltroMarcados(); renderInfo(); renderResultados();
@@ -598,7 +606,7 @@
 
   function exportar(){
     if(!resultados.length){ avisar("Não há condomínios para exportar"); return; }
-    const cab = ["Endereço","Bairro","CEP","Apartamentos","Andares","Ano de construção","Padrão","Latitude","Longitude","No funil","Não quero"];
+    const cab = ["Endereço","Bairro","CEP","Apartamentos","Andares","Ano de construção","Padrão","Latitude","Longitude","No funil","Excluído"];
     const linhas = resultados.map(l => [expandirLogradouro(l.logradouro) + (l.numero ? ", " + l.numero : ""), l.bairro, l.cep, l.apartamentos,
       l.pavimentos ?? "", l.ano_construcao ?? "", l.padrao, l.lat ?? "", l.lng ?? "", leadDoFunil(l) ? "Sim" : "Não", descartado(l) ? "Sim" : "Não"]);
     const csv = [cab, ...linhas].map(r => r.map(x => '"' + String(x ?? "").replace(/"/g, '""') + '"').join(";")).join("\r\n");
