@@ -1257,7 +1257,7 @@ button.db-kpi:focus-visible,button.db-tam:focus-visible,.db-mini button:focus-vi
 .pr-item-info{font-size:11.5px;color:var(--tinta-suave);margin-top:2px}
 .pr-item-acoes{display:flex;align-items:center;gap:6px;margin-top:6px}
 .pr-item-acoes .pr-loc{margin-right:auto}
-/* "Não quero" tick at the left of each building's buttons; ticked buildings look faded */
+/* "Excluir" tick at the left of each building's buttons (and at the top of the map popup); excluded buildings look faded */
 .pr-nao-quero{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--tinta-suave);cursor:pointer;
   white-space:nowrap;user-select:none;padding:4px 2px;flex:none}
 .pr-nao-quero input{width:16px;height:16px;margin:0;accent-color:#7d8580;cursor:pointer}
@@ -1279,6 +1279,10 @@ button.db-kpi:focus-visible,button.db-tam:focus-visible,.db-mini button:focus-vi
 /* map popup */
 .pr-pop{display:flex;flex-direction:column;gap:3px;font-family:"Schibsted Grotesk",sans-serif;font-size:12px;color:#0E627D;min-width:200px}
 .pr-pop b{font-size:13.5px;color:#093E4F}
+/* popup top: address on the left, "Excluir" on the right (clear of Leaflet's close ×) */
+.pr-pop-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-right:14px}
+.pr-pop-topo .pr-nao-quero{padding:0;margin-top:1px;font-size:12px}
+.pr-pop.descartado b{text-decoration:line-through;text-decoration-color:rgba(0,0,0,.35);opacity:.6}
 .pr-pop-aptos{font-size:14px;font-weight:700;color:#8a6424}
 .pr-pop-aprox{font-style:italic;color:#8a6424}
 .pr-pop-acoes{display:flex;align-items:center;gap:10px;margin-top:6px}

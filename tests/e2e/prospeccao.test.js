@@ -288,7 +288,7 @@ describe("Prospecção page", () => {
     await context.close();
   });
 
-  test("'Não quero': ticking hides the building; the filter shows only the ticked ones (faded, gray on the map) or all", async () => {
+  test("'Excluir': ticking hides the building; the filter shows only the ticked ones (faded, gray on the map) or all", async () => {
     const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
     await page.waitForSelector(".pr-item");
@@ -300,12 +300,12 @@ describe("Prospecção page", () => {
     const caixa = page.locator('.pr-item:has-text("Avenida Paulista") .pr-nao-quero');
     const tick = await caixa.boundingBox(), rota = await page.locator('.pr-item:has-text("Avenida Paulista") [data-pr-rota]').boundingBox();
     assert.ok(tick.x < rota.x && Math.abs((tick.y + tick.height / 2) - (rota.y + rota.height / 2)) < 8, "left of + Rota, same line");
-    assert.match(await caixa.textContent(), /Não quero/);
+    assert.match(await caixa.textContent(), /Excluir/);
 
     await caixa.locator("input").click();                              // (the row is redrawn right away)
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 2);
     assert.ok(!(await nomes(page)).includes("Avenida Paulista, 1000"), "hidden from the list");
-    assert.match(await page.textContent("#aviso"), /não quero/);
+    assert.match(await page.textContent("#aviso"), /Excluído da prospecção/);
     assert.match(await page.locator("#prMarcados option[value=sim]").textContent(), /\(1\)/, "the filter counts them");
     const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:prospDescartados")));
     assert.equal(Object.keys(salvo).length, 1, "kept in this browser (local mode)");
@@ -314,7 +314,7 @@ describe("Prospecção page", () => {
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
     assert.deepEqual(await nomes(page), ["Avenida Paulista, 1000"]);
     assert.equal(await page.locator(".pr-item.descartado input[data-pr-desc]").isChecked(), true);
-    assert.match(await page.textContent("#prResumo"), /marcados como .não quero./);
+    assert.match(await page.textContent("#prResumo"), /excluídos/);
 
     await page.selectOption("#prMarcados", "todos");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 3);
@@ -340,7 +340,36 @@ describe("Prospecção page", () => {
     await context.close();
   });
 
-  test("'Não quero' is shared with the team (Supabase table), and read-only users can't change it", async () => {
+  test("'Excluir' is also at the top of the map popup: ticking it there excludes the building and closes the popup", async () => {
+    const { page, context, errors } = await openApp(env, { fakeLeaflet: true, nominatim: GEO });
+    await abrir(page);
+    await page.selectOption("#prMinimo", "0");
+    await page.waitForFunction(() => window.__leaflet.groups.flatMap((g) => g.layers).some((l) => String(l.popup || "").includes("Paulista")),
+      null, { timeout: 15000 });
+    const popup = (await circulos(page)).find((c) => /Paulista/.test(c.popup)).popup;
+    assert.match(popup, /class="pr-pop-topo"><b>Avenida Paulista, 1000<\/b><label class="pr-nao-quero"[^>]*><input type="checkbox" data-pr-desc="[^"]+"> Excluir<\/label>/,
+      "address and Excluir on the first line of the popup");
+    await page.evaluate((h) => window.__leaflet.abrirPopup("prMapa", h), popup);
+    const caixa = page.locator(".fake-popup input[data-pr-desc]");
+    const t = await page.locator(".fake-popup .pr-pop-topo b").boundingBox(), c = await page.locator(".fake-popup .pr-nao-quero").boundingBox();
+    assert.ok(c.x > t.x + t.width - 1, "to the right of the address");
+    await caixa.click();
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 2);
+    assert.equal(await page.locator(".fake-popup").count(), 0, "popup closed");
+    assert.ok(!(await nomes(page)).includes("Avenida Paulista, 1000"));
+    assert.match(await page.textContent("#aviso"), /Excluído da prospecção/);
+    // in "Excluídos" the popup shows it ticked
+    await page.selectOption("#prMarcados", "sim");
+    await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);
+    await page.waitForFunction(() => window.__leaflet.groups.flatMap((g) => g.layers).some((l) => /pr-pop descartado/.test(String(l.popup || ""))),
+      null, { timeout: 15000 });
+    const pop2 = (await circulos(page)).find((c) => /Paulista/.test(c.popup)).popup;
+    assert.match(pop2, /data-pr-desc="[^"]+" checked> Excluir/);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+
+  test("'Excluir' is shared with the team (Supabase table), and read-only users can't change it", async () => {
     const n = criarNuvem();
     const a = await openApp(env, { nuvem: n, fakeLeaflet: true, nominatim: GEO });
     await abrir(a.page);
@@ -363,7 +392,7 @@ describe("Prospecção page", () => {
     await b.context.close();
   });
 
-  test("'Não quero' without the Supabase table: kept in this browser, no error", async () => {
+  test("'Excluir' without the Supabase table: kept in this browser, no error", async () => {
     const n = criarNuvem(undefined, { semTabela: ["prospeccao_descartes"] });
     const { page, context, errors } = await openApp(env, { nuvem: n, fakeLeaflet: true, nominatim: GEO });
     await abrir(page);
