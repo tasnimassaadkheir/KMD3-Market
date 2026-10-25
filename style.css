@@ -467,6 +467,74 @@
   .lemr.atrasado{border-left-color:var(--perdido);background:#FDF1F0}
   .lemr.feito{opacity:.6;border-left-color:var(--ok)}
   .lemr.feito .lemr-texto{text-decoration:line-through}
+  /* REMINDERS PAGE LAYOUT: calendar + list on the left, team notepad on the right (stacked on phones) */
+  #telaLembretes .tela-lem-in{max-width:1240px}
+  .lem-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+  @media (max-width:960px){ .lem-layout{grid-template-columns:minmax(0,1fr)} }
+  .lem-principal{min-width:0}
+  /* calendar */
+  .lem-cal{background:#fff;border:1px solid #E1E4DA;border-radius:12px;padding:12px;margin-bottom:14px}
+  .lem-cal-topo{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+  .lem-cal-titulo{margin:0 6px;font-size:16px;color:#093E4F;min-width:150px}
+  .lem-cal-nav{width:32px;height:32px;border:1px solid #D6D9D0;border-radius:8px;background:#fff;color:#093E4F;font-size:18px;line-height:1;cursor:pointer}
+  .lem-cal-nav:hover{border-color:#093E4F}
+  .lem-cal-hoje{margin-left:auto;height:32px;padding:0 12px;border:1px solid #093E4F;border-radius:8px;background:#fff;color:#093E4F;font-weight:600;font-size:12.5px;cursor:pointer}
+  .lem-cal-grade{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+  .lem-cal-sem{font-size:11.5px;font-weight:600;color:var(--tinta-suave);text-align:center;padding-bottom:2px}
+  .lem-cal-dia{display:flex;flex-direction:column;align-items:stretch;gap:2px;min-height:92px;padding:5px;border:1px solid #ECEEE7;border-radius:8px;
+    background:#FBFBF8;text-align:left;font:inherit;color:var(--tinta);cursor:pointer;min-width:0;overflow:hidden}
+  .lem-cal-dia:hover{border-color:#B9C7C2}
+  .lem-cal-dia.fora{background:transparent;color:#AAB2AC}
+  .lem-cal-dia.fora .lem-cal-chip{opacity:.65}
+  .lem-cal-dia.hoje .lem-cal-num{background:#093E4F;color:#fff}
+  .lem-cal-dia.sel{border-color:#093E4F;box-shadow:0 0 0 2px rgba(9,62,79,.18);background:#fff}
+  .lem-cal-num{align-self:flex-start;min-width:22px;height:22px;padding:0 5px;border-radius:11px;display:grid;place-items:center;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+  .lem-cal-chip{display:block;font-size:11px;line-height:1.35;padding:1px 5px;border-radius:4px;border-left:3px solid #0E627D;background:#EAF2F4;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lem-cal-chip.c-hoje{border-left-color:var(--milho);background:#FBF3E1}
+  .lem-cal-chip.c-atrasado{border-left-color:var(--perdido);background:#FBE7E5;color:#8E2A22}
+  .lem-cal-chip.c-feito{border-left-color:#9AA39C;background:#F0F1EC;color:#7D857F;text-decoration:line-through}
+  .lem-cal-mais{font-size:11px;color:var(--tinta-suave);padding-left:4px}
+  .lem-cal-pontos{display:none;gap:3px;justify-content:center;margin-top:auto}
+  .lem-cal-pontos i{width:6px;height:6px;border-radius:50%;background:#0E627D}
+  .lem-cal-pontos i.c-hoje{background:var(--milho)} .lem-cal-pontos i.c-atrasado{background:var(--perdido)} .lem-cal-pontos i.c-feito{background:#AAB2AC}
+  @media (max-width:640px){
+    .lem-cal{padding:10px 8px}
+    .lem-cal-dia{min-height:46px;align-items:center;padding:4px 2px}
+    .lem-cal-num{align-self:center}
+    .lem-cal-chip,.lem-cal-mais{display:none}
+    .lem-cal-pontos{display:flex}
+  }
+  /* header of the chosen day, above its reminders */
+  .lem-dia-cab{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:4px 0 10px}
+  .lem-dia-cab[hidden]{display:none}
+  .lem-dia-cab b{font-size:15px;color:#093E4F}
+  .lem-dia-cab span{font-size:13px;color:var(--tinta-suave)}
+  .lem-dia-todos{margin-left:auto;border:0;background:none;color:#0E627D;font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+  .lem-abas[hidden]{display:none}
+  /* team notepad */
+  .lem-notas{background:#FFFCEF;border:1px solid #EADFB8;border-radius:12px;padding:14px;position:sticky;top:12px}
+  @media (max-width:960px){ .lem-notas{position:static} }
+  .lem-notas h3{margin:0;font-size:15px;color:#093E4F}
+  .lem-notas-dica{margin:2px 0 10px;font-size:12px;color:var(--tinta-suave)}
+  .nota-form{display:flex;flex-direction:column;gap:8px}
+  .nota-form[hidden]{display:none}
+  .nota-form textarea,.nota textarea{width:100%;resize:vertical;min-height:64px;background:#fff}
+  .nota-form .btn-salvar{align-self:flex-end;padding:7px 14px;font-size:12.5px}
+  .lem-notas-aviso{margin:10px 0 0;padding:8px 10px;border-radius:8px;background:#FFF1D6;color:#6B4A07;font-size:12px;line-height:1.45}
+  .lem-notas-aviso[hidden]{display:none}
+  .notas-lista{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto}
+  .nota{position:relative;background:#fff;border:1px solid #EFE6C6;border-radius:9px;padding:9px 10px 8px}
+  .nota-texto{margin:0;padding-right:44px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word;color:var(--tinta)}
+  .nota-meta{display:block;margin-top:5px;font-size:11.5px;color:var(--tinta-suave)}
+  .nota-acoes{position:absolute;top:6px;right:6px;display:flex;gap:1px}
+  .nota-acoes button{border:0;background:none;color:var(--tinta-suave);font-size:13px;line-height:1;padding:3px 5px;border-radius:6px;cursor:pointer}
+  .nota-acoes button:hover{background:#F2ECD6;color:#093E4F}
+  .nota.editando{padding:8px}
+  .nota-botoes{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+  .nota-botoes .adm-b{height:32px}
+  .nota-botoes .btn-salvar{padding:6px 12px;font-size:12.5px}
+  .nota-vazia{font-size:12.5px;color:var(--tinta-suave);padding:4px 2px}
   .lemr-data{flex:none;width:118px;line-height:1.3}
   .lemr-data b{display:block;font-size:14px;color:#093E4F}
   .lemr-data span{display:block;font-size:13px;color:#093E4F}

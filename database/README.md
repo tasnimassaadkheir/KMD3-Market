@@ -15,6 +15,11 @@ SQL Editor (it is safe to run again). It needs the live functions
 Editor (safe to run again). It needs the live functions `minha_org_id()` and
 `posso(acao)`.
 
+`notas_equipe.sql` creates the team notepad on the Lembretes page (notes the
+whole organization sees; the author edits / deletes, admins delete). Run it once
+in the SQL Editor (safe to run again). It needs `minha_org_id()`, `posso(acao)`
+and `sou_admin()`.
+
 ## Keeping this folder in sync with Supabase
 
 The live Supabase project also has things this file does not cover:
