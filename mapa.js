@@ -782,8 +782,8 @@
   function mostrarBotao(noMapa){
     const b = $m("#btnVista");
     b.setAttribute("aria-pressed", noMapa ? "true" : "false");
-    b.title = noMapa ? "Voltar ao quadro" : "Ver no mapa";
-    $m("#rotVista").textContent = noMapa ? "Quadro" : "Mapa";
+    b.title = noMapa ? "Voltar para Prospecção" : "Ver no mapa";
+    $m("#rotVista").textContent = noMapa ? "Prospecção" : "Mapa";
     $m("#icoVista").innerHTML = noMapa
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';

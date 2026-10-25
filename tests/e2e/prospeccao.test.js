@@ -144,7 +144,7 @@ describe("Prospecção page", () => {
     assert.equal(salvo.endereco, "Rua Doutor Neto de Araujo, 320 - Vila Mariana - São Paulo - SP - 04111-000");
     assert.equal(salvo.zona, "", "Zona is typed by hand only");
     assert.match(salvo.endereco, /Vila Mariana/, "the neighborhood is in the address");
-    assert.match(salvo.historico[0].o_que, /Prospecção \(IPTU 2026\)/);
+    assert.match(salvo.historico[0].o_que, /Cadastrado pela Busca Condomínio \(IPTU 2026\)/);
     // the marker turns green and the main map already knows where it is
     assert.equal((await circulos(page))[0].cor, "#2FA45F");
     const cache = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:geocache") || "{}"));
@@ -179,10 +179,10 @@ describe("Prospecção page", () => {
     assert.deepEqual(r.ids, ["x_009012-013"]);
     assert.deepEqual(r.extras["x_009012-013"], { id: "x_009012-013", nome: "Rua Doutor Neto de Araujo, 320",
       endereco: "Rua Doutor Neto de Araujo, 320 - Vila Mariana - São Paulo - SP - 04111-000",
-      lat: -23.589, lng: -46.634, detalhe: "Prospecção: 250 aptos, Vila Mariana" });
+      lat: -23.589, lng: -46.634, detalhe: "Busca Condomínio: 250 aptos, Vila Mariana" });
     assert.equal(await page.locator(".cartao").count(), 0, "no card was created");
     // the route panel of the main map lists it
-    assert.match(await page.textContent("#mpRotaLista"), /Rua Doutor Neto de Araujo, 320.*Prospecção: 250 aptos/s);
+    assert.match(await page.textContent("#mpRotaLista"), /Rua Doutor Neto de Araujo, 320.*Busca Condomínio: 250 aptos/s);
     // the button in the map pop-up shows it too
     assert.match((await circulos(page))[0].popup, /Na rota \(1\)/);
     // click again: out of the route
@@ -277,7 +277,7 @@ describe("Prospecção page", () => {
     assert.equal(salvo.nome, "Condomínio Rua Juan Vicente, 482");
     assert.equal(salvo.endereco, "Rua Juan Vicente, 482 - Bandeiras - Osasco - SP - 06160-180");
     assert.equal(salvo.aptos, 150);
-    assert.match(salvo.historico[0].o_que, /Prospecção \(Censo 2022 – IBGE\)/);
+    assert.match(salvo.historico[0].o_que, /Cadastrado pela Busca Condomínio \(Censo 2022 – IBGE\)/);
     await page.waitForTimeout(1500);
     assert.ok(!consultas.some((u) => /juan vicente/i.test(u)), "Osasco buildings are never looked up");
 
@@ -305,7 +305,7 @@ describe("Prospecção page", () => {
     await caixa.locator("input").click();                              // (the row is redrawn right away)
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 2);
     assert.ok(!(await nomes(page)).includes("Avenida Paulista, 1000"), "hidden from the list");
-    assert.match(await page.textContent("#aviso"), /Excluído da prospecção/);
+    assert.match(await page.textContent("#aviso"), /Excluído da Busca Condomínio/);
     assert.match(await page.locator("#prMarcados option[value=sim]").textContent(), /\(1\)/, "the filter counts them");
     const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:prospDescartados")));
     assert.equal(Object.keys(salvo).length, 1, "kept in this browser (local mode)");
@@ -357,7 +357,7 @@ describe("Prospecção page", () => {
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 2);
     assert.equal(await page.locator(".fake-popup").count(), 0, "popup closed");
     assert.ok(!(await nomes(page)).includes("Avenida Paulista, 1000"));
-    assert.match(await page.textContent("#aviso"), /Excluído da prospecção/);
+    assert.match(await page.textContent("#aviso"), /Excluído da Busca Condomínio/);
     // in "Excluídos" the popup shows it ticked
     await page.selectOption("#prMarcados", "sim");
     await page.waitForFunction(() => document.querySelectorAll(".pr-item").length === 1);

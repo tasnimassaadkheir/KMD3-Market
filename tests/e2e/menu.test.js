@@ -34,10 +34,10 @@ describe("Side menu (☰)", () => {
     await abrir(page);
     assert.equal(await page.getAttribute("#btnMenu", "aria-expanded"), "true");
     const visiveis = await page.locator("#menuLateral .menu-item:visible .menu-rot").allTextContents();
-    assert.deepEqual(visiveis, ["Dashboard", "Mapa", "Prospecção", "Lembretes", "Equipe", "Contatos", "Templates"]);
+    assert.deepEqual(visiveis, ["Dashboard", "Mapa", "Busca Condomínio", "Lembretes", "Equipe", "Contatos", "Templates"]);
     // order in the page, including the admin item that only admins see
     const todos = await page.locator("#menuLateral .menu-item .menu-rot").allTextContents();
-    assert.deepEqual(todos, ["Dashboard", "Mapa", "Prospecção", "Administração", "Lembretes", "Equipe", "Contatos", "Templates", "Minha senha"],
+    assert.deepEqual(todos, ["Dashboard", "Mapa", "Busca Condomínio", "Administração", "Lembretes", "Equipe", "Contatos", "Templates", "Minha senha"],
       "Administração (admins) and Minha senha (logged in, cloud mode) are hidden here");
     await context.close();
   });
@@ -47,7 +47,7 @@ describe("Side menu (☰)", () => {
     await page.evaluate(() => { document.querySelector("#btnAdmin").hidden = false; });   // what verificarAdmin() does
     await abrir(page);
     assert.deepEqual(await page.locator("#menuLateral .menu-item:visible .menu-rot").allTextContents(),
-      ["Dashboard", "Mapa", "Prospecção", "Administração", "Lembretes", "Equipe", "Contatos", "Templates"]);
+      ["Dashboard", "Mapa", "Busca Condomínio", "Administração", "Lembretes", "Equipe", "Contatos", "Templates"]);
     await context.close();
   });
 
@@ -100,7 +100,7 @@ describe("Side menu (☰)", () => {
     await abrir(page); await page.click("#btnVista");
     await page.waitForSelector("body.vista-mapa");
     await abrir(page);
-    assert.equal(await page.textContent("#rotVista"), "Quadro");
+    assert.equal(await page.textContent("#rotVista"), "Prospecção");
     await page.click("#btnVista");
     await page.waitForFunction(() => !document.body.classList.contains("vista-mapa"));
     assert.equal(await page.locator(".coluna").count(), 8);
@@ -126,7 +126,7 @@ describe("Map view", () => {
     const voltar = page.locator("#mpVoltar");
     assert.equal(await voltar.isVisible(), true);
     assert.equal(await page.locator(".mp-barra > *").first().getAttribute("id"), "mpVoltar");
-    assert.match(await voltar.textContent(), /Voltar ao quadro/);
+    assert.match(await voltar.textContent(), /Voltar para Prospecção/);
 
     await voltar.click();
     await page.waitForFunction(() => !document.body.classList.contains("vista-mapa"));
