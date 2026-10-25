@@ -33,11 +33,22 @@ describe("Refresh stays on the same page", () => {
     });
   }
 
-  test("Prospecção and the map come back too", async () => {
+  test("an old link ending in #prospeccao still opens the Busca Condomínio page (renamed)", async () => {
+    const { page, context } = await openApp(env, { leads: [lead()], fakeLeaflet: true });
+    await page.route("**/dados/prospeccao-*.json", (r) => r.fulfill({ status: 404, body: "" }));
+    await page.evaluate(() => { history.replaceState(null, "", "#prospeccao"); });
+    await recarregar(page);
+    await page.waitForSelector("#telaProspeccao.aberta");
+    assert.equal(await page.textContent("#tituloProspeccao"), "Busca Condomínio");
+    await page.waitForFunction(() => location.hash === "#busca-condominio", null, { timeout: 5000 });
+    await context.close();
+  });
+
+  test("Busca Condomínio and the map come back too", async () => {
     const { page, context } = await openApp(env, { leads: [lead()], fakeLeaflet: true });
     await page.route("**/dados/prospeccao-*.json", (r) => r.fulfill({ status: 404, body: "" }));
     await irPeloMenu(page, "#btnProspeccao");
-    await page.waitForFunction(() => location.hash === "#prospeccao");
+    await page.waitForFunction(() => location.hash === "#busca-condominio");
     await recarregar(page);
     await page.waitForSelector("#telaProspeccao.aberta");
     await page.click("#btnFecharProspeccao");

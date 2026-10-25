@@ -2291,7 +2291,7 @@ async function adicionarEquipe(){
 async function removerEquipe(id){
   if(bloqueado()) return;
   const p = equipe.find(x=>String(x.id)===String(id));
-  if(!p || !confirm("Remover "+p.nome+" da lista de responsáveis? Os leads dela continuam no quadro.")) return;
+  if(!p || !confirm("Remover "+p.nome+" da lista de responsáveis? Os leads dela continuam na Prospecção.")) return;
   if(NUVEM){
     const {error} = await sb.from("equipe").delete().eq("id", id);
     if(error){ avisar("Erro: "+error.message); return; }
@@ -2704,7 +2704,7 @@ async function iniciarQuadro(){
 // Watching the pages' "open" class means no open/close function needs to know about this.
 const TELAS = [
   {hash:"dashboard",  aberta:() => dashboardAberto(),                         abrir:() => $("#btnDashboard").click()},
-  {hash:"prospeccao", aberta:() => !!(window.Prospeccao && Prospeccao.aberto()), abrir:() => $("#btnProspeccao").click()},
+  {hash:"busca-condominio", aberta:() => !!(window.Prospeccao && Prospeccao.aberto()), abrir:() => $("#btnProspeccao").click()},
   {hash:"lembretes",  aberta:() => lembretesAberto(),                         abrir:() => $("#btnLembretes").click()},
   {hash:"contatos",   aberta:() => contatosAberto(),                          abrir:() => $("#btnContatos").click()},
   {hash:"templates",  aberta:() => templatesAberto(),                         abrir:() => $("#btnTemplates").click()},
@@ -2724,7 +2724,9 @@ function restaurarTela(){
   if(telaRestaurada) return;
   const fazer = () => {
     telaRestaurada = true;
-    const t = TELAS.find(x => "#" + x.hash === location.hash);
+    const antigos = {"#prospeccao": "#busca-condominio"};          // old links / bookmarks keep working
+    const hash = antigos[location.hash] || location.hash;
+    const t = TELAS.find(x => "#" + x.hash === hash);
     if(t && !t.aberta()) t.abrir();
   };
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", fazer, {once:true});

@@ -218,7 +218,7 @@
     if(marcar) descartados.set(id, {por: meuNome || "", quando: new Date().toISOString()});
     else descartados.delete(id);
     refiltrar();
-    avisar(marcar ? "Excluído da prospecção." + ($p("#prMarcados").value === "nao" ? " Para ver de novo, escolha “Excluídos” no filtro." : "")
+    avisar(marcar ? "Excluído da Busca Condomínio." + ($p("#prMarcados").value === "nao" ? " Para ver de novo, escolha “Excluídos” no filtro." : "")
                   : "Voltou para a lista.");
     let erro = null;
     if(usarNuvemDesc()){
@@ -443,7 +443,7 @@
         return;
       }
       dentro = window.__rota.alternarEndereco({id:l.id, nome:nomeRua(l), endereco:enderecoCompleto(l), lat:l.lat, lng:l.lng,
-        detalhe:"Prospecção: " + num(l.apartamentos) + " aptos" + (l.bairro ? ", " + l.bairro : "")});
+        detalhe:"Busca Condomínio: " + num(l.apartamentos) + " aptos" + (l.bairro ? ", " + l.bairro : "")});
     }
     renderResultados();
     avisar(dentro ? "Adicionado à rota como parada " + naRota(l) + "." : "Tirado da rota.");
@@ -483,7 +483,7 @@
     const novo = {
       id: NUVEM ? crypto.randomUUID() : gerarId(),
       criadoEm: agora(), atualizadoEm: agora(), criadoPor: meuNome || "", ordem: leads.length,
-      historico: [{quando:agora(), o_que:"Cadastrado pela Prospecção (" + (l.fonte || "IPTU " + (l.ano_iptu || "")) + ")", por:meuNome || ""}],
+      historico: [{quando:agora(), o_que:"Cadastrado pela Busca Condomínio (" + (l.fonte || "IPTU " + (l.ano_iptu || "")) + ")", por:meuNome || ""}],
       nome: "Condomínio " + rua + (l.numero ? ", " + l.numero : ""),
       endereco: enderecoCompleto(l), aptos: l.apartamentos, fase: "cadastro", status: "nenhum",
       zona: "", importante: "", contatos: [], concorrente: "", fimContrato: "", perfil: "", notas: "",
@@ -516,7 +516,7 @@
   function caixaExcluir(l){
     const nao = descartado(l), d = descartados.get(l.id) || {};
     const leitura = typeof somenteLeitura !== "undefined" && somenteLeitura;
-    return '<label class="pr-nao-quero" title="'+(nao && d.por ? "Excluído por " + escapar(d.por) : "Excluir da prospecção (não temos interesse)")+'">'+
+    return '<label class="pr-nao-quero" title="'+(nao && d.por ? "Excluído por " + escapar(d.por) : "Excluir da Busca Condomínio (não temos interesse)")+'">'+
       '<input type="checkbox" data-pr-desc="'+escapar(l.id)+'"'+(nao ? " checked" : "")+(leitura ? " disabled" : "")+'> Excluir</label>';
   }
   function itemHtml(l){
