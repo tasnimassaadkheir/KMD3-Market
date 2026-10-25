@@ -1,4 +1,4 @@
-// E2E tests: "Quem é" on condo contacts (with "Outro…") and the Contacts page (☰ → Contatos).
+// E2E tests: "Vínculo" (formerly "Quem é") on condo contacts (with "Outro…") and the Contacts page (☰ → Contatos).
 const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -11,7 +11,7 @@ after(async () => { await env.close(); });
 const salvos = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios")));
 const opcoes = (loc) => loc.locator("option").allTextContents();
 
-describe("'Quem é' on a condo's contacts", () => {
+describe("'Vínculo' on a condo's contacts", () => {
   test("appears after the name is filled, with the 6 options, and is saved with the contact", async () => {
     const { page, context, errors } = await openApp(env, { leads: [lead({ id: "c1", nome: "Aurora" })] });
     await page.click(".cartao");
@@ -22,7 +22,7 @@ describe("'Quem é' on a condo's contacts", () => {
     await page.fill(".contato-nome", "Paulo");
     assert.equal(await tipo.isVisible(), true, "shows after typing the name");
     const sel = page.locator(".contato-tipo-sel");
-    assert.deepEqual(await opcoes(sel), ["Quem é?", "Síndico", "ADM", "Zelador", "Morador", "Gerente predial", "Outro…"]);
+    assert.deepEqual(await opcoes(sel), ["Selecione…", "Síndico", "ADM", "Zelador", "Morador", "Gerente predial", "Outro…"]);
 
     await sel.selectOption("Síndico");
     await page.click("#btnSalvar");
@@ -65,7 +65,7 @@ describe("'Quem é' on a condo's contacts", () => {
     await page.selectOption(".contato-tipo-sel", "__outro");
     await page.locator(".tipo-outro-txt").press("Escape");
     assert.equal(await page.locator("#painel.aberto").count(), 1, "panel still open");
-    assert.equal(await page.inputValue(".contato-tipo-sel"), "", "back to 'Quem é?'");
+    assert.equal(await page.inputValue(".contato-tipo-sel"), "", "back to 'Selecione…'");
     await context.close();
   });
 });
@@ -104,7 +104,7 @@ describe("Contacts page (☰ → Contatos)", () => {
     await context.close();
   });
 
-  test("search and the 'Quem é' filter", async () => {
+  test("search and the 'Vínculo' filter", async () => {
     const { page, context } = await openApp(env, { leads: dados() });
     await abrir(page);
     await page.fill("#ctBusca", "aurora");
@@ -168,7 +168,7 @@ describe("Contacts page (☰ → Contatos)", () => {
     const csv = fs.readFileSync(await download.path(), "utf8");
     assert.ok(csv.startsWith("﻿"));
     const l = csv.slice(1).split("\r\n");
-    assert.equal(l[0], '"Nome";"Quem é";"Número";"E-mail";"Condomínio";"Endereço do condomínio"');
+    assert.equal(l[0], '"Nome";"Vínculo";"Número";"E-mail";"Condomínio";"Endereço do condomínio"');
     assert.equal(l[1], '"Paulo";"Síndico";"(11) 99999-0000";"paulo@aurora.com";"Aurora";"Rua A, 10"');
     assert.equal(l.length, 2, "only the filtered rows");
     await context.close();
