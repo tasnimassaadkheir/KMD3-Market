@@ -119,7 +119,9 @@
   // Saves the route, its manual addresses (only the ones still in the route) and the start point.
   // A real change gets a new time and is sent to the database (shortly after, in one go).
   const salvarRota = () => {
-    Object.keys(extras).forEach(id => { if(!rota.includes(id)) delete extras[id]; });
+    Object.keys(extras).forEach(id => { if(id !== VISITADOS && !rota.includes(id)) delete extras[id]; });
+    const vis = visitados().filter(id => rota.includes(id));      // a stop taken out of the route loses its tick
+    if(vis.length) extras[VISITADOS] = vis; else delete extras[VISITADOS];
     const agoraEstado = estadoRota();
     if(agoraEstado !== ultimoEstado){
       ultimoEstado = agoraEstado;
@@ -416,6 +418,11 @@
   // 'inicio' is the optional starting point (ponto de partida): an address or the user's GPS location.
   // It is not a numbered stop: the route starts there and goes through the stops in order.
   const ehExtra = id => typeof id === "string" && id.startsWith("x_");
+  // Stops ticked as "Visitado" are listed in extras.__visitados (so they sync with the route
+  // between devices without a new column). It's not a stop: ehExtra() ignores it.
+  const VISITADOS = "__visitados";
+  const visitados = () => Array.isArray(extras[VISITADOS]) ? extras[VISITADOS] : [];
+  const foiVisitado = id => visitados().includes(id);
 
   // Straight-line distance in km between two points (Haversine formula; 6371 = Earth radius in km).
   function km(a, b){
@@ -468,11 +475,16 @@
     $m("#mpRotaN").textContent = rota.length;
     $m("#mpRotaVazia").style.display = rota.length ? "none" : "";
     $m("#mpRotaLista").innerHTML = rota.map((id, i) => {
-      const inf = infoParada(id), ok = !!pontoDaRota(id);
+      const inf = infoParada(id), ok = !!pontoDaRota(id), vis = foiVisitado(id);
       const sub = !ok ? (inf.extra ? "endereço não encontrado" : "sem localização ainda · confira o endereço")
                       : (inf.extra ? (inf.detalhe || "Endereço avulso") : inf.endereco);
-      return '<li data-id="'+escapar(id)+'"><span class="num'+(inf.extra?' extra':'')+'">'+(i+1)+'</span><div class="txt"><b>'+escapar(inf.nome)+'</b><span>'+
-        escapar(sub)+'</span></div>'+
+      // "Visitado" tick: for a condo it also takes off its "Marcado para visitar" car (needs edit permission).
+      const travado = !inf.extra && typeof perm !== "undefined" && !perm.editar;
+      return '<li data-id="'+escapar(id)+'"'+(vis?' class="visitado"':'')+'>'+
+        '<label class="vis" title="'+(vis?'Visitado':'Marcar como visitado')+'"><input type="checkbox" data-visitado'+(vis?' checked':'')+(travado?' disabled':'')+
+        ' aria-label="Visitado: '+escapar(inf.nome)+'"></label>'+
+        '<span class="num'+(inf.extra?' extra':'')+'">'+(i+1)+'</span><div class="txt"><b>'+escapar(inf.nome)+'</b><span>'+
+        escapar(vis ? "✓ Visitado" + (sub ? " · " + sub : "") : sub)+'</span></div>'+
         '<button data-acao="sobe" title="Subir" aria-label="Subir" '+(i===0?'disabled':'')+'>▲</button>'+
         '<button data-acao="desce" title="Descer" aria-label="Descer" '+(i===rota.length-1?'disabled':'')+'>▼</button>'+
         '<button data-acao="tira" title="Tirar da rota" aria-label="Tirar da rota">✕</button></li>';
@@ -645,7 +657,7 @@
         zona:l.zona || "", fase:inf.extra ? "" : ((FASES.find(f => f.id === (l.fase||"cadastro")) || {}).nome || ""),
         responsavel:l.responsavel || "",
         contatos:(l.contatos || []).map(c => [c.nome, c.telefone].filter(Boolean).join(" ")).filter(Boolean).join(" | "),
-        lat:p ? p.lat : null, lng:p ? p.lng : null, dist
+        lat:p ? p.lat : null, lng:p ? p.lng : null, visitado:foiVisitado(id), dist
       });
     });
     return linhas;
@@ -708,7 +720,7 @@
     const g = urlGmaps(), pts = percurso();
     const linhas = linhasRota().map(r => '<tr><td class="n">'+escapar(r.ordem)+'</td><td><b>'+escapar(r.nome)+'</b>'+
       (r.endereco && r.endereco !== r.nome ? '<br><span>'+escapar(r.endereco)+'</span>' : '')+'</td><td>'+escapar(r.contatos)+'</td><td>'+
-      escapar(r.responsavel)+'</td><td class="d">'+(r.dist == null ? "" : escapar(fmtKm(r.dist))+" km")+'</td><td class="ok"></td></tr>').join("");
+      escapar(r.responsavel)+'</td><td class="d">'+(r.dist == null ? "" : escapar(fmtKm(r.dist))+" km")+'</td><td class="ok">'+(r.visitado ? "✓" : "")+'</td></tr>').join("");
     w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Rota de visitas</title><style>'+
       'body{font:13px/1.4 system-ui,sans-serif;color:#0E2A33;margin:24px}h1{font-size:18px;margin:0 0 2px}p{margin:0 0 14px;color:#4B6459}'+
       'table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #D6D9D0;padding:7px 6px;text-align:left;vertical-align:top}'+
@@ -855,6 +867,25 @@
     if(b.dataset.acao === "desce" && i < rota.length-1) [rota[i+1], rota[i]] = [rota[i], rota[i+1]];
     desenharRota();
   });
+  // "Visitado" tick on a stop. For a condo, ticking takes off its "Marcado para visitar" car
+  // (the card on the board loses the car badge) and unticking puts it back. The Visitar button
+  // in the condo panel keeps working on its own, as before.
+  $m("#mpRotaLista").addEventListener("change", async e => {
+    const cb = e.target.closest("input[data-visitado]"); if(!cb) return;
+    const id = cb.closest("li").dataset.id, marcar = cb.checked;
+    const l = ehExtra(id) ? null : leads.find(x => x.id === id);
+    if(l && !perm.editar){ cb.checked = !marcar; negar("editar"); return; }
+    const vis = visitados().filter(x => x !== id);
+    if(marcar) vis.push(id);
+    extras[VISITADOS] = vis;
+    desenharRota();
+    if(l && !!l.visitar === marcar){            // only when the car has to change
+      l.visitar = !marcar;
+      registrarAtualizacao(l, marcar ? "Visitado (rota de visitas)" : "Visita desmarcada na rota · marcado para visitar");
+      await gravarLead(l);
+      desenhar();
+    }
+  });
   $m("#mpRotaOtimizar").addEventListener("click", otimizar);
   $m("#mpRotaArea").addEventListener("click", adicionarDaTela);
   // 'Limpar' removes all stops (asks first when there are several). The start point is kept.
@@ -942,6 +973,7 @@
     },
     decidir: decidirRota,          // for the tests
     tem: id => rota.includes(id),
+    visitado: id => foiVisitado(id),
     posicao: id => rota.indexOf(id) + 1,
     total: () => rota.length,
     alternar(id){ alternarNaRota(id); return rota.includes(id); },
