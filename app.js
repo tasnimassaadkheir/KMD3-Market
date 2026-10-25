@@ -1576,14 +1576,32 @@ function renderPainelLembretes(){
   $("#lemAbas").innerHTML = abas.map(([k,n]) =>
     '<button type="button" class="lem-aba'+(k==="atrasado"?" atraso":"")+(lemAba===k?" on":"")+'" data-lem-aba="'+k+'">'+n+'<span class="n">'+por[k].length+'</span></button>').join("");
   const msgVazia = {pendentes:"Nenhum lembrete pendente.", atrasado:"Nada atrasado.", hoje:"Nenhum lembrete para hoje.", proximo:"Nenhum lembrete futuro.", feito:"Nenhum lembrete concluído ainda."};
-  const itens = por[lemAba] || [];
-  $("#lemPainelLista").innerHTML = itens.map(linhaLembreteHTML).join("") || '<div class="lem-vazio">'+msgVazia[lemAba]+'</div>';
+  renderCalendarioLembretes(todos);
+  // a day chosen on the calendar: only that day's reminders (all of them, done ones too), no tabs
+  $("#lemAbas").hidden = !!lemDia;
+  $("#lemDiaCab").hidden = !lemDia;
+  if(lemDia){
+    const doDia = (agruparLembretesPorDia(todos).get(lemDia) || []);
+    const [a, m, d] = lemDia.split("-").map(Number), data = new Date(a, m-1, d);
+    const nome = data.toLocaleDateString("pt-BR", {weekday:"long", day:"numeric", month:"long"});
+    $("#lemDiaCab").innerHTML = '<b>'+escapar(nome.charAt(0).toUpperCase()+nome.slice(1))+'</b><span>'+
+      (doDia.length === 1 ? "1 lembrete" : doDia.length+" lembretes")+'</span>'+
+      '<button type="button" class="lem-dia-todos" data-lem-dia-limpar>Ver todos os lembretes</button>';
+    $("#lemPainelLista").innerHTML = doDia.map(linhaLembreteHTML).join("") || '<div class="lem-vazio">Nenhum lembrete neste dia.</div>';
+  } else {
+    const itens = por[lemAba] || [];
+    $("#lemPainelLista").innerHTML = itens.map(linhaLembreteHTML).join("") || '<div class="lem-vazio">'+msgVazia[lemAba]+'</div>';
+  }
   $("#btnNotif").hidden = !("Notification" in window) || Notification.permission !== "default";
 }
 // True if the reminders page is open.
 function lembretesAberto(){ return $("#telaLembretes").classList.contains("aberta"); }
 // Opens the reminders page (on 'pending' if there are any, otherwise on 'done').
 function abrirLembretes(aba){
+  const hoje = new Date();
+  lemMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);   // the calendar opens on this month
+  lemDia = null;
+  carregarNotas().then(renderNotas);
   if(aba) lemAba = aba;
   else {
     const t = todosLembretes().filter(x=>!x.lem.feito);
@@ -1593,7 +1611,194 @@ function abrirLembretes(aba){
   $("#telaLembretes").classList.add("aberta");
 }
 // Closes the reminders page.
-function fecharLembretes(){ lemEditando = null; $("#telaLembretes").classList.remove("aberta"); }
+function fecharLembretes(){ lemEditando = null; notaEditando = null; $("#telaLembretes").classList.remove("aberta"); }
+
+// =============================================================================
+// CALENDAR on the reminders page: the month, with each day's reminders (colored like the
+// list: overdue red, today gold, upcoming blue, done gray). Clicking a day lists only that day.
+// =============================================================================
+let lemMes = null, lemDia = null;           // month shown (1st day) / chosen day "YYYY-MM-DD" (null = none)
+const chaveDia = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const DIAS_SEMANA = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+// The days shown for a month: whole weeks (Sunday to Saturday), 5 or 6 rows.
+function diasDoCalendario(ano, mes){
+  const primeiro = new Date(ano, mes, 1), diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const linhas = Math.ceil((primeiro.getDay() + diasNoMes) / 7);
+  return Array.from({length: linhas * 7}, (_, i) => new Date(ano, mes, 1 - primeiro.getDay() + i));
+}
+// Reminders grouped by day ("YYYY-MM-DD" -> list sorted by time).
+function agruparLembretesPorDia(lista){
+  const m = new Map();
+  (lista || []).forEach(t => {
+    const d = dtLembrete(t.lem); if(isNaN(d)) return;
+    const k = chaveDia(d); if(!m.has(k)) m.set(k, []); m.get(k).push(t);
+  });
+  m.forEach(v => v.sort((a, b) => dtLembrete(a.lem) - dtLembrete(b.lem)));
+  return m;
+}
+function renderCalendarioLembretes(todos){
+  if(!lemMes){ const h = new Date(); lemMes = new Date(h.getFullYear(), h.getMonth(), 1); }
+  const porDia = agruparLembretesPorDia(todos), hoje = chaveDia(new Date());
+  const ano = lemMes.getFullYear(), mes = lemMes.getMonth();
+  const titulo = lemMes.toLocaleDateString("pt-BR", {month:"long", year:"numeric"});
+  const MAX = 3;
+  const celulas = diasDoCalendario(ano, mes).map(d => {
+    const k = chaveDia(d), lista = porDia.get(k) || [];
+    const atraso = lista.filter(t => t.c === "atrasado").length;
+    const cls = ["lem-cal-dia", d.getMonth() !== mes ? "fora" : "", k === hoje ? "hoje" : "", k === lemDia ? "sel" : "", lista.length ? "tem" : ""].filter(Boolean).join(" ");
+    const rot = d.toLocaleDateString("pt-BR", {day:"numeric", month:"long"}) + ": " +
+      (lista.length ? (lista.length === 1 ? "1 lembrete" : lista.length + " lembretes") + (atraso ? ", " + atraso + " atrasado" + (atraso > 1 ? "s" : "") : "") : "nenhum lembrete");
+    const chips = lista.slice(0, MAX).map(t => {
+      const dt = dtLembrete(t.lem);
+      return '<span class="lem-cal-chip c-'+t.c+'">'+escapar(horaCurta(dt))+' '+escapar(t.l.nome || "Condomínio")+'</span>';
+    }).join("") + (lista.length > MAX ? '<span class="lem-cal-mais">+'+(lista.length - MAX)+' mais</span>' : "");
+    // on phones the chips become colored dots
+    const pontos = lista.length ? '<span class="lem-cal-pontos">'+lista.slice(0, 4).map(t => '<i class="c-'+t.c+'"></i>').join("")+'</span>' : "";
+    return '<button type="button" class="'+cls+'" data-lem-dia="'+k+'" aria-label="'+escapar(rot)+'"'+(k === lemDia ? ' aria-pressed="true"' : ' aria-pressed="false"')+'>'+
+      '<span class="lem-cal-num">'+d.getDate()+'</span>'+chips+pontos+'</button>';
+  }).join("");
+  $("#lemCal").innerHTML =
+    '<div class="lem-cal-topo">'+
+      '<button type="button" class="lem-cal-nav" data-lem-mes="-1" aria-label="Mês anterior">‹</button>'+
+      '<h3 class="lem-cal-titulo">'+escapar(titulo.charAt(0).toUpperCase()+titulo.slice(1))+'</h3>'+
+      '<button type="button" class="lem-cal-nav" data-lem-mes="1" aria-label="Próximo mês">›</button>'+
+      '<button type="button" class="lem-cal-hoje" data-lem-mes="0">Hoje</button>'+
+    '</div>'+
+    '<div class="lem-cal-grade" role="group" aria-label="Calendário de lembretes">'+
+      DIAS_SEMANA.map(n => '<span class="lem-cal-sem" aria-hidden="true">'+n+'</span>').join("")+celulas+
+    '</div>';
+}
+$("#lemCal").addEventListener("click", e => {
+  const nav = e.target.closest("[data-lem-mes]");
+  if(nav){
+    const passo = parseInt(nav.dataset.lemMes, 10), h = new Date();
+    lemMes = passo === 0 ? new Date(h.getFullYear(), h.getMonth(), 1) : new Date(lemMes.getFullYear(), lemMes.getMonth() + passo, 1);
+    if(passo === 0) lemDia = chaveDia(h);
+    renderPainelLembretes(); return;
+  }
+  const dia = e.target.closest("[data-lem-dia]");
+  if(dia){
+    const k = dia.dataset.lemDia;
+    lemDia = lemDia === k ? null : k;                 // clicking the chosen day again shows everything
+    if(lemDia){ const [a, m] = k.split("-").map(Number); lemMes = new Date(a, m - 1, 1); }
+    lemEditando = null;
+    renderPainelLembretes();
+    if(lemDia) $("#lemDiaCab").scrollIntoView({block:"nearest"});
+  }
+});
+$("#lemDiaCab").addEventListener("click", e => {
+  if(e.target.closest("[data-lem-dia-limpar]")){ lemDia = null; renderPainelLembretes(); }
+});
+
+// =============================================================================
+// TEAM NOTEPAD (Bloco de notas) on the reminders page: short notes everyone in the organization
+// sees. Supabase table "notas_equipe" (database/notas_equipe.sql); until it exists (and in local
+// mode) the notes are kept in this browser. The author can edit / delete their note; admins can
+// delete any; read-only users only read.
+// =============================================================================
+const TABELA_NOTAS = "notas_equipe", CHAVE_NOTAS = "quitandinha:notas", NOTA_MAX = 2000;
+let notas = [], notasSemTabela = false, notaEditando = null, souAdmin = false, notasCanal = null;
+const notasNaNuvem = () => NUVEM && sb && !notasSemTabela;
+function notasLocais(){ try{ return JSON.parse(localStorage.getItem(CHAVE_NOTAS) || "[]") || []; }catch(e){ return []; } }
+function gravarNotasLocais(lista){ try{ localStorage.setItem(CHAVE_NOTAS, JSON.stringify(lista)); }catch(e){} }
+const ordenarNotas = lista => lista.slice().sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+async function carregarNotas(){
+  if(notasNaNuvem()){
+    const {data, error} = await sb.from(TABELA_NOTAS).select("*").order("criado_em", {ascending:false}).limit(200);
+    if(!error){ notas = ordenarNotas(data || []); ligarNotasRealtime(); return; }
+    if(tabelaNaoExiste(error, TABELA_NOTAS)) notasSemTabela = true;
+    else { console.warn("notas:", error); return; }
+  }
+  notas = ordenarNotas(notasLocais());
+}
+// Someone else adds / changes a note: the open page updates by itself.
+function ligarNotasRealtime(){
+  if(notasCanal || !sb || !sb.channel) return;
+  notasCanal = sb.channel("notas").on("postgres_changes", {event:"*", schema:"public", table:TABELA_NOTAS}, async () => {
+    if(!lembretesAberto() || notaEditando) return;
+    await carregarNotas(); renderNotas();
+  }).subscribe();
+}
+const meuId = () => (sessao && sessao.user && sessao.user.id) || null;
+const minhaNota = n => !NUVEM || notasSemTabela || (n.por_id && n.por_id === meuId());
+const podeEditarNota = n => !somenteLeitura && minhaNota(n);
+const podeExcluirNota = n => !somenteLeitura && (minhaNota(n) || souAdmin);
+function renderNotas(){
+  $("#notaForm").hidden = somenteLeitura;
+  const aviso = $("#notasAviso");
+  aviso.hidden = !(NUVEM && notasSemTabela);
+  aviso.textContent = "As notas estão ficando só neste navegador: falta criar a tabela no Supabase (database/notas_equipe.sql). Depois disso, toda a equipe vê.";
+  $("#notasLista").innerHTML = notas.map(n => {
+    const quando = dataHoraBR(n.criado_em) + (n.editado_em ? " (editada)" : "");
+    if(notaEditando === n.id) return '<li class="nota editando" data-nota="'+escapar(n.id)+'">'+
+      '<textarea class="txt" id="notaEditarTexto" rows="3" aria-label="Editar nota" maxlength="'+NOTA_MAX+'">'+escapar(n.texto)+'</textarea>'+
+      '<div class="nota-botoes"><button type="button" class="adm-b" data-nota-cancelar>Cancelar</button><button type="button" class="btn-salvar" data-nota-salvar>Salvar</button></div></li>';
+    return '<li class="nota" data-nota="'+escapar(n.id)+'">'+
+      '<p class="nota-texto">'+escapar(n.texto)+'</p>'+
+      '<span class="nota-meta">'+escapar(n.por || "Alguém")+' · '+escapar(quando)+'</span>'+
+      ((podeEditarNota(n) || podeExcluirNota(n)) ? '<span class="nota-acoes">'+
+        (podeEditarNota(n) ? '<button type="button" data-nota-editar title="Editar nota" aria-label="Editar nota">✎</button>' : '')+
+        (podeExcluirNota(n) ? '<button type="button" data-nota-excluir title="Excluir nota" aria-label="Excluir nota">✕</button>' : '')+
+      '</span>' : '')+
+    '</li>';
+  }).join("") || '<li class="nota-vazia">Nenhuma nota ainda.</li>';
+  if(notaEditando){ const t = $("#notaEditarTexto"); if(t){ t.focus(); t.selectionStart = t.selectionEnd = t.value.length; } }
+}
+async function adicionarNota(texto){
+  texto = String(texto || "").trim().slice(0, NOTA_MAX);
+  if(!texto){ avisar("Escreva a nota antes de adicionar."); return false; }
+  if(somenteLeitura){ bloqueado(); return false; }
+  const nova = {id: NUVEM && window.crypto && crypto.randomUUID ? crypto.randomUUID() : gerarId(), texto, por: meuNome || "", por_id: meuId(), criado_em: agora()};
+  if(notasNaNuvem()){
+    const {error} = await sb.from(TABELA_NOTAS).insert(nova);
+    if(error && !tabelaNaoExiste(error, TABELA_NOTAS)){ avisar("Não foi possível salvar a nota: " + error.message, true); return false; }
+    if(error) notasSemTabela = true;
+  }
+  if(!notasNaNuvem()) gravarNotasLocais([nova, ...notasLocais()]);
+  await carregarNotas(); renderNotas();
+  return true;
+}
+async function salvarEdicaoNota(id, texto){
+  texto = String(texto || "").trim().slice(0, NOTA_MAX);
+  if(!texto){ avisar("A nota não pode ficar vazia."); return; }
+  const mud = {texto, editado_em: agora()};
+  if(notasNaNuvem()){
+    const {error} = await sb.from(TABELA_NOTAS).update(mud).eq("id", id);
+    if(error){ avisar("Não foi possível salvar a nota: " + error.message, true); return; }
+  } else gravarNotasLocais(notasLocais().map(n => n.id === id ? {...n, ...mud} : n));
+  notaEditando = null;
+  await carregarNotas(); renderNotas();
+}
+async function excluirNota(id){
+  if(!confirm("Excluir esta nota?")) return;
+  if(notasNaNuvem()){
+    const {error} = await sb.from(TABELA_NOTAS).delete().eq("id", id);
+    if(error){ avisar("Não foi possível excluir a nota: " + error.message, true); return; }
+  } else gravarNotasLocais(notasLocais().filter(n => n.id !== id));
+  await carregarNotas(); renderNotas();
+}
+$("#notaForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const b = $("#notaAdd"); b.disabled = true;
+  const ok = await adicionarNota($("#notaTexto").value);
+  b.disabled = false;
+  if(ok){ $("#notaTexto").value = ""; avisar("Nota adicionada"); }
+});
+// Ctrl/⌘ + Enter adds the note
+$("#notaTexto").addEventListener("keydown", e => { if(e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); $("#notaForm").requestSubmit(); } });
+$("#notasLista").addEventListener("click", e => {
+  const li = e.target.closest("[data-nota]"); if(!li) return;
+  const id = li.dataset.nota;
+  if(e.target.closest("[data-nota-editar]")){ notaEditando = id; renderNotas(); }
+  else if(e.target.closest("[data-nota-cancelar]")){ notaEditando = null; renderNotas(); }
+  else if(e.target.closest("[data-nota-salvar]")) salvarEdicaoNota(id, $("#notaEditarTexto").value);
+  else if(e.target.closest("[data-nota-excluir]")) excluirNota(id);
+});
+$("#notasLista").addEventListener("keydown", e => {
+  if(!notaEditando || e.target.id !== "notaEditarTexto") return;
+  if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); notaEditando = null; renderNotas(); }
+  if(e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); salvarEdicaoNota(notaEditando, e.target.value); }
+});
 
 /* ---- selo no botão + aviso quando chega a hora ---- */
 // ---- Badge on the toolbar button + alerts when a reminder is due ----
@@ -3229,6 +3434,7 @@ async function verificarAdmin(){
     const [sup, adm] = await Promise.all([sb.rpc("sou_super"), sb.rpc("sou_admin")]);
     if(adm.error || !adm.data) return;
     admSuper = !!sup.data;
+    souAdmin = true;                       // admins can delete any note in the team notepad
     $("#btnAdmin").hidden = false;
     $("#nomeUsuario").textContent = meuNome + (admSuper ? " · super-admin" : " · admin");
   }catch(e){}

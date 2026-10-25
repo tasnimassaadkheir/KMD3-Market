@@ -375,9 +375,25 @@
     </div>
   </div>
   <div class="tela-lem-corpo">
-    <div class="tela-lem-in">
-      <div class="lem-abas" id="lemAbas"></div>
-      <div id="lemPainelLista"></div>
+    <div class="tela-lem-in lem-layout">
+      <div class="lem-principal">
+        <!-- Month calendar: each day shows its reminders; clicking a day lists only that day below. -->
+        <div class="lem-cal" id="lemCal"></div>
+        <div class="lem-dia-cab" id="lemDiaCab" hidden></div>
+        <div class="lem-abas" id="lemAbas"></div>
+        <div id="lemPainelLista"></div>
+      </div>
+      <!-- Team notepad: short notes everyone in the organization sees (table "notas_equipe"). -->
+      <aside class="lem-notas" id="lemNotas" aria-labelledby="lemNotasTitulo">
+        <h3 id="lemNotasTitulo">Bloco de notas</h3>
+        <p class="lem-notas-dica">Recados para toda a equipe.</p>
+        <form class="nota-form" id="notaForm">
+          <textarea class="txt" id="notaTexto" rows="3" aria-label="Nova nota" placeholder="Escreva um recado para a equipe…"></textarea>
+          <button type="submit" class="btn-salvar" id="notaAdd">Adicionar nota</button>
+        </form>
+        <p class="lem-notas-aviso" id="notasAviso" hidden></p>
+        <ul class="notas-lista" id="notasLista"></ul>
+      </aside>
     </div>
   </div>
 </section>
