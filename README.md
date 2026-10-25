@@ -26,7 +26,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
   - Typing a CEP fills street, neighborhood, city and UF, and moves the cursor to the number. **Zona** is never filled automatically: it is typed by hand only.
   - Arrows + Enter choose a suggestion; Esc closes the list. Without internet the fields still work by hand.
   - It's still saved as one line in `endereco` ("Rua X, 155, Torre 2 - Bairro - Cidade - UF - 00000-000"), so the map, route, search and calendar links work as before and the database didn't change. Old addresses open split into fields and are kept exactly as typed unless edited.
-- Multiple contacts per condo, each with one-click **WhatsApp** and **Ligar** (call: opens the phone keypad with the number) buttons, a small **copy** icon inside the e-mail box, and a **Quem é** dropdown (Síndico, ADM, Zelador, Morador, Gerente predial, or **Outro…** to type a new type, which then appears in every card's dropdown).
+- Multiple contacts per condo, each with one-click **WhatsApp** and **Ligar** (call: opens the phone keypad with the number) buttons, a small **copy** icon inside the e-mail box, and a **Vínculo** dropdown (Síndico, ADM, Zelador, Morador, Gerente predial, or **Outro…** to type a new type, which then appears in every card's dropdown).
 
 **Busca Condomínio page (☰ → Busca Condomínio; it was called "Prospecção" before; old `#prospeccao` links still open it)**
 - Finds condos in São Paulo that aren't in the funnel yet, **with the number of apartments**, from the city's IPTU (property tax) register — about 24,500 buildings with 10+ apartments.
@@ -56,7 +56,7 @@ The interface is in Brazilian Portuguese. The code is plain HTML, CSS and JavaSc
 - Every contact from every condo in one table: Nome, Número, E-mail, Condomínio. Click the condo name to open it.
 - Add **standalone contacts** that don't belong to any condo, then edit or delete them.
 - A small copy button after each e-mail.
-- Search by name, number, e-mail or condo; filter by "Quem é"; **export** what's on screen as an Excel spreadsheet (CSV).
+- Search by name, number, e-mail or condo; filter by "Vínculo"; **export** what's on screen as an Excel spreadsheet (CSV).
 - Competitor and contract end date. The card turns red when the contract ends within 90 days.
 - A timeline of notes, with the date and author added automatically. Notes can be edited, and a small copy icon at the top right of each note copies its text.
 - An automatic change log with update frequency statistics.
@@ -244,7 +244,7 @@ Standalone contacts from the Contatos page (contacts inside a condo stay in `con
 | `id` | `uuid` | Primary key |
 | `nome` | `text` | Required |
 | `telefone`, `email` | `text` | |
-| `tipo` | `text` | "Quem é" |
+| `tipo` | `text` | "Vínculo" |
 | `criado_por` | `text` | Name of who added it |
 | `criado_em` | `timestamptz` | |
 
@@ -381,7 +381,7 @@ The app keeps a local copy in `localStorage` so nothing is lost if the connectio
 | `quitandinha:sults` | SULTS flags backup (only used if the database has no `sults` column) |
 | `quitandinha:quente` | Hot-contact flags backup (only used if the database has no `quente` column) |
 | `quitandinha:visitar` | Visitar flags backup (only used if the database has no `visitar` column) |
-| `quitandinha:tiposContato` | "Quem é" types created with "Outro…" (so they show up right away) |
+| `quitandinha:tiposContato` | "Vínculo" types created with "Outro…" (so they show up right away) |
 | `quitandinha:templates` | Copy of the templates (the only copy if the database has no `templates` table) |
 | `quitandinha:contatosAvulsos` | Copy of the standalone contacts (the only copy if the database has no `contatos_avulsos` table) |
 | `quitandinha:colunasInvertidas` | Which columns are reversed |

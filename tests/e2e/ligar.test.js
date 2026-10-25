@@ -60,7 +60,7 @@ describe("Ligar (call) button", () => {
 });
 
 describe("Contact header on phones", () => {
-  test("name field fills the first line with ✕ beside it; 'Quem é' goes below, full width", async () => {
+  test("name field fills the first line with ✕ beside it; 'Vínculo' goes below, full width", async () => {
     // Bug fixed: on iPhone the name field was squeezed and the ✕ overlapped it.
     const { page, context } = await openApp(env, { viewport: { width: 402, height: 874 },
       leads: [lead({ nome: "Aurora", contatos: [{ nome: "Paulo", telefone: "", email: "", tipo: "Zelador" }] })] });
@@ -73,7 +73,7 @@ describe("Contact header on phones", () => {
     assert.ok(nome.width >= item.width * 0.7, `name field only ${nome.width}px wide`);
     assert.ok(x.x >= nome.x + nome.width, "✕ is beside the name, not on top of it");
     assert.ok(Math.abs((x.y + x.height / 2) - (nome.y + nome.height / 2)) < 6, "✕ vertically centered with the name");
-    assert.ok(tipo.y > nome.y + nome.height, "'Quem é' is below the name");
+    assert.ok(tipo.y > nome.y + nome.height, "'Vínculo' is below the name");
     await context.close();
   });
 });

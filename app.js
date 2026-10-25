@@ -770,11 +770,11 @@ function registrarTipo(txt){
   try{ localStorage.setItem(CHAVE_TIPOS, JSON.stringify(tiposExtras)); }catch(e){}
   return txt;
 }
-// <option>s for a "Quem é" dropdown, with the current value selected and "Outro…" at the end.
+// <option>s for a "Vínculo" dropdown, with the current value selected and "Outro…" at the end.
 function opcoesTipo(atual){
   const tipos = tiposContato();
   if(atual && !tipos.includes(atual)) tipos.push(atual);
-  return '<option value="">Quem é?</option>'+
+  return '<option value="">Selecione…</option>'+
     tipos.map(t => '<option value="'+escapar(t)+'"'+(t===atual?' selected':'')+'>'+escapar(t)+'</option>').join("")+
     '<option value="__outro">Outro…</option>';
 }
@@ -816,7 +816,7 @@ function renderContatos(){
     '<div class="contato-item" data-i="'+i+'">'+
       '<div class="contato-cabeca">'+
         '<label class="campo"><span>Nome</span><input class="txt contato-nome" data-i="'+i+'" value="'+escapar(c.nome||"")+'"></label>'+
-        '<label class="campo contato-tipo" data-i="'+i+'"'+((c.nome||"").trim() ? '' : ' hidden')+'><span>Quem é</span>'+
+        '<label class="campo contato-tipo" data-i="'+i+'"'+((c.nome||"").trim() ? '' : ' hidden')+'><span>Vínculo</span>'+
           (tipoOutroAberto === i
             ? '<span class="tipo-outro"><input class="txt tipo-outro-txt" data-i="'+i+'" placeholder="Ex.: Porteiro" maxlength="40">'+
               '<button type="button" class="tipo-ok" data-tipo-ok="'+i+'">OK</button>'+
@@ -853,7 +853,7 @@ let tipoOutroAberto = null;
 function confirmarTipoOutro(i){
   const campo = $("#contatosLista .tipo-outro-txt");
   const tipo = registrarTipo(campo ? campo.value : "");
-  if(!tipo){ avisar("Escreva quem é o contato (ex.: Porteiro)."); if(campo) campo.focus(); return; }
+  if(!tipo){ avisar("Escreva o vínculo do contato (ex.: Porteiro)."); if(campo) campo.focus(); return; }
   contatosForm[i].tipo = tipo;
   tipoOutroAberto = null;
   renderContatos();
@@ -1927,7 +1927,7 @@ function contatosFiltrados(){
 }
 function renderContatosPagina(){
   const filtroAtual = $("#ctFiltroTipo").value;
-  $("#ctFiltroTipo").innerHTML = '<option value="">Todos os tipos</option>'+
+  $("#ctFiltroTipo").innerHTML = '<option value="">Todos os vínculos</option>'+
     tiposContato().map(t => '<option value="'+escapar(t)+'">'+escapar(t)+'</option>').join("")+
     '<option value="__sem">Sem tipo</option>';
   $("#ctFiltroTipo").value = filtroAtual;
@@ -1992,7 +1992,7 @@ async function salvarAvulso(){
   let tipo = $("#ct_tipo").value;
   if(tipo === "__outro"){
     tipo = registrarTipo($("#ct_tipoOutro").value);
-    if(!tipo){ avisar("Escreva quem é o contato (ex.: Porteiro)."); $("#ct_tipoOutro").focus(); return; }
+    if(!tipo){ avisar("Escreva o vínculo do contato (ex.: Porteiro)."); $("#ct_tipoOutro").focus(); return; }
   }
   const antigo = avulsoEditando ? avulsos.find(x => x.id === avulsoEditando) : null;
   const c = {
@@ -2018,7 +2018,7 @@ async function excluirAvulso(id){
 function exportarContatos(){
   const lista = contatosFiltrados();
   if(!lista.length){ avisar("Não há contatos para exportar"); return; }
-  const cab = ["Nome","Quem é","Número","E-mail","Condomínio","Endereço do condomínio"];
+  const cab = ["Nome","Vínculo","Número","E-mail","Condomínio","Endereço do condomínio"];
   const linhas = lista.map(c => [c.nome, c.tipo, c.telefone, c.email, c.leadId ? c.condominio : "Avulso", c.endereco]);
   const csv = [cab, ...linhas].map(r => r.map(x => '"'+String(x ?? "").replace(/"/g,'""')+'"').join(";")).join("\r\n");
   const a = document.createElement("a");
@@ -3249,7 +3249,7 @@ document.addEventListener("input", e=>{
   if(e.target.classList.contains("contato-nome")){
     contatosForm[idx].nome = e.target.value;
     const tipo = document.querySelector('#contatosLista .contato-tipo[data-i="'+idx+'"]');
-    if(tipo) tipo.hidden = !e.target.value.trim();     // "Quem é" appears after the name is filled
+    if(tipo) tipo.hidden = !e.target.value.trim();     // "Vínculo" appears after the name is filled
   }
   else if(e.target.classList.contains("contato-tel")) contatosForm[idx].telefone = e.target.value;
   else if(e.target.classList.contains("contato-email")) contatosForm[idx].email = e.target.value;

@@ -1,4 +1,4 @@
-// Unit tests: contact types ("Quem é") and the Contacts page data.
+// Unit tests: contact types ("Vínculo") and the Contacts page data.
 const { test, describe, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { loadApp } = require("../helpers/load-app");
