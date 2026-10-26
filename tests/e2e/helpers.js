@@ -55,10 +55,12 @@ async function setup() {
  *        contains the key (case/accents ignored) it answers with that position, otherwise "not found"
  * @param {boolean} [opts.fakeLeaflet] load a fake Leaflet (see fake-leaflet.js) so the map view opens
  * @param {{latitude:number,longitude:number}} [opts.geolocation] fake GPS position for the browser
+ * @param {boolean} [opts.toque] emulate a phone with a touch screen (pointer:coarse), e.g. no auto-focus on open
  */
 async function openApp(env, opts = {}) {
   const context = await env.browser.newContext({
     viewport: opts.viewport || { width: 1400, height: 900 },
+    ...(opts.toque ? { isMobile: true, hasTouch: true } : {}),   // a phone with a touch screen
     acceptDownloads: true,
     timezoneId: "America/Sao_Paulo",
     locale: "pt-BR",
