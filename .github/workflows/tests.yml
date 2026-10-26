@@ -28,7 +28,18 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Run end-to-end tests
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee e2e.log
+      # When something fails, show WHICH test and WHY on the PR page (annotation) and in the run
+      # summary, so there's no need to dig through the full log.
+      - name: Show failed tests
+        if: failure()
+        run: |
+          grep -E "^\s*not ok|^\s+(error|expected|actual|code|name|message):|Error:|waiting for" e2e.log | head -60 > falhas.txt || true
+          { echo "### End-to-end tests that failed"; echo '```'; cat falhas.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=End-to-end tests failed::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' falhas.txt)"
 
   api:
     name: API tests (Postman / Newman, real Supabase)
