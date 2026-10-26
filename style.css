@@ -776,10 +776,10 @@
 .btn-menu:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.26)}
 .btn-menu svg{width:18px;height:18px}
 /* dark background behind the open menu (click = close) */
-.menu-fundo{position:fixed;inset:0;z-index:44;background:rgba(3,18,13,.5)}
+.menu-fundo{position:fixed;inset:0;z-index:64;background:rgba(3,18,13,.5)}
 .menu-fundo[hidden]{display:none}
 /* the drawer: off-screen to the left, slides in with .aberto */
-.menu-lateral{position:fixed;top:0;left:0;bottom:0;z-index:45;width:min(280px,85vw);display:flex;flex-direction:column;
+.menu-lateral{position:fixed;top:0;left:0;bottom:0;z-index:65;width:min(280px,85vw);display:flex;flex-direction:column;
   gap:4px;padding:0 10px 16px;background:linear-gradient(180deg,#0B4658 0%,#062C38 100%);color:#fff;
   box-shadow:6px 0 28px rgba(0,0,0,.35);transform:translateX(-105%);transition:transform .2s ease;overflow-y:auto}
 .menu-lateral.aberto{transform:none}
@@ -1480,3 +1480,10 @@ body.somente-leitura #painel select{appearance:none;-webkit-appearance:none;back
 .instalar-passos li{margin-bottom:6px}
 #instalarOutro[hidden]{display:none}
 .instalar-passos .ico-share{width:17px;height:17px;vertical-align:-3px;color:#0A84FF}
+
+/* ☰ on the full-screen pages (Dashboard, Lembretes, Contatos, Templates, Busca Condomínio, Administração):
+   same look as the top bar's, at the top left, before "Voltar". The menu (z-index 64/65) opens above
+   these pages, including Administração (60). */
+.btn-menu-tela{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
+.adm-topo{gap:12px}
+.adm-topo h2{margin-right:auto}

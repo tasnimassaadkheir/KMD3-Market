@@ -3090,12 +3090,38 @@ function cliqueDashboard(e){
 // this code only opens/closes the drawer.
 // 'inert' on the closed menu keeps keyboard focus out of the hidden buttons.
 function menuAberto(){ return $("#menuLateral").classList.contains("aberto"); }
-function abrirMenu(){
+// The ☰ that opened the menu (the top bar's, or the one on a full-screen page), to give focus back.
+let botaoMenuAtual = null;
+// Every full-screen page (Dashboard, Lembretes, Contatos, Templates, Busca Condomínio, Administração)
+// gets its own ☰ at the top left, a copy of the top bar's, so you can go to another page from there.
+function colocarMenuNasTelas(){
+  document.querySelectorAll(".tela-lem-topo, .adm-topo").forEach(topo => {
+    if(topo.querySelector("[data-abrir-menu]")) return;
+    const b = $("#btnMenu").cloneNode(true);
+    b.removeAttribute("id");
+    b.classList.add("btn-menu-tela");
+    b.dataset.abrirMenu = "";
+    b.setAttribute("aria-expanded", "false");
+    topo.prepend(b);
+  });
+}
+// Choosing a page in the menu while another full-screen page is open: close that one first,
+// so the chosen page shows (and not the old one on top of it). Install / password only open a window.
+function fecharTelasCheias(){
+  if(lembretesAberto()) fecharLembretes();
+  if(contatosAberto()) fecharContatos();
+  if(templatesAberto()) fecharTemplates();
+  if(dashboardAberto()) fecharDashboard();
+  if(window.Prospeccao && Prospeccao.aberto()) Prospeccao.fechar();
+  if(!$("#admTela").hidden){ fecharAtividade(); $("#admTela").hidden = true; }
+}
+function abrirMenu(botao){
   const m = $("#menuLateral");
+  botaoMenuAtual = botao || $("#btnMenu");
   m.inert = false;
   m.classList.add("aberto");
   $("#menuFundo").hidden = false;
-  $("#btnMenu").setAttribute("aria-expanded", "true");
+  document.querySelectorAll('[aria-controls="menuLateral"]').forEach(b => b.setAttribute("aria-expanded", b === botaoMenuAtual ? "true" : "false"));
   const primeiro = m.querySelector(".menu-item:not([hidden])");
   if(primeiro) setTimeout(() => primeiro.focus(), 50);
 }
@@ -3105,8 +3131,9 @@ function fecharMenu(devolverFoco){
   m.classList.remove("aberto");
   m.inert = true;
   $("#menuFundo").hidden = true;
-  $("#btnMenu").setAttribute("aria-expanded", "false");
-  if(devolverFoco) $("#btnMenu").focus();
+  document.querySelectorAll('[aria-controls="menuLateral"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+  const volta = botaoMenuAtual && botaoMenuAtual.offsetParent ? botaoMenuAtual : $("#btnMenu");
+  if(devolverFoco) volta.focus();
 }
 
 /* ================= eventos ================= */
@@ -3120,6 +3147,16 @@ $("#btnMenu").addEventListener("click", ()=>{ menuAberto() ? fecharMenu() : abri
 $("#btnFecharMenu").addEventListener("click", ()=>fecharMenu(true));
 $("#menuFundo").addEventListener("click", ()=>fecharMenu());
 $("#menuLateral").addEventListener("click", e=>{ if(e.target.closest(".menu-item")) fecharMenu(); });
+// capture = runs BEFORE the item's own action (which then opens the chosen page)
+$("#menuLateral").addEventListener("click", e=>{
+  const item = e.target.closest(".menu-item");
+  if(item && item.id !== "btnInstalar" && item.id !== "btnMinhaSenha") fecharTelasCheias();
+}, true);
+colocarMenuNasTelas();
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-abrir-menu]"); if(!b) return;
+  menuAberto() ? fecharMenu() : abrirMenu(b);
+});
 $("#btnNovo").addEventListener("click", ()=>abrirPainel(null));
 $("#btnFechar").addEventListener("click", fecharTudo);
 $("#btnFecharEquipe").addEventListener("click", fecharTudo);
