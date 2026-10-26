@@ -46,7 +46,7 @@ describe("Installable app (PWA)", () => {
     await context.close();
   });
 
-  test("the service worker registers, saves the app, and the app still opens with no internet (saying so)", async () => {
+  test("the service worker registers, saves the app, and the app still opens with no internet", async () => {
     const { page, context, errors } = await openApp(env, { leads: dados(), serviceWorkers: "allow" });
     // Each step waits on its own and says which one got stuck (with the page's state), so a
     // failure on GitHub's Chromium is easy to read.
@@ -71,8 +71,16 @@ describe("Installable app (PWA)", () => {
     await context.setOffline(true);
     await page.reload();                                         // no browser error page: the saved copy opens
     await page.waitForSelector("#btnMenu");
-    // (the saved config.js is the real one, so this is the cloud app with no internet)
-    await esperar("'Sem internet' shown", () => document.querySelector("#nomeUsuario").textContent === "Sem internet");
+    // Which config.js the worker saved depends on the Playwright version: newer ones also send the
+    // worker's requests through the test's fake answers (local mode, no database), older ones don't
+    // (the real file: cloud mode). Either way the app must open with no internet:
+    if (await page.evaluate(() => NUVEM)) {
+      // cloud: the condos live in the database, so it says so (and reloads when the internet is back)
+      await esperar("'Sem internet' shown", () => document.querySelector("#nomeUsuario").textContent === "Sem internet");
+    } else {
+      // local mode: the board opens with the condos saved in this browser
+      await esperar("board with the saved condo", () => /Residencial Aurora/.test(document.querySelector("#quadro").textContent));
+    }
     assert.deepEqual(errors, []);
     await context.close();
   });
