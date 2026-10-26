@@ -1982,7 +1982,7 @@ function abrirFormAvulso(id){
   $("#ct_tipo").innerHTML = opcoesTipo(c ? c.tipo : "");
   $("#ct_tipoOutro").value = ""; $("#ct_tipoOutro").hidden = true;
   $("#ctForm").hidden = false;
-  $("#ct_nome").focus();
+  focarSemTeclado("#ct_nome");
 }
 function fecharFormAvulso(){ $("#ctForm").hidden = true; avulsoEditando = null; }
 async function salvarAvulso(){
@@ -2132,7 +2132,7 @@ function abrirFormTemplate(id){
   $("#tp_titulo").value = t ? t.titulo : "";
   $("#tp_texto").value = t ? t.texto : "";
   $("#tpForm").hidden = false;
-  $("#tp_titulo").focus();
+  focarSemTeclado("#tp_titulo");
 }
 function fecharFormTemplate(){ $("#tpForm").hidden = true; templateEditando = null; }
 async function salvarTemplate(){
@@ -2374,7 +2374,7 @@ function abrirPainel(id, faseInicial){
   atualizarBotaoQuente();
   atualizarBotaoRotaLead();
   atualizarBotaoVisitar();
-  setTimeout(()=>$("#f_nome").focus(), 180);
+  setTimeout(()=>focarSemTeclado("#f_nome"), 180);
 }
 // "Visitar" button, next to "Adicionar à rota" (only for saved condos).
 // Unlike the form fields, it saves RIGHT AWAY when clicked (like the route button beside it),
@@ -2450,11 +2450,16 @@ function fecharTudo(){
   editandoId = null;
 }
 // Opens the Team panel.
+// On phones/tablets (touch screen) we don't put the cursor in a field by ourselves when a panel or
+// form opens: that pops up the keyboard over the panel (and older iPhones also zoom in). The person
+// taps the field they want. On a computer the field still gets focus, as before.
+const telaDeToque = () => !!(window.matchMedia && matchMedia("(pointer:coarse)").matches);
+function focarSemTeclado(sel){ if(!telaDeToque()){ const e = $(sel); if(e) e.focus(); } }
 function abrirEquipe(){
   desenharEquipe();
   $("#painelEquipe").classList.add("aberto");
   $("#fundo").classList.add("aberto");
-  setTimeout(()=>$("#eq_nome").focus(), 180);
+  setTimeout(()=>focarSemTeclado("#eq_nome"), 180);
 }
 
 // Reads every field in the panel and returns a condo object with those values.

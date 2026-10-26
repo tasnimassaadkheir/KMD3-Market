@@ -600,7 +600,7 @@
     if(!(await iniciarMapa())) avisar("Não foi possível carregar o mapa. A lista funciona normalmente.", true);
     else mapa.invalidateSize();
     await atualizarBusca();
-    $p("#prBusca").focus();
+    if(!(window.matchMedia && matchMedia("(pointer:coarse)").matches)) $p("#prBusca").focus();   // no keyboard popping up on phones
   }
   function fechar(){ $p("#telaProspeccao").classList.remove("aberta"); filaGeo = []; }
 
