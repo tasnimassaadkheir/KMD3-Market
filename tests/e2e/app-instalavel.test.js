@@ -48,17 +48,31 @@ describe("Installable app (PWA)", () => {
 
   test("the service worker registers, saves the app, and the app still opens with no internet (saying so)", async () => {
     const { page, context, errors } = await openApp(env, { leads: dados(), serviceWorkers: "allow" });
+    // Each step waits on its own and says which one got stuck (with the page's state), so a
+    // failure on GitHub's Chromium is easy to read.
+    const estado = () => page.evaluate(async () => ({
+      online: navigator.onLine, controla: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
+      salvos: (await caches.keys()).length ? (await (await caches.open((await caches.keys())[0])).keys()).map((r) => new URL(r.url).pathname) : [],
+      nome: (document.querySelector("#nomeUsuario") || {}).textContent, aviso: (document.querySelector("#aviso") || {}).textContent,
+    })).catch((e) => ({ erro: e.message }));
+    async function esperar(passo, fn, ms = 20000) {
+      const fim = Date.now() + ms;
+      while (Date.now() < fim) {
+        if (await page.evaluate(fn).catch(() => false)) return;
+        await page.waitForTimeout(200);
+      }
+      throw new Error("stuck at: " + passo + " · " + JSON.stringify(await estado()));
+    }
     const escopo = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
     assert.equal(escopo, env.url);
-    await page.waitForFunction(async () => !!(await caches.match("app.js")) && !!(await caches.match("index.html")));
+    await esperar("app saved by the worker", async () => !!(await caches.match("app.js")) && !!(await caches.match("index.html")));
     await page.reload();                                         // now the worker controls the page
-    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    await esperar("worker controls the page", () => !!navigator.serviceWorker.controller);
     await context.setOffline(true);
     await page.reload();                                         // no browser error page: the saved copy opens
     await page.waitForSelector("#btnMenu");
     // (the saved config.js is the real one, so this is the cloud app with no internet)
-    await page.waitForFunction(() => /Sem internet/.test(document.querySelector("#aviso").textContent));
-    assert.equal(await page.textContent("#nomeUsuario"), "Sem internet");
+    await esperar("'Sem internet' shown", () => document.querySelector("#nomeUsuario").textContent === "Sem internet");
     assert.deepEqual(errors, []);
     await context.close();
   });
