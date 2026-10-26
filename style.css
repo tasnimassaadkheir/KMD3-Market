@@ -1474,3 +1474,9 @@ body.somente-leitura #painel select{appearance:none;-webkit-appearance:none;back
 @media (max-width:760px), (pointer:coarse){
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea{font-size:16px !important}
 }
+
+/* "Instalar o app" steps for iPhone (dialog opened from the ☰ menu). */
+.instalar-passos{margin:0 0 10px;padding-left:20px;font-size:14px;line-height:1.5}
+.instalar-passos li{margin-bottom:6px}
+#instalarOutro[hidden]{display:none}
+.instalar-passos .ico-share{width:17px;height:17px;vertical-align:-3px;color:#0A84FF}

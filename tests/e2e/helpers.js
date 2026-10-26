@@ -14,7 +14,7 @@ const path = require("node:path");
 const { chromium } = require("playwright");
 
 const ROOT = path.join(__dirname, "..", "..");
-const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".png": "image/png", ".json": "application/json" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".png": "image/png", ".json": "application/json", ".webmanifest": "application/manifest+json" };
 
 function startServer() {
   return new Promise((resolve) => {
@@ -55,12 +55,18 @@ async function setup() {
  *        contains the key (case/accents ignored) it answers with that position, otherwise "not found"
  * @param {boolean} [opts.fakeLeaflet] load a fake Leaflet (see fake-leaflet.js) so the map view opens
  * @param {{latitude:number,longitude:number}} [opts.geolocation] fake GPS position for the browser
+ * @param {string} [opts.userAgent] pretend to be another browser (e.g. an iPhone)
+ * @param {"allow"|"block"} [opts.serviceWorkers] "allow" to run sw.js (blocked by default)
  * @param {boolean} [opts.toque] emulate a phone with a touch screen (pointer:coarse), e.g. no auto-focus on open
  */
 async function openApp(env, opts = {}) {
   const context = await env.browser.newContext({
     viewport: opts.viewport || { width: 1400, height: 900 },
     ...(opts.toque ? { isMobile: true, hasTouch: true } : {}),   // a phone with a touch screen
+    ...(opts.userAgent ? { userAgent: opts.userAgent } : {}),
+    // The app's service worker (sw.js) is off in tests, unless a test asks for it: its requests
+    // would skip the fake answers set up below with context.route().
+    serviceWorkers: opts.serviceWorkers || "block",
     acceptDownloads: true,
     timezoneId: "America/Sao_Paulo",
     locale: "pt-BR",

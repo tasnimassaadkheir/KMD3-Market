@@ -2758,8 +2758,16 @@ async function iniciar(){
       else mostrarEntrada();
     }catch(e){
       $("#sinal").className = "sinal off";
-      $("#nomeUsuario").textContent = "Sem conexão com o banco";
-      avisar("Não consegui conectar ao Supabase. Confira as chaves.");
+      if(navigator.onLine === false){
+        // Opened with no internet (e.g. the installed app on a phone without signal): the app itself
+        // opens (sw.js keeps a copy), but the condos live in the database. Reload by itself when it's back.
+        $("#nomeUsuario").textContent = "Sem internet";
+        avisar("Sem internet. Os condomínios aparecem assim que a conexão voltar.", true);
+        window.addEventListener("online", () => location.reload(), {once:true});
+      } else {
+        $("#nomeUsuario").textContent = "Sem conexão com o banco";
+        avisar("Não consegui conectar ao Supabase. Confira as chaves.");
+      }
     }
   } else {
     await iniciarQuadro();
@@ -3893,6 +3901,62 @@ $("#admAtivLista").addEventListener("click", e => {
   abrirPainel(b.dataset.ativLead);
 });
 
+
+// =============================================================================
+// INSTALL AS AN APP (PWA)
+// sw.js (the service worker) + manifest.webmanifest make the site installable: an icon on the
+// home screen, opening full screen without the browser bar, and opening even offline.
+//  - Android / Chrome / Edge: the browser fires 'beforeinstallprompt'; we keep it and show
+//    "Instalar o app" in the ☰ menu, which opens the browser's own install window.
+//  - iPhone / iPad: Safari has no install button for sites, so the menu item opens the steps
+//    (Compartilhar → Adicionar à Tela de Início).
+//  - Already opened as the installed app: the menu item stays hidden.
+// =============================================================================
+let pedidoInstalar = null;                     // the browser's saved install prompt (Android/Chrome)
+const abertoComoApp = () => !!((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone);
+const ehIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);        // iPads say they're a Mac
+const ehSafariIOS = () => ehIOS() && !/CriOS|FxiOS|EdgiOS|Instagram|FBAN|FBAV/i.test(navigator.userAgent);
+function atualizarBotaoInstalar(){
+  $("#btnInstalar").hidden = abertoComoApp() || !(pedidoInstalar || ehIOS());
+}
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();                          // no automatic banner: the ☰ menu item does it
+  pedidoInstalar = e;
+  atualizarBotaoInstalar();
+});
+window.addEventListener("appinstalled", () => {
+  pedidoInstalar = null;
+  atualizarBotaoInstalar();
+  avisar("App instalado. Ele está na tela inicial do seu aparelho.");
+});
+function fecharInstalar(){ $("#instalarDlg").hidden = true; }
+$("#btnInstalar").addEventListener("click", async () => {
+  fecharMenu(false);
+  if(pedidoInstalar){
+    const p = pedidoInstalar; pedidoInstalar = null;   // a prompt can only be used once
+    try{
+      await p.prompt();
+      const r = await p.userChoice;
+      if(r && r.outcome !== "accepted") avisar("Instalação cancelada. Você pode instalar depois pelo ☰ menu.");
+    }catch(_){}
+    atualizarBotaoInstalar();
+    return;
+  }
+  $("#instalarOutro").hidden = ehSafariIOS();
+  $("#instalarDlg").hidden = false;
+  $("#instalarOk").focus();
+});
+$("#instalarOk").addEventListener("click", fecharInstalar);
+$("#instalarDlg").addEventListener("click", e => { if(e.target === e.currentTarget) fecharInstalar(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#instalarDlg").hidden) fecharInstalar(); });
+atualizarBotaoInstalar();
+// Registers sw.js once the page has loaded (not when the file is opened straight from the disk).
+if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(err => console.warn("app instalável: service worker não registrado", err));
+  });
+}
 
 // START THE APP.
 iniciar();
