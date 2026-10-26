@@ -37,8 +37,8 @@ describe("Side menu (☰)", () => {
     assert.deepEqual(visiveis, ["Dashboard", "Mapa", "Busca Condomínio", "Lembretes", "Equipe", "Contatos", "Templates"]);
     // order in the page, including the admin item that only admins see
     const todos = await page.locator("#menuLateral .menu-item .menu-rot").allTextContents();
-    assert.deepEqual(todos, ["Dashboard", "Mapa", "Busca Condomínio", "Administração", "Lembretes", "Equipe", "Contatos", "Templates", "Minha senha"],
-      "Administração (admins) and Minha senha (logged in, cloud mode) are hidden here");
+    assert.deepEqual(todos, ["Dashboard", "Mapa", "Busca Condomínio", "Administração", "Lembretes", "Equipe", "Contatos", "Templates", "Instalar o app", "Minha senha"],
+      "Administração (admins), Instalar o app (when the browser can install) and Minha senha (logged in, cloud mode) are hidden here");
     await context.close();
   });
 

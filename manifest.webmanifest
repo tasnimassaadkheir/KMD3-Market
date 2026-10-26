@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "KMD3 Market — Funil de Condomínios",
+  "short_name": "KMD3 Market",
+  "description": "Funil de condomínios da KMD3 Market: quadro de prospecção, mapa e rota de visitas, lembretes e contatos.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#093E4F",
+  "theme_color": "#093E4F",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "icons/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Lembretes", "url": "/#lembretes", "icons": [{ "src": "icons/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Mapa e rota de visitas", "short_name": "Mapa", "url": "/#mapa", "icons": [{ "src": "icons/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Busca Condomínio", "url": "/#busca-condominio", "icons": [{ "src": "icons/icone-192.png", "sizes": "192x192" }] }
+  ]
+}
