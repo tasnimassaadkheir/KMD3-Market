@@ -615,10 +615,15 @@
   .btn-ligar{flex:none;border:0;border-radius:8px;background:#0E627D;color:#fff;width:38px;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
   .btn-ligar:hover{background:#093E4F}
-  /* "Copiar e-mail": a small grey icon INSIDE the e-mail box, on the right; the icon turns green after copying.
+  /* "Copiar" (e-mail and phone): a small grey icon INSIDE the box, on the right; the icon turns green after copying.
      The input gets room on the right so long e-mails don't run under the icon. */
-  label.campo > span.email-com-copiar,.email-com-copiar{display:block;position:relative}
-  .email-com-copiar input{padding-right:34px}
+  label.campo > span.campo-copiar,.campo-copiar{display:block;position:relative}
+  .campo-copiar input{padding-right:34px}
+  /* the phone box shares its line with WhatsApp and Ligar: it takes the space left */
+  .tel-com-whats .campo-copiar{flex:1;min-width:0}
+  .tel-com-whats .campo-copiar input{width:100%}
+  /* the phone side holds the box + WhatsApp + Ligar, so it gets more of the line than the e-mail */
+  .contato-item .linha > .campo-tel{flex:1.45}
   .btn-copiar{position:absolute;top:50%;right:6px;transform:translateY(-50%);width:24px;height:24px;padding:0;
     border:0;border-radius:6px;background:transparent;color:#8A938C;display:grid;place-items:center;cursor:pointer}
   .btn-copiar svg{width:14px;height:14px}
