@@ -1492,3 +1492,9 @@ body.somente-leitura #painel select{appearance:none;-webkit-appearance:none;back
 .btn-menu-tela{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
 .adm-topo{gap:12px}
 .adm-topo h2{margin-right:auto}
+
+/* Busca Condomínio: "Mostrar mais 100" at the end of the list */
+.pr-mais{display:block;width:100%;margin:10px 0 16px;height:40px;border-radius:8px;border:1px solid #CBD3CB;background:#fff;
+  color:#0E627D;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+.pr-mais:hover{border-color:#0E627D;background:#F3F7F5}
+.pr-mais[hidden]{display:none}
