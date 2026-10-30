@@ -33,7 +33,8 @@
   const ARQUIVO = "dados/prospeccao-sp.json";                 // São Paulo (IPTU, monthly robot)
   const ARQUIVO_VIZINHAS = "dados/prospeccao-vizinhas.json";  // Osasco… (IBGE Census 2022, robot run by hand)
   const TABELA_GEO = "prospeccao_geo";
-  const LIMITE = 100;                 // max rows shown (and placed on the map) at once, biggest first
+  const LIMITE = 100;                 // rows shown (and placed on the map) at first, biggest first;
+                                      // "Mostrar mais 100" at the end of the list adds 100 more each time
   const CHAVE_ADICIONADOS = "quitandinha:prospAdicionados";
   const CHAVE_GEO = "quitandinha:prospGeo";   // positions, when the Supabase table doesn't exist
   // "Excluir": buildings the team ticked as not interesting. Shared through the Supabase table
@@ -47,6 +48,8 @@
   let erroDados = false;              // the list couldn't be loaded
   let SEM_TABELA = false;             // true -> positions kept only in this browser
   let resultados = [], totalFiltrado = 0;
+  let filtrados = [];                 // every building matching the search (biggest first); 'resultados' = the ones shown
+  let mostrar = LIMITE;               // how many are shown now (back to 100 on every new search)
   let adicionados = {};               // building id -> condo id, for rows added to the funnel here
   try{ adicionados = JSON.parse(localStorage.getItem(CHAVE_ADICIONADOS) || "{}") || {}; }catch(e){ adicionados = {}; }
   let descartados = new Map();       // building id -> {por, quando}
@@ -253,8 +256,9 @@
       (!cidade || l.cidade === cidade) &&
       palavras.every(w => l.busca.includes(w)) &&
       (marcados === "todos" || (marcados === "sim" ? descartado(l) : !descartado(l))));
+    filtrados = achados;
     totalFiltrado = achados.length;
-    resultados = achados.slice(0, LIMITE);
+    resultados = achados.slice(0, mostrar);
   }
 
   /* ---------- finding each building on the map ---------- */
@@ -568,8 +572,25 @@
     $p("#prLista").innerHTML = resultados.map(itemHtml).join("") ||
       '<li class="pr-nada">'+(marc === "sim" ? "Nenhum condomínio excluído aqui."
                                          : "Nenhum condomínio encontrado. Tente outro bairro, rua ou CEP.")+'</li>';
+    // "Mostrar mais": only while there are more results than the ones on screen
+    const faltam = totalFiltrado - resultados.length;
+    $p("#prMais").hidden = faltam <= 0;
+    $p("#prMais").textContent = "Mostrar mais " + num(Math.min(LIMITE, faltam)) + " (faltam " + num(faltam) + ")";
     desenharMarcadores();
     renderGeoStatus();
+  }
+  // Shows the next 100 of the same search: the list grows (the page stays where it was),
+  // the new ones go on the map and are looked up on it (1 per second, as always).
+  function mostrarMais(){
+    const antes = resultados.length;
+    mostrar = resultados.length + LIMITE;
+    resultados = filtrados.slice(0, mostrar);
+    const col = $p(".pr-col-lista"), topo = col ? col.scrollTop : 0;
+    renderResultados();
+    if(col) col.scrollTop = topo;
+    localizar(resultados.slice(antes));
+    const primeiro = $p("#prLista").children[antes];
+    if(primeiro){ const b = primeiro.querySelector("button, input"); if(b) b.focus({preventScroll:true}); }
   }
   // Same search again without moving the map (after ticking "Excluir").
   function refiltrar(){
@@ -579,6 +600,7 @@
   let tBusca = null;
   const agendarBusca = () => { clearTimeout(tBusca); tBusca = setTimeout(atualizarBusca, 300); };
   async function atualizarBusca(){
+    mostrar = LIMITE;                   // a new search starts again with the 100 biggest
     atualizarFiltroRegiao();
     buscar($p("#prBusca").value, parseInt($p("#prMinimo").value, 10) || 0, $p("#prMarcados").value, $p("#prRegiao").value, $p("#prCidade").value);
     rotularFiltroMarcados(); renderInfo(); renderResultados();
@@ -605,9 +627,10 @@
   function fechar(){ $p("#telaProspeccao").classList.remove("aberta"); filaGeo = []; }
 
   function exportar(){
-    if(!resultados.length){ avisar("Não há condomínios para exportar"); return; }
+    if(!filtrados.length){ avisar("Não há condomínios para exportar"); return; }
     const cab = ["Endereço","Bairro","CEP","Apartamentos","Andares","Ano de construção","Padrão","Latitude","Longitude","No funil","Excluído"];
-    const linhas = resultados.map(l => [expandirLogradouro(l.logradouro) + (l.numero ? ", " + l.numero : ""), l.bairro, l.cep, l.apartamentos,
+    // every building of the search, not just the ones on screen
+    const linhas = filtrados.map(l => [expandirLogradouro(l.logradouro) + (l.numero ? ", " + l.numero : ""), l.bairro, l.cep, l.apartamentos,
       l.pavimentos ?? "", l.ano_construcao ?? "", l.padrao, l.lat ?? "", l.lng ?? "", leadDoFunil(l) ? "Sim" : "Não", descartado(l) ? "Sim" : "Não"]);
     const csv = [cab, ...linhas].map(r => r.map(x => '"' + String(x ?? "").replace(/"/g, '""') + '"').join(";")).join("\r\n");
     const a = document.createElement("a");
@@ -630,6 +653,7 @@
   });
   $p("#btnPrTentar").addEventListener("click", () => { fechar(); abrir(); });
   $p("#btnPrExportar").addEventListener("click", exportar);
+  $p("#prMais").addEventListener("click", mostrarMais);
   $p("#prLista").addEventListener("click", e => {
     const add = e.target.closest("[data-pr-add]");
     if(add){ adicionarAoFunil(add.dataset.prAdd); return; }
