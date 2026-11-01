@@ -1498,3 +1498,15 @@ body.somente-leitura #painel select{appearance:none;-webkit-appearance:none;back
   color:#0E627D;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
 .pr-mais:hover{border-color:#0E627D;background:#F3F7F5}
 .pr-mais[hidden]{display:none}
+
+/* Legal: line under the login button, links at the bottom of the ☰ menu, and the acceptance dialog. */
+.entrada-legal{margin:14px 0 0 !important;font-size:12px !important;text-align:center;line-height:1.5}
+.entrada-legal a{color:#0E627D}
+.menu-legal{margin-top:auto;padding:14px 12px 6px;border-top:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;gap:6px}
+.menu-legal-link{color:rgba(255,255,255,.75);font-size:13px;text-decoration:none}
+.menu-legal-link:hover,.menu-legal-link:focus-visible{color:#fff;text-decoration:underline}
+.dlg-termos{z-index:93;background:rgba(6,30,38,.65)}       /* below "Crie sua senha" (95), which comes first */
+.dlg-termos .adm-dica a{color:#0E627D;font-weight:600}
+.termos-ck{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.4;cursor:pointer}
+.termos-ck input{margin-top:2px;width:17px;height:17px;flex:none}
+.dlg-termos .btn-salvar:disabled{opacity:.5;cursor:not-allowed}

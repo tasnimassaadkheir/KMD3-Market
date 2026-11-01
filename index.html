@@ -144,6 +144,11 @@
   <button type="button" class="menu-item" id="btnInstalar" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3M10 18.5h4"/></svg><span class="menu-rot">Instalar o app</span></button>
   <!-- Change your own password (cloud mode only). -->
   <button type="button" class="menu-item" id="btnMinhaSenha" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="menu-rot">Minha senha</span></button>
+  <!-- Legal pages (public, open without logging in): Terms of Use and Privacy Policy (LGPD). -->
+  <div class="menu-legal">
+    <a class="menu-legal-link" href="termos.html">Termos de Uso</a>
+    <a class="menu-legal-link" href="privacidade.html">Política de Privacidade</a>
+  </div>
 </nav>
 
 <!-- ==================== KANBAN BOARD ====================
@@ -611,6 +616,7 @@
     <button class="btn-salvar" id="btnEntrar" style="width:100%;margin-top:6px">Entrar</button>
     <!-- Sends Supabase's password-reset link to the typed e-mail. -->
     <button type="button" class="link-esqueci" id="btnEsqueci">Esqueci minha senha</button>
+    <p class="entrada-legal">Ao entrar, você concorda com os <a href="termos.html">Termos de Uso</a> e a <a href="privacidade.html">Política de Privacidade</a>.</p>
   </div>
 </div>
 
@@ -642,6 +648,21 @@
     <p class="adm-dica" id="instalarOutro" hidden>Se estiver em outro navegador (Chrome, Instagram…), abra este endereço no <b>Safari</b> primeiro.</p>
     <div class="dlg-botoes"><button type="button" class="btn-salvar" id="instalarOk">Entendi</button></div>
   </div>
+</div>
+
+<!-- TERMS ACCEPTANCE: opens after logging in (cloud mode) when this person hasn't accepted the
+     current version of the Terms of Use and Privacy Policy yet (TERMOS_VERSAO in app.js).
+     The acceptance (version + date) is saved in the person's login (user_metadata). -->
+<div class="dlg-fundo dlg-termos" id="termosDlg" hidden>
+  <form class="dlg" id="termosForm" role="dialog" aria-modal="true" aria-labelledby="termosTitulo" aria-describedby="termosTexto" novalidate>
+    <h3 id="termosTitulo">Termos de Uso e Privacidade</h3>
+    <p class="adm-dica" id="termosTexto">Para continuar usando o KMD3 Market, leia e aceite os
+      <a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a> e a
+      <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>, que explica como tratamos dados pessoais conforme a LGPD.</p>
+    <label class="adm-ck termos-ck"><input type="checkbox" id="termosCk"><span>Li e aceito os Termos de Uso e a Política de Privacidade.</span></label>
+    <p class="erro" id="termosErro" hidden></p>
+    <div class="dlg-botoes"><button type="button" class="adm-b" id="termosSair">Sair</button><button type="submit" class="btn-salvar" id="termosAceitar" disabled>Aceitar e continuar</button></div>
+  </form>
 </div>
 
 <!-- painel de administração: organizações, membros e acessos -->

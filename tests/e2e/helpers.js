@@ -136,7 +136,10 @@ function normalizar(s) {
  * {funcoes: {"admin-usuarios": async (body) => ({status, json})}} = fake Edge Functions (calls in funcoesChamadas).
  * {recuperacao: true} = the page was opened from a "reset password" link (PASSWORD_RECOVERY).
  * usuario.user_metadata = {trocar_senha: true} -> logged in with a temporary password.
+ * {termosPendentes: true} = hasn't accepted the current Terms of Use / Privacy Policy yet.
  */
+// The Terms of Use version the app asks for (TERMOS_VERSAO in app.js).
+const TERMOS_VERSAO = (fs.readFileSync(path.join(ROOT, "app.js"), "utf8").match(/const TERMOS_VERSAO = "([^"]+)"/) || [])[1];
 function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, opcoes = {}) {
   const tabelas = {};
   const paginas = [];
@@ -183,9 +186,13 @@ function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, o
       await context.route("**/supabase-js@2*", (route) =>
         route.fulfill({ contentType: "text/javascript", path: path.join(__dirname, "fake-supabase.js") }));
       await context.exposeBinding("__fakeDb", (_src, q) => executar(q));
+      // By default the person already accepted the current Terms of Use (so other tests aren't stopped by
+      // that dialog); {termosPendentes: true} = hasn't accepted yet (or accepted an older version).
+      const u = opcoes.termosPendentes ? usuario
+        : { ...usuario, user_metadata: { termos_versao: TERMOS_VERSAO, ...(usuario.user_metadata || {}) } };
       await context.addInitScript(([u, leitor, rpc, rec]) => { window.__fakeSessao = { user: u }; window.__fakeLeitor = leitor; window.__fakeRpc = rpc;
         window.__fakeRecuperacao = rec; },
-        [usuario, !!opcoes.leitor, opcoes.rpc || null, !!opcoes.recuperacao]);
+        [u, !!opcoes.leitor, opcoes.rpc || null, !!opcoes.recuperacao]);
       // Edge Functions: opcoes.funcoes = {nome: async (body) => ({status, json})}; every call is kept in funcoesChamadas
       if (opcoes.funcoes) await context.exposeBinding("__fakeFn", async (_src, nome, corpo) => {
         funcoesChamadas.push({ nome, corpo });
