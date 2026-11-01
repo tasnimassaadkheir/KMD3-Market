@@ -3136,7 +3136,8 @@ function abrirMenu(botao){
   $("#menuFundo").hidden = false;
   document.querySelectorAll('[aria-controls="menuLateral"]').forEach(b => b.setAttribute("aria-expanded", b === botaoMenuAtual ? "true" : "false"));
   const primeiro = m.querySelector(".menu-item:not([hidden])");
-  if(primeiro) setTimeout(() => primeiro.focus(), 50);
+  // (only if still open: a quick Esc must not send the focus into the closed menu)
+  if(primeiro) setTimeout(() => { if(menuAberto()) primeiro.focus(); }, 50);
 }
 // devolverFoco = put the keyboard focus back on ☰ (when closing with Esc or ✕)
 function fecharMenu(devolverFoco){
