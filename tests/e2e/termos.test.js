@@ -13,7 +13,7 @@ before(async () => { env = await setup(); });
 after(async () => { await env.close(); });
 
 const VERSAO = fs.readFileSync(path.join(__dirname, "..", "..", "app.js"), "utf8").match(/const TERMOS_VERSAO = "([^"]+)"/)[1];
-const EMPRESA = [/KMD3 MARKET COMERCIO LTDA/, /69\.659\.467\/0001-44/, /Rua Manoel Gomes Gonçalves, 605/, /Osasco\/SP/, /CEP 06162-200/, /brt3market@gmail\.com/];
+const EMPRESA = [/KMD3 MARKET COMERCIO LTDA/, /69\.659\.467\/0001-44/, /Rua Manoel Gomes Gonçalves, 605/, /Osasco\/SP/, /CEP 06162-200/, /kmd3market@gmail\.com/];
 
 describe("Legal pages", () => {
   for (const [arquivo, titulo, outro] of [["termos.html", "Termos de Uso", "privacidade.html"], ["privacidade.html", "Política de Privacidade", "termos.html"]]) {
