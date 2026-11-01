@@ -46,7 +46,8 @@ describe("☰ on every page", () => {
       assert.equal(await menuPorCima(page), true, p.tela + ": menu above the page");
       await page.keyboard.press("Escape");
       await page.waitForSelector("#menuLateral:not(.aberto)");
-      assert.equal(await page.evaluate((s) => document.activeElement === document.querySelector(s + " [data-abrir-menu]"), p.tela), true, "focus back on this ☰");
+      await page.waitForFunction((s) => document.activeElement === document.querySelector(s + " [data-abrir-menu]"), p.tela, { timeout: 3000 })
+        .catch(() => assert.fail(p.tela + ": focus back on this ☰"));
       await page.click(p.tela + " .btn-voltar");
     }
     assert.deepEqual(errors, []);

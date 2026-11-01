@@ -1,0 +1,59 @@
+/* =============================================================================
+   KMD3 Market — style of the legal pages (termos.html and privacidade.html).
+   Plain reading pages: work without logging in and without the app's scripts.
+   ============================================================================= */
+:root{--azul:#093E4F;--azul2:#0E627D;--ouro:#D4A85C;--creme:#FAF8F2;--tinta:#16323B;--suave:#4B6459;--linha:#E1E4DA}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--creme);color:var(--tinta);font:16px/1.65 "Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--azul2);text-underline-offset:2px}
+.topo{background:var(--azul);color:#fff;position:sticky;top:0;z-index:2}
+.topo .dentro{max-width:820px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.voltar{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);
+  color:#fff;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;text-decoration:none}
+.voltar:hover{background:rgba(255,255,255,.2)}
+.marca{font-weight:800;letter-spacing:.2px}
+.marca span{color:var(--ouro)}
+.troca{margin-left:auto;color:#fff;font-size:13px;opacity:.9}
+main{max-width:820px;margin:0 auto;padding:28px 20px 60px}
+h1{font-size:30px;line-height:1.2;margin:0 0 6px;color:var(--azul)}
+.versao{margin:0 0 22px;color:var(--suave);font-size:14px}
+.resumo{background:#fff;border:1px solid var(--linha);border-left:4px solid var(--ouro);border-radius:10px;padding:14px 18px;margin:0 0 26px}
+.resumo p{margin:.3em 0}
+.resumo ul{margin:.4em 0;padding-left:20px}
+nav.indice{background:#fff;border:1px solid var(--linha);border-radius:10px;padding:12px 18px;margin:0 0 30px}
+nav.indice h2{font-size:14px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.6px;color:var(--suave)}
+nav.indice ol{margin:0;padding-left:22px;columns:2;column-gap:28px;font-size:14.5px}
+nav.indice li{break-inside:avoid;margin:2px 0}
+section{scroll-margin-top:72px}
+h2{font-size:21px;color:var(--azul);margin:34px 0 8px;line-height:1.3}
+h3{font-size:17px;margin:20px 0 6px}
+p,li{overflow-wrap:anywhere}
+ul,ol{padding-left:22px}
+li{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--linha);border-radius:10px;overflow:hidden;margin:10px 0 16px;font-size:14.5px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--linha)}
+th{background:#F0F1EA;font-size:13px;color:var(--suave)}
+tr:last-child td{border-bottom:0}
+.empresa{background:#fff;border:1px solid var(--linha);border-radius:10px;padding:14px 18px;font-size:15px}
+.empresa p{margin:.2em 0}
+footer{max-width:820px;margin:0 auto;padding:18px 20px 40px;color:var(--suave);font-size:13.5px;border-top:1px solid var(--linha)}
+@media (max-width:640px){
+  body{font-size:15.5px}
+  h1{font-size:25px}
+  nav.indice ol{columns:1}
+  .troca{margin-left:0;width:100%}
+  section{scroll-margin-top:110px}
+  /* tables become one card per row */
+  table,thead,tbody,tr,th,td{display:block}
+  thead{display:none}
+  tr{border-bottom:1px solid var(--linha);padding:6px 0}
+  td{border:0;padding:4px 12px}
+  td[data-label]::before{content:attr(data-label);display:block;font-size:12px;font-weight:700;color:var(--suave)}
+}
+@media print{
+  .topo,nav.indice{display:none}
+  body{background:#fff}
+  main{padding-top:0}
+}

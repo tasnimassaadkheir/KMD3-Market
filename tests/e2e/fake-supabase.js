@@ -53,6 +53,9 @@
           updateUser: async (o) => {
             if (window.__fakeAuthErro) return { data: null, error: { message: window.__fakeAuthErro } };
             await window.__fakeDb({ tabela: "_auth", op: "insert", linhas: [{ acao: "updateUser", ...o }], filtros: [] });
+            // like Supabase: 'data' is merged into the person's user_metadata
+            if (o && o.data && window.__fakeSessao && window.__fakeSessao.user)
+              window.__fakeSessao.user.user_metadata = { ...(window.__fakeSessao.user.user_metadata || {}), ...o.data };
             return { data: { user: window.__fakeSessao && window.__fakeSessao.user }, error: null };
           },
           resetPasswordForEmail: async (email, o) => {

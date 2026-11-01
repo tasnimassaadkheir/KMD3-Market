@@ -2692,6 +2692,8 @@ async function iniciarQuadro(){
     $("#btnMinhaSenha").hidden = false;
     // logged in with a temporary password (created or reset by an admin): must choose their own now
     if(sessao.user && sessao.user.user_metadata && sessao.user.user_metadata.trocar_senha) abrirMinhaSenha(true);
+    // hasn't accepted the current Terms of Use / Privacy Policy yet: asks now (after the password, if both)
+    if(precisaAceitarTermos()) abrirAceiteTermos();
     $("#sinal").className = "sinal";
     // Realtime: whenever ANYONE changes the 'condominios' table, reload and redraw,
     // except while this user has the panel open or has unsaved changes.
@@ -3134,7 +3136,8 @@ function abrirMenu(botao){
   $("#menuFundo").hidden = false;
   document.querySelectorAll('[aria-controls="menuLateral"]').forEach(b => b.setAttribute("aria-expanded", b === botaoMenuAtual ? "true" : "false"));
   const primeiro = m.querySelector(".menu-item:not([hidden])");
-  if(primeiro) setTimeout(() => primeiro.focus(), 50);
+  // (only if still open: a quick Esc must not send the focus into the closed menu)
+  if(primeiro) setTimeout(() => { if(menuAberto()) primeiro.focus(); }, 50);
 }
 // devolverFoco = put the keyboard focus back on ☰ (when closing with Esc or ✕)
 function fecharMenu(devolverFoco){
@@ -4013,6 +4016,49 @@ if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
     navigator.serviceWorker.register("sw.js").catch(err => console.warn("app instalável: service worker não registrado", err));
   });
 }
+
+// =============================================================================
+// TERMS OF USE AND PRIVACY POLICY (LGPD) — termos.html / privacidade.html
+// In cloud mode, everyone accepts the current version once: the dialog opens after login until they
+// tick "Li e aceito" and click "Aceitar e continuar" (or "Sair"). The version and the date are saved
+// in the person's own login (Supabase user_metadata: termos_versao, termos_aceito_em), so no table
+// is needed and it follows them to every device. Change TERMOS_VERSAO when the texts change in a
+// relevant way: everyone is asked again. Local mode (no login) doesn't ask.
+// =============================================================================
+const TERMOS_VERSAO = "2026-11-01";
+function precisaAceitarTermos(){
+  if(!NUVEM || !sessao || !sessao.user) return false;
+  const m = sessao.user.user_metadata || {};
+  return m.termos_versao !== TERMOS_VERSAO;
+}
+function abrirAceiteTermos(){
+  $("#termosCk").checked = false;
+  $("#termosAceitar").disabled = true;
+  $("#termosErro").hidden = true;
+  $("#termosDlg").hidden = false;
+  if($("#senhaDlg").hidden) $("#termosCk").focus();
+}
+$("#termosCk").addEventListener("change", e => { $("#termosAceitar").disabled = !e.target.checked; });
+$("#termosSair").addEventListener("click", sair);
+$("#termosForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if(!$("#termosCk").checked) return;
+  const btn = $("#termosAceitar"); btn.disabled = true; btn.textContent = "Salvando…";
+  const dados = {termos_versao: TERMOS_VERSAO, termos_aceito_em: new Date().toISOString()};
+  let erro = null;
+  try{ ({error: erro} = await sb.auth.updateUser({data: dados})); }catch(err){ erro = err; }
+  btn.textContent = "Aceitar e continuar";
+  if(erro){
+    $("#termosErro").textContent = "Não consegui salvar o aceite. Confira a internet e tente de novo.";
+    $("#termosErro").hidden = false; btn.disabled = false;
+    return;
+  }
+  sessao.user.user_metadata = Object.assign({}, sessao.user.user_metadata, dados);
+  $("#termosDlg").hidden = true;
+  avisar("Obrigado! Termos aceitos.");
+});
+// Esc doesn't close it: accepting (or leaving) is required to use the app.
+$("#termosDlg").addEventListener("keydown", e => { if(e.key === "Escape") e.preventDefault(); });
 
 // START THE APP.
 iniciar();
