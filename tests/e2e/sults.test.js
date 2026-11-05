@@ -16,7 +16,7 @@ const comNota = (over = {}) => lead({
 const salvo = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("quitandinha:condominios"))[0]);
 
 describe("SULTS", () => {
-  test("turning SULTS on shows a green 'S' right after the name of who edited last", async () => {
+  test("turning SULTS on shows a green 'S' in the card's footer, and it's saved", async () => {
     const { page, context, errors } = await openApp(env, { leads: [comNota()] });
     assert.equal(await page.locator(".cartao .selo-sults").count(), 0, "no badge before");
 
@@ -29,10 +29,11 @@ describe("SULTS", () => {
     assert.equal(await btn.textContent(), "SULTS", "the label stays; the pressed state shows it");
     await page.click("#btnSalvar");
 
-    const quem = page.locator(".cartao .meta-cartao .quem");
-    await quem.locator(".selo-sults").waitFor();
-    assert.match(await quem.textContent(), /por Beatriz\s*S$/, "S comes right after the name");
-    const cor = await quem.locator(".selo-sults").evaluate((el) => getComputedStyle(el).backgroundColor);
+    // (local mode has no logged-in name, so the last change — this one — shows only its date, then the S)
+    const meta = page.locator(".cartao .meta-cartao");
+    await meta.locator(".selo-sults").waitFor();
+    assert.match(await meta.textContent(), /^Atualizado .*S$/, "S at the end of the footer");
+    const cor = await meta.locator(".selo-sults").evaluate((el) => getComputedStyle(el).backgroundColor);
     assert.equal(cor, "rgb(47, 164, 95)", "green background");
     assert.equal((await salvo(page)).sults, true, "saved");
     assert.match((await salvo(page)).historico[0].o_que, /Marcado como SULTS/);
@@ -43,6 +44,7 @@ describe("SULTS", () => {
   test("the toggle opens in the saved state, and turning it off removes the badge", async () => {
     const { page, context } = await openApp(env, { leads: [comNota({ sults: true })] });
     assert.equal(await page.locator(".cartao .selo-sults").count(), 1);
+    assert.match(await page.textContent(".cartao .meta-cartao .quem"), /por Beatriz\s*S$/, "S comes right after the name of who changed it last");
     await page.click(".cartao");
     assert.equal(await page.getAttribute("#btnSults", "aria-pressed"), "true");
     await page.click("#btnSults");

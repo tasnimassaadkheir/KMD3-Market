@@ -158,6 +158,23 @@ function dataHoraBR(iso){ if(!iso) return "—"; const d=new Date(iso); if(isNaN
 function diasDesde(iso){ return iso ? Math.floor((Date.now()-new Date(iso).getTime())/86400000) : null; }
 // Finds the most recent note of a condo (considering edits too)
 // and returns {quando: when, por: who}. Used for the 'Atualizado ...' line on cards.
+// Last change of ANY kind to a condo: the newest of its change history (edits saved in the panel,
+// moves between columns, Visitar, reminders…), its Timeline notes (added or edited) and its creation.
+// Returns {quando, por} ('por' can be empty, e.g. in local mode) or null when nothing has a date.
+function ultimaAlteracao(l){
+  const opcoes = [];
+  (l.historico || []).forEach(h => { if(h && h.quando) opcoes.push({quando:h.quando, por:h.por || ""}); });
+  const obs = ultimaObservacao(l);
+  if(obs) opcoes.push(obs);
+  if(l.criadoEm) opcoes.push({quando:l.criadoEm, por:l.criadoPor || ""});
+  let melhor = null;
+  opcoes.forEach(o => {
+    const t = new Date(o.quando).getTime();
+    if(isNaN(t)) return;
+    if(!melhor || t > melhor.t) melhor = {quando:o.quando, por:o.por, t};
+  });
+  return melhor ? {quando:melhor.quando, por:melhor.por} : null;
+}
 function ultimaObservacao(l){
   const lista = (l.observacoes && l.observacoes.length) ? l.observacoes : migrarNotasAntigas(l);
   if(!lista.length) return null;
@@ -633,10 +650,10 @@ function montarCartao(l){
     etiquetas.unshift('<span class="etiqueta lem '+c+'" title="'+escapar(proxLem.texto||"Próximo passo")+'">'+ICONE_SINO+' '+
       (c==="atrasado"?"Atrasado, ":"")+escapar(quandoCurto(proxLem))+'</span>');
   }
-  // Footer: 'Atualizado <date> por <name>' with a round avatar.
-  // If the condo is marked SULTS, a green "S" badge goes right after the name of who edited last
-  // (or on its own, if the condo has no notes yet).
-  const ultimaObs = ultimaObservacao(l);
+  // Footer: 'Atualizado <date> por <name>' with a round avatar: the LAST change of any kind
+  // (an edit, a move to another column, a note, a reminder, Visitar…), see ultimaAlteracao().
+  // If the condo is marked SULTS, a green "S" badge goes right after the name of who changed it last.
+  const ultimaObs = ultimaAlteracao(l);
   const quemObs = ultimaObs ? (ultimaObs.por||"") : "";
   const inicial = (quemObs||"?").trim().charAt(0).toUpperCase() || "?";
   const seloSults = l.sults ? '<i class="selo-sults" role="img" title="SULTS" aria-label="SULTS">S</i>' : "";

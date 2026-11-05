@@ -81,6 +81,27 @@ describe("migrarNotasAntigas() / ultimaObservacao() — notes timeline", () => {
   });
 });
 
+describe("ultimaAlteracao() — who changed the condo last (card footer)", () => {
+  test("the newest of history, notes and creation, whatever kind of change it was", () => {
+    const l = `{criadoEm:"2026-10-01T10:00:00Z", criadoPor:"Ana",
+      historico:[{quando:"2026-10-05T10:00:00Z", o_que:"Movido para Reunião", por:"Bia"},
+                 {quando:"2026-10-02T10:00:00Z", o_que:"Condomínio cadastrado", por:"Ana"}],
+      observacoes:[{texto:"x", quando:"2026-10-03T10:00:00Z", por:"Carla"}]}`;
+    assert.deepEqual(app.json(`ultimaAlteracao(${l})`), { quando: "2026-10-05T10:00:00Z", por: "Bia" }, "a move, not the note");
+  });
+  test("a newer note (or note edit) wins over older history", () => {
+    const u = app.json(`ultimaAlteracao({historico:[{quando:"2026-10-02T10:00:00Z", por:"Bia"}],
+      observacoes:[{texto:"x", quando:"2026-10-01T10:00:00Z", por:"Ana", editadoQuando:"2026-10-04T10:00:00Z", editadoPor:"Carla"}]})`);
+    assert.deepEqual(u, { quando: "2026-10-04T10:00:00Z", por: "Carla" });
+  });
+  test("history in any order; only the creation; nothing at all; bad dates ignored", () => {
+    assert.equal(app.json(`ultimaAlteracao({historico:[{quando:"2026-10-01T10:00:00Z", por:"A"}, {quando:"2026-10-09T10:00:00Z", por:"B"}]})`).por, "B");
+    assert.deepEqual(app.json(`ultimaAlteracao({criadoEm:"2026-10-01T10:00:00Z", criadoPor:"Ana"})`), { quando: "2026-10-01T10:00:00Z", por: "Ana" });
+    assert.equal(app.json(`ultimaAlteracao({})`), null);
+    assert.equal(app.json(`ultimaAlteracao({historico:[{quando:"ontem", por:"X"}, {quando:"2026-10-01T10:00:00Z"}]})`).por, "", "no author: empty");
+  });
+});
+
 describe("descreverAlteracoes() / registrarAtualizacao() — change history", () => {
   test("describes stage and status changes with readable names", () => {
     const p = app.json(`descreverAlteracoes({fase:"cadastro", status:"nenhum"}, {fase:"reuniao", status:"verde"})`);
