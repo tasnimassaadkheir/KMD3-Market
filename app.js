@@ -161,6 +161,19 @@ function diasDesde(iso){ return iso ? Math.floor((Date.now()-new Date(iso).getTi
 // Last change of ANY kind to a condo: the newest of its change history (edits saved in the panel,
 // moves between columns, Visitar, reminders…), its Timeline notes (added or edited) and its creation.
 // Returns {quando, por} ('por' can be empty, e.g. in local mode) or null when nothing has a date.
+// ---- Zona: a fixed list to choose from (the condo panel's "Zona" dropdown) ----
+const ZONAS = ["Norte", "Sul", "Leste", "Oeste", "Centro", "Oeste de São Paulo"];
+// Fills the dropdown and selects 'valor'. A value saved before the list existed (typed by hand, e.g.
+// "Zona Oeste" or "Moema") stays as an extra option at the end, so opening and saving the condo doesn't
+// change or lose it; the person can then pick one from the list.
+function preencherZona(valor){
+  valor = String(valor || "").trim();
+  const opcoes = ['<option value="">Selecione…</option>'].concat(ZONAS.map(z => '<option>'+escapar(z)+'</option>'));
+  if(valor && !ZONAS.includes(valor))
+    opcoes.push('<option value="'+escapar(valor)+'">'+escapar(valor)+' (antiga)</option>');
+  $("#f_zona").innerHTML = opcoes.join("");
+  $("#f_zona").value = valor;
+}
 function ultimaAlteracao(l){
   const opcoes = [];
   (l.historico || []).forEach(h => { if(h && h.quando) opcoes.push({quando:h.quando, por:h.por || ""}); });
@@ -2354,7 +2367,7 @@ function abrirPainel(id, faseInicial){
     $("#f_nome").value=l.nome||""; preencherEndereco(l.endereco||"");
     $("#avisoNomeDuplicado").hidden = true; $("#avisoNomeDuplicado").innerHTML=""; delete $("#avisoNomeDuplicado").dataset.fechadoPara;
     $("#f_aptos").value=l.aptos??""; $("#f_fase").value=l.fase||"cadastro";
-    $("#f_zona").value=l.zona||""; $("#f_importante").value=l.importante||"";
+    preencherZona(l.zona); $("#f_importante").value=l.importante||"";
     contatosForm = migrarContatosAntigos(l);
     tipoOutroAberto = null;
     renderContatos();
@@ -2374,7 +2387,8 @@ function abrirPainel(id, faseInicial){
     $("#btnExcluir").style.display="";
   } else {
     $("#tituloPainel").textContent = "Novo condomínio";
-    ["f_nome","f_aptos","f_zona","f_importante",
+    preencherZona("");
+    ["f_nome","f_aptos","f_importante",
      "f_concorrente","f_fimContrato","f_perfil"]
       .forEach(x => $("#"+x).value = "");
     preencherEndereco("");

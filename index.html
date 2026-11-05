@@ -291,7 +291,9 @@
         <!-- Stage options are added by JavaScript (preencherFases), from the FASES list. -->
         <label class="campo"><span>Fase do funil</span><select class="txt" id="f_fase"></select></label>
       </div>
-      <label class="campo"><span>Zona</span><input class="txt" id="f_zona"></label>
+      <!-- Zona: chosen from a fixed list (ZONAS in app.js). A condo saved earlier with a value that isn't in
+           the list keeps it as an extra option, so nothing is lost. -->
+      <label class="campo"><span>Zona</span><select class="txt" id="f_zona"></select></label>
       <label class="campo campo-importante"><span>Importante</span>
         <textarea class="txt" id="f_importante" style="min-height:60px"></textarea>
       </label>
