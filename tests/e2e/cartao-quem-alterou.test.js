@@ -25,7 +25,7 @@ describe("Card: who changed it last", () => {
     assert.match(await rodape(page), /por Beatriz/, "before: the note's author");
     await page.click(".cartao");
     await page.waitForSelector("#painel.aberto");
-    await page.fill("#f_zona", "Zona Oeste");
+    await page.selectOption("#f_zona", "Oeste");
     await page.click("#btnSalvar");
     await page.waitForFunction(() => /por tasnim/.test(document.querySelector(".cartao .meta-cartao").textContent));
     assert.match(await rodape(page), /^Atualizado \d{2}\/\d{2}/);

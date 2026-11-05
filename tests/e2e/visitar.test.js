@@ -63,9 +63,9 @@ describe("Visitar", () => {
     const { page, context } = await openApp(env, { leads: [lead({ nome: "Aurora" })] });
     await page.click(".cartao");
     await page.click("#btnVisitarLead");
-    await page.fill("#f_zona", "Moema");
+    await page.selectOption("#f_zona", "Sul");
     await page.click("#btnSalvar");
-    await page.waitForFunction(() => JSON.parse(localStorage.getItem("quitandinha:condominios"))[0].zona === "Moema");
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem("quitandinha:condominios"))[0].zona === "Sul");
     assert.equal((await salvo(page)).visitar, true);
     assert.equal(await page.locator(".cartao .selo-visitar").count(), 1);
     await context.close();
