@@ -1546,16 +1546,21 @@ async function acaoLembrete(leadId, idx, acao){
 // lemAba = which tab is selected.
 let lemAba = "pendentes";
 // True if the reminder 'belongs' to me (I'm responsible for the condo or I created the reminder).
-function meuLembrete(l, lem){
+// "Só os meus leads": only the condos where I'm the RESPONSÁVEL (Responsável pelo lead field).
+// A reminder I created on someone else's condo doesn't make that condo mine. Names are compared
+// ignoring upper/lower case, accents and extra spaces ("tasnim" = "Tasnim "). With no logged-in name
+// (local mode) there's no "me", so everything shows.
+const mesmoNome = (a, b) => normalizarNome(a) !== "" && normalizarNome(a) === normalizarNome(b);
+function meuLembrete(l){
   if(!meuNome) return true;
-  return (l.responsavel||"")===meuNome || (lem.por||"")===meuNome;
+  return mesmoNome(l.responsavel, meuNome);
 }
 // Collects ALL reminders from ALL condos (optionally only mine).
 function todosLembretes(){
   const soMeus = $("#lemSoMeus") && $("#lemSoMeus").checked;
   const lista = [];
   leads.forEach(l => (l.lembretes||[]).forEach((lem,idx)=>{
-    if(soMeus && !meuLembrete(l, lem)) return;
+    if(soMeus && !meuLembrete(l)) return;
     lista.push({l, lem, idx, c:classeLembrete(lem)});
   }));
   return lista;
