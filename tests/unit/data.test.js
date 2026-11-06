@@ -81,6 +81,20 @@ describe("migrarNotasAntigas() / ultimaObservacao() — notes timeline", () => {
   });
 });
 
+describe("meuLembrete() — Lembretes 'Só os meus leads'", () => {
+  const com = (nome, expr) => app.run(`(() => { meuNome = ${JSON.stringify(nome)}; const r = ${expr}; meuNome = ""; return r; })()`);
+  test("only the condo's Responsável counts (case, accents and spaces ignored)", () => {
+    assert.equal(com("Tasnim Kheir", `meuLembrete({responsavel:"Tasnim Kheir"})`), true);
+    assert.equal(com("Tasnim Kheir", `meuLembrete({responsavel:"  tasnim   kheir "})`), true);
+    assert.equal(com("José", `meuLembrete({responsavel:"jose"})`), true);
+    assert.equal(com("Tasnim Kheir", `meuLembrete({responsavel:"Karen"}, {por:"Tasnim Kheir"})`), false, "a reminder I created on Karen's condo");
+    assert.equal(com("Tasnim Kheir", `meuLembrete({responsavel:""})`), false, "no responsável");
+  });
+  test("with no logged-in name (local mode) everything counts", () => {
+    assert.equal(com("", `meuLembrete({responsavel:"Karen"})`), true);
+  });
+});
+
 describe("ultimaAlteracao() — who changed the condo last (card footer)", () => {
   test("the newest of history, notes and creation, whatever kind of change it was", () => {
     const l = `{criadoEm:"2026-10-01T10:00:00Z", criadoPor:"Ana",
