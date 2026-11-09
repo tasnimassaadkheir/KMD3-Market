@@ -81,7 +81,9 @@ describe("Contacts page (☰ → Contatos)", () => {
   test("lists the contacts from every card in columns Nome, Número, E-mail, Condomínio", async () => {
     const { page, context, errors } = await openApp(env, { leads: dados() });
     await abrir(page);
-    assert.deepEqual(await page.locator(".ct-tabela thead th").allTextContents(), ["Nome", "Número", "E-mail", "Condomínio", "Ações"]);
+    // (Nome and Condomínio also carry the sort icon's letters "AZ" and hidden ", de A a Z" text for screen readers)
+    assert.deepEqual((await page.locator(".ct-tabela thead th").allTextContents()).map((t) => t.replace(/(AZ|ZA)?(,.*)?$/, "")),
+      ["Nome", "Número", "E-mail", "Condomínio", "Ações"]);
     assert.deepEqual(await linhas(page), [
       ["BrunaADM", "11 3333-4444", "—", "Mirante"],
       ["CarlosZelador", "—", "carlos@x.com", "Mirante"],

@@ -1510,3 +1510,16 @@ body.somente-leitura #painel select{appearance:none;-webkit-appearance:none;back
 .termos-ck{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.4;cursor:pointer}
 .termos-ck input{margin-top:2px;width:17px;height:17px;flex:none}
 .dlg-termos .btn-salvar:disabled{opacity:.5;cursor:not-allowed}
+
+/* Contatos: sort buttons in the "Nome" / "Condomínio" headers (small A-Z icon with an arrow).
+   The sorted column's icon is dark; the others are faint until hovered. */
+.ct-tabela th[data-ct-col]{padding:0}
+.ct-ordem{display:inline-flex;align-items:center;gap:6px;width:100%;padding:9px 12px;border:0;background:none;font:inherit;
+  color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;text-align:left;border-radius:inherit}
+.ct-ordem svg{flex:none;opacity:.35;transition:opacity .15s}
+.ct-ordem:hover svg,.ct-ordem:focus-visible svg{opacity:.75}
+.ct-ordem.on{color:#093E4F}
+.ct-ordem.on svg{opacity:1;color:#0E627D}
+.ct-ordem:focus-visible{outline:2px solid #0E627D;outline-offset:-2px}
+.ct-ordem-cel{display:none}
+@media (max-width:640px){ .ct-ordem-cel{display:block} }   /* same width at which the table header hides */

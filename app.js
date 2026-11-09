@@ -1953,16 +1953,60 @@ function todosContatos(){
     condominio:"", endereco:"", avulsoId:c.id}));
   return linhas.sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR") || (a.condominio||"").localeCompare(b.condominio||"", "pt-BR"));
 }
-// Applies the search box and the "Quem é" filter.
+// ---- Sorting the Contatos table: by Nome (default) or by Condomínio, A→Z or Z→A ----
+// Remembered in this browser only (a personal preference). Standalone contacts (no condo) always go
+// to the end when sorting by Condomínio; ties are sorted by name.
+const CHAVE_ORDEM_CT = "quitandinha:ctOrdem";
+let ctOrdem = {col:"nome", dir:1};
+try{ const o = JSON.parse(localStorage.getItem(CHAVE_ORDEM_CT) || "null");
+  if(o && (o.col === "nome" || o.col === "condominio") && (o.dir === 1 || o.dir === -1)) ctOrdem = o; }catch(_){}
+function ordenarContatos(lista){
+  const cmp = (a, b) => (a||"").localeCompare(b||"", "pt-BR", {sensitivity:"base", numeric:true});
+  return lista.slice().sort((a, b) => {
+    if(ctOrdem.col === "condominio"){
+      const semA = !a.leadId, semB = !b.leadId;
+      if(semA !== semB) return semA ? 1 : -1;                  // "Avulso" always last
+      return ctOrdem.dir * cmp(a.condominio, b.condominio) || cmp(a.nome, b.nome);
+    }
+    return ctOrdem.dir * cmp(a.nome, b.nome) || cmp(a.condominio, b.condominio);
+  });
+}
+function mudarOrdemContatos(col, dir){
+  // same column again = flips the direction; another column = starts at A→Z
+  ctOrdem = {col, dir: dir || (ctOrdem.col === col ? -ctOrdem.dir : 1)};
+  try{ localStorage.setItem(CHAVE_ORDEM_CT, JSON.stringify(ctOrdem)); }catch(_){}
+  const focoNoBotao = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.ctOrdem;
+  renderContatosPagina();
+  // the header buttons are rebuilt: keep the keyboard focus on the one that was used
+  if(focoNoBotao){ const b = document.querySelector('[data-ct-ordem="'+focoNoBotao+'"]'); if(b) b.focus(); }
+}
+// Sort buttons in the "Nome" / "Condomínio" headers: a small A-Z icon with an arrow; aria-sort says
+// which column is sorted and how (for screen readers). Also syncs the phone's "Ordenar" select.
+function renderOrdemContatos(){
+  document.querySelectorAll(".ct-tabela th[data-ct-col]").forEach(th => {
+    const col = th.dataset.ctCol, rotulo = col === "nome" ? "Nome" : "Condomínio", ativo = ctOrdem.col === col;
+    const desc = ativo && ctOrdem.dir === -1;
+    th.setAttribute("aria-sort", ativo ? (desc ? "descending" : "ascending") : "none");
+    const prox = ativo ? (desc ? "A→Z" : "Z→A") : "A→Z";
+    th.innerHTML = '<button type="button" class="ct-ordem'+(ativo ? " on" : "")+'" data-ct-ordem="'+col+'" title="Ordenar por '+rotulo+' ('+prox+')">'+
+      rotulo+'<svg viewBox="0 0 20 16" width="23" height="18" aria-hidden="true">'+
+        '<text x="0" y="7.2" font-size="8.2" font-weight="700" fill="currentColor">'+(desc ? "Z" : "A")+'</text>'+
+        '<text x="0" y="15.5" font-size="8.2" font-weight="700" fill="currentColor">'+(desc ? "A" : "Z")+'</text>'+
+        '<path d="M14 2v11M11 10l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'+
+      '<span class="sr-only">'+(ativo ? (desc ? ", de Z a A" : ", de A a Z") : ", ordenar")+'</span></button>';
+  });
+  $("#ctOrdemCel").value = ctOrdem.col+":"+ctOrdem.dir;
+}
+// Applies the search box and the "Vínculo" filter, then the chosen order.
 function contatosFiltrados(){
   const termo = normalizarNome($("#ctBusca").value), tipo = $("#ctFiltroTipo").value;
-  return todosContatos().filter(c => {
+  return ordenarContatos(todosContatos().filter(c => {
     if(tipo === "__sem" ? c.tipo : (tipo && c.tipo !== tipo)) return false;
     if(!termo) return true;
     const digitos = termo.replace(/\D/g,"");
     return normalizarNome([c.nome,c.email,c.condominio,c.tipo].join(" ")).includes(termo) ||
       (digitos.length >= 3 && String(c.telefone||"").replace(/\D/g,"").includes(digitos));
-  });
+  }));
 }
 function renderContatosPagina(){
   const filtroAtual = $("#ctFiltroTipo").value;
@@ -1972,6 +2016,7 @@ function renderContatosPagina(){
   $("#ctFiltroTipo").value = filtroAtual;
   if($("#ctFiltroTipo").value !== filtroAtual) $("#ctFiltroTipo").value = "";
 
+  renderOrdemContatos();
   const todos = todosContatos(), lista = contatosFiltrados();
   const nAvulsos = todos.filter(c => c.avulsoId).length;
   $("#ctResumo").textContent = lista.length === todos.length
@@ -3492,6 +3537,8 @@ $("#btnContatos").addEventListener("click", abrirContatos);
 $("#btnFecharContatos").addEventListener("click", fecharContatos);
 $("#ctBusca").addEventListener("input", renderContatosPagina);
 $("#ctFiltroTipo").addEventListener("change", renderContatosPagina);
+$(".ct-tabela thead").addEventListener("click", e => { const b = e.target.closest("[data-ct-ordem]"); if(b) mudarOrdemContatos(b.dataset.ctOrdem); });
+$("#ctOrdemCel").addEventListener("change", e => { const [col, dir] = e.target.value.split(":"); mudarOrdemContatos(col, Number(dir)); });
 $("#btnNovoContato").addEventListener("click", ()=>abrirFormAvulso(null));
 $("#btnExportarContatos").addEventListener("click", exportarContatos);
 $("#ctForm").addEventListener("submit", e=>{ e.preventDefault(); salvarAvulso(); });

@@ -427,6 +427,11 @@
     <div class="ct-ferr">
       <input class="ct-busca" id="ctBusca" type="search" placeholder="Buscar nome, número, e-mail…" aria-label="Buscar contatos">
       <select class="ct-filtro" id="ctFiltroTipo" aria-label="Filtrar por vínculo"></select>
+      <!-- on phones the table's header is hidden, so the same sorting is offered here -->
+      <select class="ct-filtro ct-ordem-cel" id="ctOrdemCel" aria-label="Ordenar contatos">
+        <option value="nome:1">Nome (A→Z)</option><option value="nome:-1">Nome (Z→A)</option>
+        <option value="condominio:1">Condomínio (A→Z)</option><option value="condominio:-1">Condomínio (Z→A)</option>
+      </select>
       <button type="button" class="ct-prim" id="btnNovoContato">+ Novo contato</button>
       <button type="button" class="ct-sec" id="btnExportarContatos">Exportar</button>
     </div>
@@ -450,7 +455,9 @@
       </form>
       <p class="ct-resumo" id="ctResumo"></p>
       <table class="ct-tabela">
-        <thead><tr><th>Nome</th><th>Número</th><th>E-mail</th><th>Condomínio</th><th><span class="sr-only">Ações</span></th></tr></thead>
+        <!-- "Nome" and "Condomínio" sort the table (A→Z, click again for Z→A); the buttons are built by
+             JavaScript (renderOrdemContatos), with aria-sort on the column that is sorted. -->
+        <thead><tr><th data-ct-col="nome">Nome</th><th>Número</th><th>E-mail</th><th data-ct-col="condominio">Condomínio</th><th><span class="sr-only">Ações</span></th></tr></thead>
         <tbody id="ctCorpo"></tbody>
       </table>
     </div>
