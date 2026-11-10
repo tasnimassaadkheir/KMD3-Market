@@ -20,6 +20,11 @@ whole organization sees; the author edits / deletes, admins delete). Run it once
 in the SQL Editor (safe to run again). It needs `minha_org_id()`, `posso(acao)`
 and `sou_admin()`.
 
+`contatos_anotacao.sql` adds the "Anotação" columns to `contatos_avulsos`
+(a notepad for each contact registered on the Contatos page). Run it once in the
+SQL Editor (safe to run again). Until then, those notes stay in each person's
+browser and the page says so.
+
 ## Keeping this folder in sync with Supabase
 
 The live Supabase project also has things this file does not cover:

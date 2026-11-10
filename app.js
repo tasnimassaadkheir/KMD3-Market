@@ -1889,7 +1889,7 @@ function verificarLembretes(semAviso){
 // "contatos_avulsos", seen by the whole team. If that table doesn't exist yet, they are
 // kept in this browser only and a warning explains it (see database/schema.sql).
 const CHAVE_AVULSOS = "quitandinha:contatosAvulsos";
-let avulsos = [];                 // [{id, nome, telefone, email, tipo, criadoPor, criadoEm}]
+let avulsos = [];                 // [{id, nome, telefone, email, tipo, criadoPor, criadoEm, anotacao, anotacaoEm, anotacaoPor}]
 let SEM_TABELA_AVULSOS = false;
 let avulsoEditando = null;        // id of the standalone contact open in the form (null = new)
 
@@ -1901,9 +1901,36 @@ function tabelaNaoExiste(e, tabela){
     (new RegExp(tabela || "contatos_avulsos", "i").test(msg) && /(does not exist|could not find|schema cache)/i.test(msg)));
 }
 const avulsoDoBanco = r => ({id:r.id, nome:r.nome||"", telefone:r.telefone||"", email:r.email||"", tipo:r.tipo||"",
-  criadoPor:r.criado_por||"", criadoEm:r.criado_em||""});
-const avulsoParaBanco = c => ({id:c.id, nome:c.nome, telefone:c.telefone||null, email:c.email||null, tipo:c.tipo||null,
-  criado_por:c.criadoPor||null, criado_em:c.criadoEm||agora()});
+  criadoPor:r.criado_por||"", criadoEm:r.criado_em||"",
+  anotacao:r.anotacao||"", anotacaoEm:r.anotacao_em||"", anotacaoPor:r.anotacao_por||""});
+const avulsoParaBanco = c => Object.assign({id:c.id, nome:c.nome, telefone:c.telefone||null, email:c.email||null, tipo:c.tipo||null,
+  criado_por:c.criadoPor||null, criado_em:c.criadoEm||agora()},
+  SEM_COLUNA_ANOTACAO ? {} : {anotacao:c.anotacao||null, anotacao_em:c.anotacaoEm||null, anotacao_por:c.anotacaoPor||null});
+
+// ---- "Anotação" of a standalone contact (Contatos page) ----
+// A notepad per contact, shown only after clicking "Anotação" on its row. Saved in the columns
+// anotacao / anotacao_em / anotacao_por of contatos_avulsos (database/contatos_anotacao.sql). Until those
+// columns exist, the notes are kept in this browser only (CHAVE_ANOTACOES) and a warning says so.
+const CHAVE_ANOTACOES = "quitandinha:ctAnotacoes";
+let SEM_COLUNA_ANOTACAO = false;
+const ctNotaAberta = new Set();      // ids of the contacts whose notepad is open
+const ctNotaRascunho = new Map();    // text being typed (kept while the table redraws, e.g. while searching)
+const ehErroColunaAnotacao = e => !!e && /anotacao/i.test(e.message||"") &&
+  (e.code === "PGRST204" || e.code === "42703" || /(could not find|does not exist|schema cache)/i.test(e.message||""));
+async function aplicarAnotacoesLocais(){
+  if(!SEM_COLUNA_ANOTACAO) return;
+  const locais = await localGet(CHAVE_ANOTACOES, {});
+  avulsos.forEach(c => { const n = locais[c.id]; if(n) Object.assign(c, n); });
+}
+async function guardarAnotacaoLocal(c){
+  const locais = await localGet(CHAVE_ANOTACOES, {});
+  if(c.anotacao) locais[c.id] = {anotacao:c.anotacao, anotacaoEm:c.anotacaoEm, anotacaoPor:c.anotacaoPor};
+  else delete locais[c.id];
+  await localSet(CHAVE_ANOTACOES, locais);
+}
+function avisarSemColunaAnotacao(){
+  avisar("As anotações dos contatos ficam só neste aparelho até rodar database/contatos_anotacao.sql no Supabase.", true);
+}
 function avisarSemTabela(){
   avisar("Os contatos avulsos ficam só neste aparelho até criar a tabela no Supabase (veja database/schema.sql).", true);
 }
@@ -1911,7 +1938,14 @@ function avisarSemTabela(){
 async function buscarAvulsos(){
   if(NUVEM && !SEM_TABELA_AVULSOS){
     const r = await sb.from("contatos_avulsos").select("*").order("nome", {ascending:true});
-    if(!r.error){ avulsos = (r.data||[]).map(avulsoDoBanco); await localSet(CHAVE_AVULSOS, avulsos); return; }
+    if(!r.error){
+      const linhas = r.data || [];
+      if(linhas.length && !("anotacao" in linhas[0])) SEM_COLUNA_ANOTACAO = true;   // column not created yet
+      avulsos = linhas.map(avulsoDoBanco);
+      await aplicarAnotacoesLocais();
+      await localSet(CHAVE_AVULSOS, avulsos);
+      return;
+    }
     if(tabelaNaoExiste(r.error)) SEM_TABELA_AVULSOS = true;
   }
   avulsos = await localGet(CHAVE_AVULSOS, []);
@@ -1919,7 +1953,13 @@ async function buscarAvulsos(){
 // Creates or updates a standalone contact. Returns false if it couldn't be saved.
 async function gravarAvulso(c){
   if(NUVEM && !SEM_TABELA_AVULSOS){
-    const {error} = await sb.from("contatos_avulsos").upsert(avulsoParaBanco(c));
+    let {error} = await sb.from("contatos_avulsos").upsert(avulsoParaBanco(c));
+    if(ehErroColunaAnotacao(error) && !SEM_COLUNA_ANOTACAO){
+      // the anotacao columns don't exist yet: save the contact without them, keep the note here
+      SEM_COLUNA_ANOTACAO = true;
+      if(c.anotacao) avisarSemColunaAnotacao();
+      ({error} = await sb.from("contatos_avulsos").upsert(avulsoParaBanco(c)));
+    }
     if(error){
       if(tabelaNaoExiste(error)){ SEM_TABELA_AVULSOS = true; avisarSemTabela(); }
       else if(error.code === "42501" || /row-level security/i.test(error.message||"")){ avisar("Você não tem permissão para salvar contatos.", true); return false; }
@@ -1929,7 +1969,21 @@ async function gravarAvulso(c){
   const i = avulsos.findIndex(x => x.id === c.id);
   if(i >= 0) avulsos[i] = c; else avulsos.push(c);
   await localSet(CHAVE_AVULSOS, avulsos);
+  if(NUVEM && SEM_COLUNA_ANOTACAO) await guardarAnotacaoLocal(c);
   return true;
+}
+// Saves the "Anotação" of a standalone contact (empty text = removes it).
+async function salvarAnotacaoContato(id){
+  if(!perm.editar){ negar("editar"); return; }
+  const c = avulsos.find(x => x.id === id); if(!c) return;
+  const campo = document.getElementById("ctNotaTxt-"+id);
+  const texto = (campo ? campo.value : (ctNotaRascunho.get(id) || "")).trim();
+  if(texto === (c.anotacao || "")){ ctNotaRascunho.delete(id); avisar("Nada mudou na anotação."); return; }
+  const novo = Object.assign({}, c, {anotacao:texto, anotacaoEm:texto ? agora() : "", anotacaoPor:texto ? (meuNome||"") : ""});
+  if(await gravarAvulso(novo) === false) return;
+  if(NUVEM && SEM_COLUNA_ANOTACAO && texto) avisarSemColunaAnotacao(); else avisar(texto ? "Anotação salva" : "Anotação apagada");
+  ctNotaRascunho.delete(id);
+  renderContatosPagina();
 }
 async function apagarAvulso(id){
   if(NUVEM && !SEM_TABELA_AVULSOS){
@@ -1950,7 +2004,7 @@ function todosContatos(){
         condominio:l.nome || "Condomínio sem nome", endereco:l.endereco || "", leadId:l.id});
   }));
   avulsos.forEach(c => linhas.push({nome:c.nome, telefone:c.telefone, email:c.email, tipo:c.tipo||"",
-    condominio:"", endereco:"", avulsoId:c.id}));
+    condominio:"", endereco:"", avulsoId:c.id, anotacao:c.anotacao||"", anotacaoEm:c.anotacaoEm||"", anotacaoPor:c.anotacaoPor||""}));
   return linhas.sort((a,b) => (a.nome||"").localeCompare(b.nome||"", "pt-BR") || (a.condominio||"").localeCompare(b.condominio||"", "pt-BR"));
 }
 // ---- Sorting the Contatos table: by Nome (default) or by Condomínio, A→Z or Z→A ----
@@ -2004,7 +2058,7 @@ function contatosFiltrados(){
     if(tipo === "__sem" ? c.tipo : (tipo && c.tipo !== tipo)) return false;
     if(!termo) return true;
     const digitos = termo.replace(/\D/g,"");
-    return normalizarNome([c.nome,c.email,c.condominio,c.tipo].join(" ")).includes(termo) ||
+    return normalizarNome([c.nome,c.email,c.condominio,c.tipo,c.anotacao].join(" ")).includes(termo) ||
       (digitos.length >= 3 && String(c.telefone||"").replace(/\D/g,"").includes(digitos));
   }));
 }
@@ -2038,13 +2092,44 @@ function renderContatosPagina(){
         ? '<button type="button" class="ct-condo" data-ct-abrir="'+escapar(c.leadId)+'" title="Abrir o condomínio">'+escapar(c.condominio)+'</button>'
         : '<span class="ct-avulso">Avulso</span>')+'</td>'+
       '<td class="ct-acoes">'+(c.avulsoId
-        ? '<button type="button" data-ct-editar="'+escapar(c.avulsoId)+'" title="Editar contato" aria-label="Editar contato">✎</button>'+
-          '<button type="button" data-ct-excluir="'+escapar(c.avulsoId)+'" title="Excluir contato" aria-label="Excluir contato">✕</button>'
+        ? botaoAnotacao(c)+
+          (perm.editar ? '<button type="button" data-ct-editar="'+escapar(c.avulsoId)+'" title="Editar contato" aria-label="Editar contato">✎</button>' : '')+
+          (perm.excluir ? '<button type="button" data-ct-excluir="'+escapar(c.avulsoId)+'" title="Excluir contato" aria-label="Excluir contato">✕</button>' : '')
         : '')+'</td>'+
-    '</tr>';
+    '</tr>'+(c.avulsoId && ctNotaAberta.has(c.avulsoId) ? linhaAnotacao(c) : '');
   }).join("") || '<tr class="ct-nada"><td colspan="5">'+(todos.length
     ? 'Nenhum contato encontrado com esse filtro.'
     : 'Nenhum contato ainda. Eles aparecem aqui quando você adiciona contatos nos condomínios, ou clique em "+ Novo contato".')+'</td></tr>';
+}
+// "Anotação" button of a standalone contact; a small dot shows when it already has a note.
+function botaoAnotacao(c){
+  const aberta = ctNotaAberta.has(c.avulsoId), tem = !!c.anotacao;
+  return '<button type="button" class="ct-anot'+(tem ? ' tem' : '')+(aberta ? ' on' : '')+'" data-ct-anotacao="'+escapar(c.avulsoId)+'"'+
+    ' aria-expanded="'+aberta+'" aria-controls="ctNota-'+escapar(c.avulsoId)+'"'+
+    ' title="'+(tem ? 'Ver a anotação' : 'Escrever uma anotação')+'">'+
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>'+
+    'Anotação'+(tem ? '<i class="ct-anot-ponto" aria-hidden="true"></i><span class="sr-only"> (tem anotação)</span>' : '')+'</button>';
+}
+// The notepad row that opens under the contact: a text box (or just the text, for read-only users).
+function linhaAnotacao(c){
+  const id = escapar(c.avulsoId), texto = ctNotaRascunho.has(c.avulsoId) ? ctNotaRascunho.get(c.avulsoId) : (c.anotacao||"");
+  const meta = c.anotacaoEm ? 'Atualizada '+dataHoraBR(c.anotacaoEm)+(c.anotacaoPor ? ' por '+escapar(c.anotacaoPor) : '') : 'Ainda sem anotação.';
+  const corpo = perm.editar
+    ? '<textarea class="ct-nota-txt" id="ctNotaTxt-'+id+'" data-ct-nota-txt="'+id+'" maxlength="2000" rows="4" aria-label="Anotação sobre '+escapar(c.nome||"este contato")+'" placeholder="Ex.: prefere contato depois das 18h; conversamos sobre a assembleia de março…">'+escapar(texto)+'</textarea>'+
+      '<div class="ct-nota-rodape"><span class="ct-nota-meta">'+meta+'</span>'+
+      '<button type="button" class="btn-neutro" data-ct-nota-fechar="'+id+'">Fechar</button>'+
+      '<button type="button" class="btn-salvar" data-ct-nota-salvar="'+id+'">Salvar anotação</button></div>'
+    : '<p class="ct-nota-leitura">'+(c.anotacao ? escapar(c.anotacao) : '<span class="ct-vazio">Sem anotação.</span>')+'</p>'+
+      '<div class="ct-nota-rodape"><span class="ct-nota-meta">'+(c.anotacaoEm ? meta : '')+'</span>'+
+      '<button type="button" class="btn-neutro" data-ct-nota-fechar="'+id+'">Fechar</button></div>';
+  return '<tr class="ct-nota-linha" id="ctNota-'+id+'"><td colspan="5"><div class="ct-nota"><b class="ct-nota-tit">Anotação · '+escapar(c.nome||"contato")+'</b>'+corpo+'</div></td></tr>';
+}
+function alternarAnotacao(id){
+  if(ctNotaAberta.has(id)) ctNotaAberta.delete(id); else ctNotaAberta.add(id);
+  renderContatosPagina();
+  const campo = document.getElementById("ctNotaTxt-"+id);
+  if(campo && ctNotaAberta.has(id)) campo.focus();
+  else { const b = document.querySelector('[data-ct-anotacao="'+CSS.escape(id)+'"]'); if(b) b.focus(); }
 }
 function contatosAberto(){ return $("#telaContatos").classList.contains("aberta"); }
 async function abrirContatos(){
@@ -2083,7 +2168,9 @@ async function salvarAvulso(){
   const c = {
     id: antigo ? antigo.id : (NUVEM ? crypto.randomUUID() : gerarId()),
     nome, telefone:$("#ct_tel").value.trim(), email:$("#ct_email").value.trim(), tipo,
-    criadoPor: antigo ? antigo.criadoPor : (meuNome||""), criadoEm: antigo ? antigo.criadoEm : agora()
+    criadoPor: antigo ? antigo.criadoPor : (meuNome||""), criadoEm: antigo ? antigo.criadoEm : agora(),
+    // the "Anotação" is edited on its own (row button): editing the contact keeps it
+    anotacao: antigo ? (antigo.anotacao||"") : "", anotacaoEm: antigo ? (antigo.anotacaoEm||"") : "", anotacaoPor: antigo ? (antigo.anotacaoPor||"") : ""
   };
   if(await gravarAvulso(c) === false) return;
   fecharFormAvulso();
@@ -2103,8 +2190,8 @@ async function excluirAvulso(id){
 function exportarContatos(){
   const lista = contatosFiltrados();
   if(!lista.length){ avisar("Não há contatos para exportar"); return; }
-  const cab = ["Nome","Vínculo","Número","E-mail","Condomínio","Endereço do condomínio"];
-  const linhas = lista.map(c => [c.nome, c.tipo, c.telefone, c.email, c.leadId ? c.condominio : "Avulso", c.endereco]);
+  const cab = ["Nome","Vínculo","Número","E-mail","Condomínio","Endereço do condomínio","Anotação"];
+  const linhas = lista.map(c => [c.nome, c.tipo, c.telefone, c.email, c.leadId ? c.condominio : "Avulso", c.endereco, c.anotacao||""]);
   const csv = [cab, ...linhas].map(r => r.map(x => '"'+String(x ?? "").replace(/"/g,'""')+'"').join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"}));
@@ -3558,7 +3645,19 @@ $("#ctCorpo").addEventListener("click", e=>{
   const ed = e.target.closest("[data-ct-editar]");
   if(ed){ abrirFormAvulso(ed.dataset.ctEditar); return; }
   const ex = e.target.closest("[data-ct-excluir]");
-  if(ex) excluirAvulso(ex.dataset.ctExcluir);
+  if(ex){ excluirAvulso(ex.dataset.ctExcluir); return; }
+  const an = e.target.closest("[data-ct-anotacao]");
+  if(an){ alternarAnotacao(an.dataset.ctAnotacao); return; }
+  const sv = e.target.closest("[data-ct-nota-salvar]");
+  if(sv){ salvarAnotacaoContato(sv.dataset.ctNotaSalvar); return; }
+  const fe = e.target.closest("[data-ct-nota-fechar]");
+  if(fe){ ctNotaRascunho.delete(fe.dataset.ctNotaFechar); alternarAnotacao(fe.dataset.ctNotaFechar); }
+});
+// typing in a notepad: keep the draft (the table redraws while searching); Ctrl+Enter saves
+$("#ctCorpo").addEventListener("input", e => { const t = e.target.closest("[data-ct-nota-txt]"); if(t) ctNotaRascunho.set(t.dataset.ctNotaTxt, t.value); });
+$("#ctCorpo").addEventListener("keydown", e => {
+  const t = e.target.closest("[data-ct-nota-txt]");
+  if(t && e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); salvarAnotacaoContato(t.dataset.ctNotaTxt); }
 });
 // SULTS toggle in the panel.
 $("#btnSults").addEventListener("click", ()=>{ if(bloqueado()) return; sultsForm = !sultsForm; atualizarBotaoSults(); });
