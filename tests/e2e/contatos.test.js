@@ -170,8 +170,8 @@ describe("Contacts page (☰ → Contatos)", () => {
     const csv = fs.readFileSync(await download.path(), "utf8");
     assert.ok(csv.startsWith("﻿"));
     const l = csv.slice(1).split("\r\n");
-    assert.equal(l[0], '"Nome";"Vínculo";"Número";"E-mail";"Condomínio";"Endereço do condomínio"');
-    assert.equal(l[1], '"Paulo";"Síndico";"(11) 99999-0000";"paulo@aurora.com";"Aurora";"Rua A, 10"');
+    assert.equal(l[0], '"Nome";"Vínculo";"Número";"E-mail";"Condomínio";"Endereço do condomínio";"Anotação"');
+    assert.equal(l[1], '"Paulo";"Síndico";"(11) 99999-0000";"paulo@aurora.com";"Aurora";"Rua A, 10";""');
     assert.equal(l.length, 2, "only the filtered rows");
     await context.close();
   });

@@ -1158,7 +1158,7 @@ body.vista-mapa #quadro{display:none}
 .ct-condo:hover{color:#093E4F}
 .ct-avulso{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:#F9F3E9;color:#A0752A}
 .ct-vazio{color:#B7BDB3}
-.ct-acoes{width:70px;white-space:nowrap;text-align:right}
+.ct-acoes{width:1%;white-space:nowrap;text-align:right}
 .ct-acoes button{border:0;background:none;color:var(--tinta-suave);font-size:13px;padding:4px 6px;border-radius:6px}
 .ct-acoes button:hover{background:#E2E5DB;color:#093E4F}
 .ct-acoes button[data-ct-excluir]:hover{color:#963029}
@@ -1523,3 +1523,28 @@ body.somente-leitura #painel select{appearance:none;-webkit-appearance:none;back
 .ct-ordem:focus-visible{outline:2px solid #0E627D;outline-offset:-2px}
 .ct-ordem-cel{display:none}
 @media (max-width:640px){ .ct-ordem-cel{display:block} }   /* same width at which the table header hides */
+
+/* Contatos: "Anotação" button of a standalone contact (a dot when it has a note) and the notepad row
+   that opens under it. */
+.ct-acoes .ct-anot{display:inline-flex;align-items:center;gap:5px;position:relative;border:1px solid #D6DBD0;background:#fff;
+  color:#0E627D;font-size:12px;font-weight:600;padding:4px 9px;border-radius:7px;margin-right:4px;cursor:pointer}
+.ct-acoes .ct-anot:hover,.ct-acoes .ct-anot.on{background:#EAF2F0;border-color:#0E627D;color:#093E4F}
+.ct-anot-ponto{width:7px;height:7px;border-radius:50%;background:#D4A85C;display:inline-block}
+.ct-nota-linha td{background:#F7F8F3 !important;border-top:0 !important;padding:0 12px 12px !important}
+.ct-nota{background:#fff;border:1px solid #E1E4DA;border-left:3px solid #D4A85C;border-radius:10px;padding:10px 12px}
+.ct-nota-tit{display:block;font-size:12px;color:var(--tinta-suave);font-weight:700;margin-bottom:6px}
+.ct-nota-txt{width:100%;min-height:84px;resize:vertical;border:1px solid #CBD3CB;border-radius:8px;padding:8px 10px;font:inherit;font-size:13.5px;line-height:1.45}
+.ct-nota-txt:focus{outline:2px solid #0E627D;outline-offset:0;border-color:#0E627D}
+.ct-nota-rodape{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.ct-nota-meta{margin-right:auto;font-size:11.5px;color:var(--tinta-suave)}
+.ct-nota-rodape button{padding:6px 12px;font-size:12.5px}
+.ct-nota-leitura{margin:0;white-space:pre-wrap;font-size:13.5px;line-height:1.45}
+@media (max-width:640px){
+  .ct-nota-linha{margin-top:-8px;border-top-left-radius:0;border-top-right-radius:0}
+  .ct-nota-linha td{padding:0 8px 8px !important}
+  /* the buttons sit at the card's top right: keep the name clear of them */
+  .ct-tabela tr:has(.ct-anot) td[data-label="Nome"]{padding-right:168px}
+  /* …and the buttons' cell only as wide as the buttons, with no background: it used to take the whole
+     card width and, on a hovered card, cover the name */
+  .ct-tabela td.ct-acoes{width:auto;background:none !important;padding:3px 8px}
+}

@@ -67,10 +67,17 @@ create table if not exists public.contatos_avulsos (
   nome       text not null,
   telefone   text,
   email      text,
-  tipo       text,                 -- "Quem é": Síndico, ADM, Zelador, Morador, Gerente predial ou outro
+  tipo       text,                 -- "Vínculo": Síndico, ADM, Zelador, Morador, Gerente predial ou outro
   criado_por text,
-  criado_em  timestamptz default now()
+  criado_em  timestamptz default now(),
+  anotacao     text,               -- bloco de notas do contato (botão "Anotação"); ver contatos_anotacao.sql
+  anotacao_em  timestamptz,
+  anotacao_por text
 );
+-- older databases: add the "Anotação" columns (same as contatos_anotacao.sql)
+alter table public.contatos_avulsos add column if not exists anotacao     text;
+alter table public.contatos_avulsos add column if not exists anotacao_em  timestamptz;
+alter table public.contatos_avulsos add column if not exists anotacao_por text;
 
 -- Templates (página Templates): textos prontos com título, para copiar.
 create table if not exists public.templates (

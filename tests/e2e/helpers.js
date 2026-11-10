@@ -133,6 +133,7 @@ function normalizar(s) {
  * criarNuvem(usuario, {leitor: true}) = a read-only user (the database answers "no" to create/edit/delete).
  * {rpc: {sou_admin: true, admin_membros: [...]}} = answers for database functions (admin screen tests).
  * {semTabela: ["atividades"]} = that table doesn't exist (the database answers with an error, like Supabase).
+ * {semColuna: {contatos_avulsos: ["anotacao"]}} = that column doesn't exist yet (saving a row with it fails, like Supabase).
  * {funcoes: {"admin-usuarios": async (body) => ({status, json})}} = fake Edge Functions (calls in funcoesChamadas).
  * {recuperacao: true} = the page was opened from a "reset password" link (PASSWORD_RECOVERY).
  * usuario.user_metadata = {trocar_senha: true} -> logged in with a temporary password.
@@ -158,6 +159,10 @@ function criarNuvem(usuario = { id: "u-tasnim", email: "tasnim@kmd3.com.br" }, o
     // a table that "wasn't created yet" in the real database (e.g. atividades.sql not run)
     if ((opcoes.semTabela || []).includes(q.tabela))
       return { data: null, error: { code: "PGRST205", message: `Could not find the table 'public.${q.tabela}' in the schema cache` } };
+    // a column that "wasn't created yet": {semColuna: {contatos_avulsos: ["anotacao"]}}
+    const faltando = ((opcoes.semColuna || {})[q.tabela] || []).find((c) => (q.linhas || []).some((l) => c in l) || (q.valores && c in q.valores));
+    if (faltando)
+      return { data: null, error: { code: "PGRST204", message: `Could not find the '${faltando}' column of '${q.tabela}' in the schema cache` } };
     const linhas = tab(q.tabela);
     const chave = q.onConflict || (q.tabela === "rotas" ? "usuario" : "id");
     let data = null, mudou = false;
