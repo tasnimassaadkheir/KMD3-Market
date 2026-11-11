@@ -185,7 +185,9 @@ describe("Status picker layout", () => {
       const fora = await page.locator("#semaforo label").evaluateAll((ls) => ls.filter((l) => l.scrollWidth > l.clientWidth + 1).map((l) => l.textContent.trim()));
       assert.deepEqual(fora, [], `text sticking out: ${fora.join(", ")}`);
       const linhas = await page.locator("#semaforo label").evaluateAll((ls) => new Set(ls.map((l) => Math.round(l.getBoundingClientRect().top))).size);
-      assert.equal(linhas, 2, "2 rows of 2 options");
+      assert.equal(linhas, 3, "2 rows of 2 options + 'Não prospectável' on its own row");
+      const [l1, l5] = await page.locator("#semaforo label").evaluateAll((ls) => [ls[0], ls[4]].map((l) => l.getBoundingClientRect().width));
+      assert.ok(l5 > l1 * 1.8, "'Não prospectável' takes the whole width");
       await context.close();
     });
   }

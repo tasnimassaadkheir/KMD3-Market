@@ -183,6 +183,7 @@
   .cartao.st-verde{border-left-color:var(--ok)}
   .cartao.st-amarelo{border-left-color:var(--andamento)}
   .cartao.st-vermelho{border-left-color:var(--perdido)}
+  .cartao.st-naoprospectavel{border-left-color:#7B847F;opacity:.85}
   .cartao.st-nenhum{border-left-color:#C9D2CD}
   /* Card contents: title, address, and the red 'important' warning box. */
   .cartao h3{font-size:14px;font-weight:600;margin:0 0 2px;line-height:1.3}
@@ -322,6 +323,11 @@
   .bolinha{width:11px;height:11px;border-radius:50%;flex:none}
   .b-verde{background:var(--ok)}.b-amarelo{background:var(--andamento)}
   .b-vermelho{background:var(--perdido)}.b-nenhum{background:#C9D2CD}
+  /* "Não prospectável": a crossed-out grey dot */
+  /* it's a different kind of choice (takes the condo off the board): its own full-width row under the 4 others */
+  .semaforo label:has(input[value="naoprospectavel"]){grid-column:1/-1}
+  .b-naoprospectavel{background:#fff;border:2px solid #7B847F;position:relative;box-sizing:border-box}
+  .b-naoprospectavel::after{content:"";position:absolute;left:-1px;right:-1px;top:50%;height:2px;margin-top:-1px;background:#7B847F;transform:rotate(-45deg)}
   /* Change log box and the button that expands/collapses it (arrow rotates when open). */
   .historico{background:#F0F1EA;border-radius:10px;padding:12px 14px;font-size:12.5px;
     color:var(--tinta-suave);line-height:1.7;margin-top:8px}
@@ -1548,3 +1554,7 @@ body.somente-leitura #painel select{appearance:none;-webkit-appearance:none;back
      card width and, on a hovered card, cover the name */
   .ct-tabela td.ct-acoes{width:auto;background:none !important;padding:3px 8px}
 }
+
+/* Dashboard: the "Não prospectável" bar and list items in grey */
+.db-barra.st-naoprospectavel .db-trilha i{background:#7B847F}
+.db-det-item.st-naoprospectavel{border-left-color:#7B847F}
