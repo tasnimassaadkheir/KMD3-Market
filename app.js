@@ -33,7 +33,10 @@ const FASES = [
   {id:"contrato",  nome:"Assinatura de Contrato"}
 ];
 // Human-readable labels for each status value (verde = green = closed, etc.).
-const ROTULO_STATUS = {verde:"Fechado", amarelo:"Em andamento", vermelho:"Perdido", nenhum:"Sem situação"};
+const ROTULO_STATUS = {verde:"Fechado", amarelo:"Em andamento", vermelho:"Perdido", nenhum:"Sem situação", naoprospectavel:"Não prospectável"};
+// "Não prospectável": a condo that won't be prospected. It disappears from the board (and the map)
+// and only shows when the "Não prospectáveis" filter is chosen.
+const NAO_PROSPECTAVEL = "naoprospectavel";
 // Keys (names) used to store data in the browser's localStorage.
 // localStorage is a small key/value storage that survives page reloads.
 const CHAVE_LEADS = "quitandinha:condominios";
@@ -207,7 +210,8 @@ function textoDias(n){ if(n===null) return "—"; if(n<=0) return "hoje"; if(n==
 function escapar(s){ return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 // Shows a toast message at the bottom of the screen for 2.4s (5.5s if it's an error).
 // el._t stores the timer so a new message cancels the old timer.
-function avisar(msg, erro){ const el=$("#aviso"); el.textContent=msg; el.classList.toggle("erro",!!erro); el.classList.add("on"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("on"), erro?5500:2400); }
+// msg = text; erro = red style (and longer); ms = how long it stays (optional, for longer explanations)
+function avisar(msg, erro, ms){ const el=$("#aviso"); el.textContent=msg; el.classList.toggle("erro",!!erro); el.classList.add("on"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("on"), ms || (erro?5500:2400)); }
 
 // Simplifies text for comparisons: removes accents (NFD + regex), lowercase,
 // trims and collapses multiple spaces. "  Condomínio  Água " -> "condominio agua".
@@ -545,19 +549,34 @@ function filtrar(){
   const st = $("#filtroStatus").value, resp = $("#filtroResp").value;
   const dataDe = $("#filtroDataDe").value, dataAte = $("#filtroDataAte").value;
   $("#btnLimparData").hidden = !dataDe && !dataAte;
+  atualizarOpcaoNaoProspectavel();
   return leads.filter(l => {
+    // "Não prospectável" condos are hidden unless that is exactly the filter chosen
+    if(st === NAO_PROSPECTAVEL) return (l.status === NAO_PROSPECTAVEL) && passaResto(l);
+    if(l.status === NAO_PROSPECTAVEL) return false;
     if(st === "sults:sim"){ if(!l.sults) return false; }           // registered in SULTS
     else if(st === "sults:nao"){ if(l.sults) return false; }       // not in SULTS yet
     else if(st === "quente:sim"){ if(!l.quente) return false; }     // hot contacts
     else if(st === "quente:nao"){ if(l.quente) return false; }
     else if(st && (l.status||"nenhum") !== st) return false;
+    return passaResto(l);
+  });
+  // the other filters (person, dates, search) apply the same way to both cases
+  function passaResto(l){
     if(resp && (l.responsavel||"") !== resp) return false;
     if(!dataNoIntervalo(l.criadoEm, dataDe, dataAte)) return false;
     if(!termo) return true;
     const textoContatos = (l.contatos||[]).map(c=>[c.nome,c.telefone,c.email,c.tipo].join(" ")).join(" ");
     return [l.nome,l.endereco,l.zona,l.importante,textoContatos,l.concorrente,l.perfil,l.notas,l.responsavel]
       .join(" ").toLowerCase().includes(termo);
-  });
+  }
+}
+// Keeps the count in the filter's option up to date: "Não prospectáveis (3)".
+function atualizarOpcaoNaoProspectavel(){
+  const o = document.querySelector('#filtroStatus option[value="'+NAO_PROSPECTAVEL+'"]');
+  if(!o) return;
+  const n = leads.filter(l => l.status === NAO_PROSPECTAVEL).length;
+  o.textContent = "Não prospectáveis" + (n ? " ("+n+")" : "");
 }
 
 // DRAW THE BOARD. Called after almost every change.
@@ -2715,7 +2734,9 @@ async function salvar(){
       const desc = partes.length ? partes.join(" · ") : "Cadastro editado (sem alterações detectadas)";
       registrarAtualizacao(l, desc);
       if(await gravarLead(l) === false){ fecharTudo(); desenhar(); return; }
-      avisar("Alterações salvas");
+      avisar(dados.status === NAO_PROSPECTAVEL && antes.status !== NAO_PROSPECTAVEL && $("#filtroStatus").value !== NAO_PROSPECTAVEL
+        ? "Marcado como não prospectável: saiu do quadro. Para ver, escolha \"Não prospectáveis\" no filtro de situação."
+        : "Alterações salvas", false, dados.status === NAO_PROSPECTAVEL ? 6000 : 0);
     } else {
       // New condo: generate an id (a real UUID in cloud mode), set creation info and history,
       // then merge in the form data.
@@ -2728,7 +2749,9 @@ async function salvar(){
       }, dados);
       leads.push(novo);
       if(await gravarLead(novo) === false){ fecharTudo(); desenhar(); return; }
-      avisar("Condomínio cadastrado");
+      avisar(novo.status === NAO_PROSPECTAVEL && $("#filtroStatus").value !== NAO_PROSPECTAVEL
+        ? "Cadastrado como não prospectável: não aparece no quadro. Para ver, escolha \"Não prospectáveis\" no filtro de situação."
+        : "Condomínio cadastrado", false, novo.status === NAO_PROSPECTAVEL ? 6000 : 0);
     }
     fecharTudo(); desenhar();
   }catch(e){ /* erro já avisado */ }
@@ -3000,7 +3023,7 @@ function diasAte(iso){ return Math.ceil((new Date(iso) - Date.now())/86400000); 
 // Counts everything shown on the page.
 function calcularDashboard(lista){
   const r = {
-    total: lista.length, fases: {}, status: {verde:0, amarelo:0, vermelho:0, nenhum:0},
+    total: lista.length, fases: {}, status: {verde:0, amarelo:0, vermelho:0, nenhum:0, naoprospectavel:0},
     tamanho: {P:0, M:0, G:0, sem:0}, comContato: 0, semContato: 0, semInfo: [],
     concorrentes: [], semConcorrente: 0, vencendo: [], aptosTotal: 0, aptosFechados: 0,
     lembretesVencidos: 0, visitar: 0, sults: 0, quentes: 0, parados: [], responsaveis: [], conversao: null
@@ -3173,7 +3196,7 @@ function renderDashboard(){
     listaDb(r.vencendo, l => escapar(l.concorrente)+', '+textoVencimento(l),
       "Nenhum contrato vencendo nos próximos "+DIAS_FIM_CONTRATO+" dias.")));
   // situation
-  cartoes.push(cartaoDb("Situação", ["verde","amarelo","vermelho","nenhum"].map(s =>
+  cartoes.push(cartaoDb("Situação", ["verde","amarelo","vermelho","nenhum","naoprospectavel"].map(s =>
     barraDb(escapar(ROTULO_STATUS[s]), r.status[s], T, "status:"+s, "st-"+s)).join("")));
   // people
   cartoes.push(cartaoDb("Por responsável", r.responsaveis.map(p => p.nome

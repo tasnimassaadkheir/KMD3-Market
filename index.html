@@ -69,6 +69,8 @@
       <option value="amarelo">Em andamento</option>
       <option value="vermelho">Perdido</option>
       <option value="nenhum">Sem situação</option>
+      <!-- "Não prospectável" condos are hidden from the board; this is the only way to see them -->
+      <option value="naoprospectavel">Não prospectáveis</option>
       <!-- SULTS: whether the condo is already registered in SULTS (the SULTS toggle on the card). -->
       <optgroup label="SULTS">
         <option value="sults:sim">No SULTS</option>
@@ -360,6 +362,8 @@
         <label><input type="radio" name="status" value="amarelo"><i class="bolinha b-amarelo"></i>Em andamento</label>
         <label><input type="radio" name="status" value="vermelho"><i class="bolinha b-vermelho"></i>Perdido</label>
         <label><input type="radio" name="status" value="nenhum" checked><i class="bolinha b-nenhum"></i>Sem definir</label>
+        <!-- hides the condo from the board; find it again with the filter "Não prospectáveis" -->
+        <label title="Some do quadro. Para ver de novo, escolha &quot;Não prospectáveis&quot; no filtro de situação."><input type="radio" name="status" value="naoprospectavel"><i class="bolinha b-naoprospectavel"></i>Não prospectável</label>
       </div>
     </fieldset>
 

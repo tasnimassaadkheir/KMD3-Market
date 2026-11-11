@@ -34,6 +34,11 @@ describe("temContato() / semInformacao()", () => {
 });
 
 describe("calcularDashboard()", () => {
+  test("'Não prospectável' is counted in its own situation", () => {
+    const r = app.json(`calcularDashboard(${JSON.stringify([{ id: "1", fase: "cadastro", status: "naoprospectavel" }, { id: "2", fase: "cadastro", status: "verde" }])})`);
+    assert.equal(r.status.naoprospectavel, 1);
+    assert.equal(r.status.verde, 1);
+  });
   const base = { contatos: [], lembretes: [], observacoes: [], atualizadoEm: "2026-10-01T12:00:00Z" };
   const L = (o) => ({ ...base, ...o });
 
@@ -49,7 +54,7 @@ describe("calcularDashboard()", () => {
     assert.equal(r.fases.cadastro, 1);
     assert.equal(r.fases.contrato, 1);
     assert.equal(r.fases.assembleia, 0);
-    assert.deepEqual(r.status, { verde: 1, amarelo: 1, vermelho: 1, nenhum: 1 });
+    assert.deepEqual(r.status, { verde: 1, amarelo: 1, vermelho: 1, nenhum: 1, naoprospectavel: 0 });
     assert.deepEqual(r.tamanho, { P: 1, M: 1, G: 1, sem: 1 });
     assert.equal(r.aptosTotal, 850);
     assert.equal(r.aptosFechados, 280);
